@@ -29,19 +29,39 @@ every word, so there is no horizontal drift to track.
   document and prompts to continue
 - **Fully local.** No account, no cloud, no telemetry. Your files are never
   copied or uploaded.
-- **Runs on a phone too**, as an installable web app — see below
+- **Runs on Android too**, as a real installed app — see below
 
-## On a phone
+## On Android
 
-The desktop app cannot run on Android or iOS — PyQt6 and PyMuPDF have no
-mobile builds, and neither does any other Qt binding for Python. So mobile is
-served by a **web version** that installs like an app:
+A real, installed app — **[download rsvp-reader.apk](https://github.com/HawkOsm/rsvp-reader/releases/latest)**
+from the latest release.
 
-### **[hawkosm.github.io/rsvp-reader](https://hawkosm.github.io/rsvp-reader/)**
+To install it, your phone has to be told to trust the file, because it does
+not come from the Play Store:
 
-Open that on your phone, then *Add to Home Screen* (iOS Safari) or *Install
-app* (Android Chrome). It then runs full-screen with no browser chrome, works
-offline, and keeps your library on the device.
+1. Download the `.apk` on the phone (or copy it across)
+2. Tap it. Android will say the app that opened it is not allowed to install
+   apps — choose **Settings** and turn on *Allow from this source*
+3. Go back and tap **Install**
+4. Open **RSVP Reader**, tap **Add**, and pick a PDF or text file
+
+Requires **Android 8.0 or newer**. It declares **no permissions at all** —
+no network, no storage access — which CI checks on every build. Files are
+read through Android's own document picker and never copied or uploaded.
+
+The app is signed with the standard Android debug key, which is fine for
+sideloading but means Play Protect may warn on first launch, and a future
+build signed with a different key would need the old one uninstalled first.
+
+### Or the web version
+
+The same thing as an installable web page, if you would rather not sideload:
+**[hawkosm.github.io/rsvp-reader](https://hawkosm.github.io/rsvp-reader/)**
+
+Open it on your phone, then *Add to Home Screen* (iOS Safari) or *Install
+app* (Android Chrome). It runs full-screen with no browser chrome, works
+offline, and keeps your library on the device. **This is the only option on
+iPhone** — Apple does not permit sideloading.
 
 *(Open the link above on a phone to try it — there is nothing to install
 and nothing to sign up for.)*
@@ -308,6 +328,10 @@ copied.
 | `web/js/text.js` | Tokenizer, plus PDF.js word extraction |
 | `web/js/library.js` | The library, in IndexedDB |
 | `web/js/app.js` | Touch UI, canvas ORP drawing, page view |
+| `android/` | The native Android app, in Kotlin |
+| `android/…/Rsvp.kt` | The engine, ported to Kotlin |
+| `android/…/PdfText.kt` | Word positions via PDFBox-Android |
+| `android/…/Library.kt` | The library, in SQLite |
 | `rsvp-reader.spec` | PyInstaller build definition |
 
 ## Contributing
