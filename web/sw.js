@@ -2,7 +2,7 @@
 // Offline support: cache the app shell on install, and cache pdf.js the
 // first time it is fetched so PDFs keep working with no network.
 
-const CACHE = "rsvp-reader-v2";
+const CACHE = "rsvp-reader-v3";
 const SHELL = [
   ".", "index.html", "css/style.css",
   "js/app.js", "js/rsvp.js", "js/text.js", "js/library.js",
