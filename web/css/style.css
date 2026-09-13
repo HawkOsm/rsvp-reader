@@ -64,11 +64,16 @@ html, body {
   padding-bottom: calc(10px + var(--safe-b));
   justify-content: space-between;
 }
-.bar h1 { font-size: 18px; margin: 0; flex: 1; }
+/* These state their colour rather than inheriting it from body.  Chrome's
+   automatic dark mode rewrites inherited colours on this page but leaves
+   explicitly declared ones alone, which left the headings unreadably dark
+   on the deployed site while everything with its own colour was fine. */
+.bar h1 { font-size: 18px; margin: 0; flex: 1; color: var(--text); }
 .title {
   flex: 1;
   text-align: center;
   font-weight: 600;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -198,6 +203,9 @@ button[disabled] { opacity: .4; }
 }
 .controls .row { display: flex; align-items: center; gap: 12px; }
 .controls label { color: var(--dim); font-size: 13px; }
+output { color: var(--text); }
+.sheet h2 { color: var(--text); }
+.toast { color: var(--text); }
 
 .scrub {
   height: 22px;                /* big enough to grab with a thumb */
@@ -265,7 +273,6 @@ output { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums
   transform: translateX(-50%);
   background: var(--hover);
   border: 1px solid var(--border);
-  color: var(--text);
   padding: 10px 16px;
   border-radius: 20px;
   font-size: 14px;
