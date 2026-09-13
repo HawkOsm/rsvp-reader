@@ -113,6 +113,17 @@ class ReaderViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun resetProgress(id: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            library.resetProgress(id)
+            val list = library.listBooks()
+            withContext(Dispatchers.Main) {
+                books = list
+                if (book?.id == id) seek(0)
+            }
+        }
+    }
+
     fun remove(id: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             library.removeBook(id)
@@ -256,9 +267,16 @@ class ReaderViewModel(app: Application) : AndroidViewModel(app) {
 
     // ------------------------------------------------------- page view
 
+    /**
+     * Switch between one word at a time and reading the document normally.
+     *
+     * For a PDF that means its real page; for a text file, which has no
+     * pages, it means the reflowed view.
+     */
     fun togglePage() {
         showPage = !showPage
-        if (showPage) renderPage() else pageImage = null
+        pause()
+        if (showPage && book?.kind == "pdf") renderPage() else pageImage = null
     }
 
     /** The page currently on screen, which may be ahead of the word. */
