@@ -1,12 +1,13 @@
 # RSVP Reader
 
-**A local desktop speed reader for Linux.** Words from a document are flashed
+**A local desktop speed reader.** Words from a document are flashed
 one at a time at a fixed screen position, so your eyes never move across the
 page. When you want to read normally instead, it opens as a two-page book.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![PyQt6](https://img.shields.io/badge/GUI-PyQt6-41cd52.svg)](https://pypi.org/project/PyQt6/)
+[![Build](https://github.com/HawkOsm/rsvp-reader/actions/workflows/build.yml/badge.svg)](https://github.com/HawkOsm/rsvp-reader/actions/workflows/build.yml)
 
 Each word is aligned by its **Optimal Recognition Point** — one letter,
 slightly left of centre, is highlighted and pinned to the exact same pixel for
@@ -29,22 +30,64 @@ every word, so there is no horizontal drift to track.
 - **Fully local.** No account, no cloud, no telemetry. Your files are never
   copied or uploaded.
 
+## Download
+
+Prebuilt, self-contained binaries for Linux, Windows and macOS are attached to
+each [release](https://github.com/HawkOsm/rsvp-reader/releases). They need no
+Python installed. They are **unsigned**, so Windows SmartScreen and macOS
+Gatekeeper will warn on first run.
+
+Or run from source, which works on all three:
+
 ## Requirements
 
 - Python 3.10 or newer
 - [PyQt6](https://pypi.org/project/PyQt6/) and
-  [PyMuPDF](https://pypi.org/project/PyMuPDF/)
-
-On Arch: `pacman -S python-pyqt6 python-pymupdf`, or use a virtualenv as below.
+  [PyMuPDF](https://pypi.org/project/PyMuPDF/) — both ship wheels for Linux,
+  Windows and macOS
 
 ## Install & run
 
 ```bash
 git clone https://github.com/HawkOsm/rsvp-reader.git
 cd rsvp-reader
-python -m venv .venv && .venv/bin/pip install -r requirements.txt
+python -m venv .venv
+```
+
+Then, on **Linux / macOS**:
+
+```bash
+.venv/bin/pip install -r requirements.txt
 .venv/bin/python main.py
 ```
+
+On **Windows**:
+
+```powershell
+.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\python main.py
+```
+
+On Arch you can use the system packages instead:
+`pacman -S python-pyqt6 python-pymupdf`
+
+> **Platform support, honestly stated.** The code is platform-neutral — it uses
+> `pathlib` throughout, has font fallbacks for all three systems, and both
+> dependencies ship wheels everywhere. CI builds and smoke-tests binaries on
+> all three. But it is developed and used daily on Linux, which is the only
+> platform it has had real-world use on. Bug reports from Windows and macOS
+> are welcome.
+
+## Building a binary yourself
+
+```bash
+pip install pyinstaller
+python tools/make_icons.py
+pyinstaller --clean --noconfirm rsvp-reader.spec
+```
+
+The result lands in `dist/`. It is around 100 MB, because it bundles the whole
+Qt runtime — that is the going rate for a self-contained Qt application.
 
 You can also pass files straight in: `python main.py ~/books/essay.pdf`,
 or `rsvp-reader ~/books/essay.pdf` once installed (see below).
@@ -56,7 +99,9 @@ or `rsvp-reader ~/books/essay.pdf` once installed (see below).
 ```
 
 That puts **RSVP Reader** in your desktop application menu with an icon, and
-`rsvp-reader` on your `PATH`. Nothing is copied but the icon — the menu entry
+`rsvp-reader` on your `PATH`. It uses the freedesktop standard, so it works on
+GNOME, KDE, XFCE, Sway, Hyprland and the rest. (Linux only — on Windows and
+macOS use a released binary, or run from source.) Nothing is copied but the icon — the menu entry
 points at this directory, so edits here take effect immediately. Everything
 lands under `~/.local`; no root needed.
 
@@ -185,11 +230,15 @@ sentence end. The constants live at the top of `rsvp_engine.py`.
 
 ## Where your data lives
 
-```
-~/.config/rsvp-reader/library.db
-```
+A single SQLite file, in the place each system expects:
 
-A single SQLite file (`$XDG_CONFIG_HOME` is honoured if set), holding:
+| Platform | Location |
+| --- | --- |
+| Linux | `~/.config/rsvp-reader/library.db` (`$XDG_CONFIG_HOME` honoured) |
+| Windows | `%APPDATA%\rsvp-reader\library.db` |
+| macOS | `~/Library/Application Support/rsvp-reader/library.db` |
+
+It holds:
 
 - `books` — one row per file: path, title, total words, last word index,
   timestamps, and a `fingerprint` of the source file
@@ -220,6 +269,8 @@ copied.
 | `ui/book_view.py` | Book mode: page spreads and text reflow |
 | `ui/main_window.py` | Wires the two views together |
 | `ui/style.py` | Dark palette and stylesheet |
+| `tools/make_icons.py` | Renders the SVG into .png / .ico / .iconset |
+| `rsvp-reader.spec` | PyInstaller build definition |
 
 ## Contributing
 
@@ -248,5 +299,13 @@ A permissive licence such as MIT would therefore have been misleading: it would
 advertise a freedom to ship this inside closed software that the dependencies
 do not actually grant. If you need that, you would have to buy commercial
 licences from Riverbank and Artifex and replace this project's own terms.
+
+### Distributing binaries
+
+The released binaries bundle PyQt6 and PyMuPDF, so each one is a combined work
+covered by the GPL and AGPL. Their complete corresponding source is this
+repository at the matching tag, and the build is reproduced with
+`pyinstaller rsvp-reader.spec` against `requirements.txt`. If you redistribute
+a binary elsewhere, you must carry that source offer with it.
 
 Copyright © 2026 Osman Sahin Guler.

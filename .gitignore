@@ -16,6 +16,11 @@ dist/
 *.db-wal
 *.db-shm
 
+# Generated icons ARE committed (small, and needed to build from a clean
+# checkout); the macOS .icns is built in CI only.
+share/rsvp-reader.icns
+*.iconset/
+
 # Editors / OS
 .vscode/
 .idea/
