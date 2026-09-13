@@ -27,7 +27,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtWidgets import QApplication
 
 from db import Database, default_db_path
@@ -36,6 +36,18 @@ from ui.style import DARK_QSS
 
 APP_ID = "rsvp-reader"
 VERSION = "1.1"
+
+
+def resource_path(name: str) -> Path:
+    """Find a bundled data file, running from source or from a frozen build.
+
+    PyInstaller unpacks data files into a temporary directory and points
+    ``sys._MEIPASS`` at it; from a source checkout they sit next to this
+    module.
+    """
+    base = getattr(sys, "_MEIPASS", None)
+    root = Path(base) if base else Path(__file__).resolve().parent
+    return root / name
 
 
 def parse_args(argv: list[str]):
@@ -66,6 +78,12 @@ def main(argv: list[str] | None = None) -> int:
     app.setDesktopFileName(APP_ID)
     app.setStyle("Fusion")
     app.setStyleSheet(DARK_QSS)
+
+    # Window and taskbar icon.  On Linux the installed .desktop file
+    # usually supplies this, but a frozen build has no desktop entry.
+    icon = resource_path("share/rsvp-reader.png")
+    if icon.exists():
+        app.setWindowIcon(QIcon(str(icon)))
 
     ui_font = QFont()
     ui_font.setFamilies(["Inter", "Noto Sans", "DejaVu Sans", "Arial"])

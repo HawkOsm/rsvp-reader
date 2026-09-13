@@ -19,7 +19,8 @@
 """SQLite persistence for the RSVP reader.
 
 Everything lives in a single file, by default
-``~/.config/rsvp-reader/library.db``.  Two tables:
+``~/.config/rsvp-reader/library.db`` on Linux (see
+``config_dir`` for where it lands on Windows and macOS).  Two tables:
 
 ``books``   one row per file the user has added to the library
 ``tokens``  the precomputed word list for a book, so re-opening a large
@@ -33,6 +34,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -41,10 +43,29 @@ from typing import Iterable, Sequence
 from text_extract import Token
 
 
+def config_dir() -> Path:
+    """Where this platform expects an application to keep its data.
+
+    Windows  %APPDATA%\\rsvp-reader
+    macOS    ~/Library/Application Support/rsvp-reader
+    Linux    $XDG_CONFIG_HOME/rsvp-reader, or ~/.config/rsvp-reader
+
+    The Linux branch is the original location and must not move, or
+    existing libraries would be orphaned.
+    """
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA")
+        root = Path(base) if base else Path.home() / "AppData" / "Roaming"
+    elif sys.platform == "darwin":
+        root = Path.home() / "Library" / "Application Support"
+    else:
+        base = os.environ.get("XDG_CONFIG_HOME")
+        root = Path(base) if base else Path.home() / ".config"
+    return root / "rsvp-reader"
+
+
 def default_db_path() -> Path:
-    base = os.environ.get("XDG_CONFIG_HOME")
-    root = Path(base) if base else Path.home() / ".config"
-    return root / "rsvp-reader" / "library.db"
+    return config_dir() / "library.db"
 
 
 SCHEMA = """
