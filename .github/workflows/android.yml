@@ -46,6 +46,25 @@ jobs:
           cp app/build/outputs/apk/debug/app-debug.apk out/rsvp-reader.apk
           ls -lh out/
 
+      # The app claims to have no network access. Check that rather than
+      # trusting the source manifest, and fail the build if it regresses.
+      - name: Verify what the APK actually asks for
+        run: |
+          APKANALYZER=$(find "$ANDROID_HOME/cmdline-tools" -name apkanalyzer | head -1)
+          echo "--- declared permissions ---"
+          PERMS=$("$APKANALYZER" manifest permissions out/rsvp-reader.apk || true)
+          echo "${PERMS:-(none)}"
+          echo "--- sdk levels ---"
+          "$APKANALYZER" manifest min-sdk out/rsvp-reader.apk
+          "$APKANALYZER" manifest target-sdk out/rsvp-reader.apk
+          echo "--- size ---"
+          "$APKANALYZER" apk summary out/rsvp-reader.apk
+          if echo "$PERMS" | grep -q "android.permission.INTERNET"; then
+            echo "::error::The APK declares INTERNET; this app must not have network access."
+            exit 1
+          fi
+          echo "confirmed: no INTERNET permission"
+
       - uses: actions/upload-artifact@v4
         with:
           name: rsvp-reader-android
