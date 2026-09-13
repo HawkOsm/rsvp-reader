@@ -53,9 +53,19 @@ The app is signed with the standard Android debug key, which is fine for
 sideloading but means Play Protect may warn on first launch, and a future
 build signed with a different key would need the old one uninstalled first.
 
-### Or the web version
+### On iPhone, and the web version
 
-The same thing as an installable web page, if you would rather not sideload:
+**There is no iPhone app, and there cannot easily be one.** The macOS
+download is a desktop Mac application; iOS is a different platform with a
+different ABI and sandbox, and no Qt binding, PDF library or Kivy publishes
+iOS wheels at all. But the real obstacle is not Python: installing any app on
+an iPhone requires a Mac, because Xcode is macOS-only, plus either a $99/year
+Apple Developer certificate or TestFlight and App Store review. Android lets
+you sideload an APK; Apple does not.
+
+So on iPhone — and anywhere you would rather not sideload — use the web
+version, which installs to the home screen and runs full-screen and offline:
+
 **[hawkosm.github.io/rsvp-reader](https://hawkosm.github.io/rsvp-reader/)**
 
 Open it on your phone, then *Add to Home Screen* (iOS Safari) or *Install
