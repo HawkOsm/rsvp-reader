@@ -18,8 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -44,13 +46,13 @@ fun ReflowView(vm: ReaderViewModel, modifier: Modifier = Modifier) {
         }
     }
 
-    var size by remember { mutableStateOf(IntPair(0, 0)) }
+    var area by remember { mutableStateOf(IntSize.Zero) }
     // Re-laying out is only needed when the text or the space changes.
-    val layout = remember(vm.tokens, size) {
+    val layout = remember(vm.tokens, area) {
         ReflowLayout.paginate(
             vm.tokens, paint,
-            columnWidth = size.width - 2 * margin,
-            usableHeight = size.height - 2 * margin,
+            columnWidth = area.width - 2 * margin,
+            usableHeight = area.height - 2 * margin,
         )
     }
     // The page follows the word being read, wherever that came from.
@@ -77,7 +79,7 @@ fun ReflowView(vm: ReaderViewModel, modifier: Modifier = Modifier) {
 
         Canvas(
             Modifier.weight(1f).fillMaxWidth()
-                .onSizeChangedPx { size = it }
+                .onSizeChanged { area = it }
                 .pointerInput(layout, page) {
                     detectTapGestures { offset ->
                         wordAt(layout, page, offset.x, offset.y, margin, paint)
@@ -132,12 +134,3 @@ private fun wordAt(
     }
     return best
 }
-
-private data class IntPair(val width: Float, val height: Float)
-
-private fun Modifier.onSizeChangedPx(onChange: (IntPair) -> Unit): Modifier =
-    this.then(
-        androidx.compose.ui.layout.onSizeChanged { s ->
-            onChange(IntPair(s.width.toFloat(), s.height.toFloat()))
-        }
-    )
