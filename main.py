@@ -35,7 +35,7 @@ from ui.main_window import MainWindow
 from ui.style import DARK_QSS
 
 APP_ID = "rsvp-reader"
-VERSION = "1.1"
+VERSION = "1.0"
 
 
 def resource_path(name: str) -> Path:
