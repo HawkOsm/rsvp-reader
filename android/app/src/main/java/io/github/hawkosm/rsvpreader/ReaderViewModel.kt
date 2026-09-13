@@ -170,7 +170,8 @@ class ReaderViewModel(app: Application) : AndroidViewModel(app) {
 
     // -------------------------------------------------------- playback
 
-    fun setWpm(value: Int) { wpm = value.coerceIn(Rsvp.MIN_WPM, Rsvp.MAX_WPM) }
+    // Not named setWpm: the `wpm` property already generates that on the JVM.
+    fun changeWpm(value: Int) { wpm = value.coerceIn(Rsvp.MIN_WPM, Rsvp.MAX_WPM) }
 
     fun toggle() = if (playing) pause() else play()
 
