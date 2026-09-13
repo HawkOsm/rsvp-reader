@@ -1,0 +1,23 @@
+# Virtualenv
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# The library database lives in ~/.config/rsvp-reader, but keep stray
+# copies out of the repo just in case.
+*.db
+*.db-wal
+*.db-shm
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store

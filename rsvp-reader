@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# RSVP Reader - a local desktop speed reader.
+# Copyright (C) 2026 Osman Sahin Guler
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# Launcher for RSVP Reader.
+#
+# Works from anywhere: it resolves its own location (following symlinks, so
+# it can live on your PATH as a link into the project), prefers the
+# project's virtualenv if one exists, and otherwise falls back to python3.
+set -euo pipefail
+
+source_path="${BASH_SOURCE[0]}"
+while [ -L "$source_path" ]; do
+    link_target="$(readlink "$source_path")"
+    case "$link_target" in
+        /*) source_path="$link_target" ;;
+        *)  source_path="$(dirname "$source_path")/$link_target" ;;
+    esac
+done
+APP_DIR="$(cd "$(dirname "$source_path")" && pwd)"
+
+if [ -x "$APP_DIR/.venv/bin/python" ]; then
+    PYTHON="$APP_DIR/.venv/bin/python"
+else
+    PYTHON="$(command -v python3 || true)"
+fi
+
+if [ -z "$PYTHON" ]; then
+    echo "rsvp-reader: no python3 found on PATH." >&2
+    exit 1
+fi
+
+# Fail with something readable rather than a traceback in a GUI launch.
+if ! "$PYTHON" -c 'import PyQt6.QtWidgets' 2>/dev/null; then
+    message="RSVP Reader needs PyQt6 (and PyMuPDF for PDFs).
+
+Install them with:
+    cd $APP_DIR && python -m venv .venv && .venv/bin/pip install -r requirements.txt
+
+Using: $PYTHON"
+    echo "$message" >&2
+    # If we were launched from a menu there is no terminal to read; say so.
+    if [ ! -t 2 ] && command -v notify-send >/dev/null 2>&1; then
+        notify-send -u critical "RSVP Reader" "$message"
+    fi
+    exit 1
+fi
+
+exec "$PYTHON" "$APP_DIR/main.py" "$@"
