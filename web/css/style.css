@@ -3,6 +3,11 @@
    The same dark palette as the desktop app (ui/style.py). */
 
 :root {
+  /* This page is dark by design. Without declaring that, Chrome's
+     automatic dark mode rewrites the palette on top of it and turns the
+     light text dark - which is invisible on a dark background. */
+  color-scheme: dark;
+
   --bg: #16181d;
   --raised: #1e2128;
   --hover: #272b34;
