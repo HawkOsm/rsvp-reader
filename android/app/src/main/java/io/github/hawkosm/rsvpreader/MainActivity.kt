@@ -18,6 +18,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -152,7 +153,12 @@ private fun LibraryScreen(vm: ReaderViewModel, onAdd: () -> Unit) {
         } else {
             LazyColumn(Modifier.fillMaxSize()) {
                 items(vm.books, key = { it.id }) { b ->
-                    BookRow(b, onOpen = { vm.open(b.id) }, onRemove = { vm.remove(b.id) })
+                    BookRow(
+                        b,
+                        onOpen = { vm.open(b.id) },
+                        onRemove = { vm.remove(b.id) },
+                        onReset = { vm.resetProgress(b.id) },
+                    )
                     HorizontalDivider(color = BorderCol)
                 }
             }
@@ -161,7 +167,12 @@ private fun LibraryScreen(vm: ReaderViewModel, onAdd: () -> Unit) {
 }
 
 @Composable
-private fun BookRow(b: Book, onOpen: () -> Unit, onRemove: () -> Unit) {
+private fun BookRow(
+    b: Book,
+    onOpen: () -> Unit,
+    onRemove: () -> Unit,
+    onReset: () -> Unit,
+) {
     var confirm by remember { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(16.dp, 14.dp),
@@ -187,18 +198,30 @@ private fun BookRow(b: Book, onOpen: () -> Unit, onRemove: () -> Unit) {
                 fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(8.dp))
         }
-        TextButton({ confirm = true }) { Text("×", color = DimCol, fontSize = 20.sp) }
+        TextButton({ confirm = true }) { Text("⋮", color = DimCol, fontSize = 20.sp) }
     }
     if (confirm) {
         AlertDialog(
             onDismissRequest = { confirm = false },
-            title = { Text("Remove this book?") },
-            text = { Text("${b.title} and your place in it will be forgotten. " +
-                "The file itself is not touched.") },
+            title = { Text(b.title) },
+            text = {
+                Text(
+                    if (b.lastIndex > 0)
+                        "You are ${(b.progress * 100).toInt()}% through this book."
+                    else "You have not started this book yet."
+                )
+            },
             confirmButton = {
                 TextButton({ confirm = false; onRemove() }) { Text("Remove") }
             },
-            dismissButton = { TextButton({ confirm = false }) { Text("Cancel") } },
+            dismissButton = {
+                Row {
+                    TextButton({ confirm = false }) { Text("Cancel") }
+                    if (b.lastIndex > 0) {
+                        TextButton({ confirm = false; onReset() }) { Text("Reset progress") }
+                    }
+                }
+            },
         )
     }
 }
@@ -218,25 +241,26 @@ private fun ReaderScreen(vm: ReaderViewModel) {
                 textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            if (vm.book?.kind == "pdf") {
-                TextButton({ vm.togglePage() }) {
-                    Text(if (vm.showPage) "Word" else "Page", color = TextCol)
-                }
-            } else {
-                Spacer(Modifier.width(72.dp))
+            val isPdf = vm.book?.kind == "pdf"
+            TextButton({ vm.togglePage() }) {
+                Text(
+                    if (vm.showPage) "Word" else if (isPdf) "Page" else "Read",
+                    color = TextCol,
+                )
             }
         }
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
             if (vm.showPage) {
-                PageView(vm)
+                if (vm.book?.kind == "pdf") PageView(vm) else ReflowView(vm)
             } else {
                 WordCanvas(vm.token?.text.orEmpty(), Modifier.fillMaxSize())
                 // Tap zones: left steps back, middle plays, right steps on.
                 Row(Modifier.fillMaxSize()) {
-                    Box(Modifier.weight(0.28f).fillMaxHeight().clickable { vm.skip(-1) })
-                    Box(Modifier.weight(0.44f).fillMaxHeight().clickable { vm.toggle() })
-                    Box(Modifier.weight(0.28f).fillMaxHeight().clickable { vm.skip(1) })
+                    Box(Modifier.weight(0.28f).fillMaxHeight().stepZone(vm, -1))
+                    Box(Modifier.weight(0.44f).fillMaxHeight()
+                        .pointerInput(Unit) { detectTapGestures { vm.toggle() } })
+                    Box(Modifier.weight(0.28f).fillMaxHeight().stepZone(vm, 1))
                 }
             }
         }
@@ -295,6 +319,15 @@ private fun ScrubBar(vm: ReaderViewModel) {
         Box(Modifier.fillMaxWidth(vm.progress.coerceIn(0f, 1f)).height(4.dp).background(Accent))
     }
 }
+
+/** Tap steps one word; hold steps ten, the phone's Shift+arrow. */
+private fun Modifier.stepZone(vm: ReaderViewModel, direction: Int): Modifier =
+    this.pointerInput(direction) {
+        detectTapGestures(
+            onTap = { vm.skip(direction) },
+            onLongPress = { vm.skip(direction * 10) },
+        )
+    }
 
 private fun android.content.Context.displayName(uri: Uri): String {
     contentResolver.query(uri, null, null, null, null)?.use { c ->
