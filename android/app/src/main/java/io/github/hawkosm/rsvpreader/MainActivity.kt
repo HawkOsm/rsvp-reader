@@ -15,22 +15,17 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -234,19 +229,7 @@ private fun ReaderScreen(vm: ReaderViewModel) {
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
             if (vm.showPage) {
-                val bitmap = vm.pageBitmap
-                if (bitmap != null) {
-                    Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                        Image(
-                            bitmap.asImageBitmap(), contentDescription = "Page",
-                            modifier = Modifier.fillMaxWidth(), contentScale = ContentScale.FillWidth,
-                        )
-                    }
-                } else {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        CircularProgressIndicator(color = Accent)
-                    }
-                }
+                PageView(vm)
             } else {
                 WordCanvas(vm.token?.text.orEmpty(), Modifier.fillMaxSize())
                 // Tap zones: left steps back, middle plays, right steps on.
