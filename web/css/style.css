@@ -1,0 +1,275 @@
+/* RSVP Reader - Copyright (C) 2026 Osman Sahin Guler
+   SPDX-License-Identifier: GPL-3.0-or-later
+   The same dark palette as the desktop app (ui/style.py). */
+
+:root {
+  --bg: #16181d;
+  --raised: #1e2128;
+  --hover: #272b34;
+  --border: #32373f;
+  --text: #e6e8ec;
+  --dim: #8c93a0;
+  --accent: #ff5a5f;
+  --accent-dim: #7a2e31;
+  --guide: #3a404a;
+
+  /* Keep content clear of notches and home indicators. */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+/* A `display` rule in a stylesheet beats the `hidden` attribute, which
+   silently left the hidden page view occupying half the screen.  This
+   makes `hidden` mean hidden, whatever else an element sets. */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto,
+        "Noto Sans", sans-serif;
+  overscroll-behavior: none;
+}
+
+.view { display: none; height: 100dvh; flex-direction: column; }
+.view.active { display: flex; }
+
+/* ------------------------------------------------------------ bars */
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(10px + var(--safe-t)) calc(14px + var(--safe-r))
+           10px calc(14px + var(--safe-l));
+  background: var(--raised);
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+.bar.foot {
+  border-bottom: none;
+  border-top: 1px solid var(--border);
+  padding-bottom: calc(10px + var(--safe-b));
+  justify-content: space-between;
+}
+.bar h1 { font-size: 18px; margin: 0; flex: 1; }
+.title {
+  flex: 1;
+  text-align: center;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --------------------------------------------------------- buttons */
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 16px;
+  min-height: 44px;          /* comfortable touch target */
+  cursor: pointer;
+}
+button:active { background: var(--hover); }
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #14161a;
+  font-weight: 600;
+}
+button.flat { background: none; border-color: transparent; padding: 10px; }
+button.wide { min-width: 108px; }
+button[disabled] { opacity: .4; }
+
+/* --------------------------------------------------------- library */
+
+.list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+/* With no books the list must not claim the space, or the empty
+   message gets pushed to the bottom instead of sitting centred. */
+.list:empty { flex: none; }
+
+.book {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px calc(16px + var(--safe-r)) 14px calc(16px + var(--safe-l));
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.book:active { background: var(--hover); }
+.book .meta { flex: 1; min-width: 0; }
+.book .name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.book .sub { font-size: 13px; color: var(--dim); }
+.book .kind {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: var(--dim);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 3px 6px;
+  flex: none;
+}
+.book .del {
+  flex: none;
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--dim);
+}
+.ring {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--dim);
+}
+
+.empty { text-align: center; color: var(--dim); margin: auto; padding: 24px; }
+.dim { color: var(--dim); font-size: 13px; }
+
+/* ---------------------------------------------------------- reader */
+
+#stage { position: relative; flex: 1; min-height: 0; }
+#word-canvas { display: block; width: 100%; height: 100%; }
+
+.tapzone { position: absolute; top: 0; bottom: 0; }
+#tap-back { left: 0; width: 28%; }
+#tap-play { left: 28%; right: 28%; }
+#tap-fwd  { right: 0; width: 28%; }
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  color: var(--dim);
+  font-size: 14px;
+  transition: opacity .25s;
+}
+
+#page-stage {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  place-items: start center;
+  background: #0f1115;
+  padding: 10px;
+}
+#page-canvas { max-width: 100%; height: auto; display: block; }
+
+.controls {
+  flex: none;
+  padding: 10px calc(16px + var(--safe-r)) calc(12px + var(--safe-b))
+           calc(16px + var(--safe-l));
+  background: var(--raised);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.controls .row { display: flex; align-items: center; gap: 12px; }
+.controls label { color: var(--dim); font-size: 13px; }
+
+.scrub {
+  height: 22px;                /* big enough to grab with a thumb */
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  touch-action: none;
+}
+.scrub::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+}
+.scrub { position: relative; }
+#scrub-fill {
+  position: absolute;
+  left: 0;
+  height: 4px;
+  background: var(--accent);
+  border-radius: 2px;
+  width: 0;
+}
+
+input[type=range] {
+  flex: 1;
+  accent-color: var(--accent);
+  height: 32px;
+}
+output { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
+#counter { flex: 1; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ----------------------------------------------------------- modal */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: #000a;
+  display: grid;
+  place-items: end center;
+  z-index: 10;
+}
+.sheet {
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: 16px 16px 0 0;
+  padding: 20px 20px calc(20px + var(--safe-b));
+  width: 100%;
+  max-width: 560px;
+  animation: rise .18s ease-out;
+}
+@keyframes rise { from { transform: translateY(16px); opacity: 0 } }
+.sheet h2 { margin: 0 0 8px; font-size: 17px; }
+.sheet p { margin: 0 0 16px; color: var(--dim); font-size: 14px; }
+.sheet a { color: var(--accent); }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.actions button { flex: 1; min-width: 110px; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + var(--safe-b));
+  transform: translateX(-50%);
+  background: var(--hover);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  z-index: 20;
+}
+
+/* Roomier on a tablet or desktop browser. */
+@media (min-width: 700px) {
+  .bar h1 { font-size: 20px; }
+  .list { max-width: 760px; margin: 0 auto; width: 100%; }
+  .controls { max-width: 760px; margin: 0 auto; width: 100%; }
+}

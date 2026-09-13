@@ -29,6 +29,39 @@ every word, so there is no horizontal drift to track.
   document and prompts to continue
 - **Fully local.** No account, no cloud, no telemetry. Your files are never
   copied or uploaded.
+- **Runs on a phone too**, as an installable web app — see below
+
+## On a phone
+
+The desktop app cannot run on Android or iOS — PyQt6 and PyMuPDF have no
+mobile builds, and neither does any other Qt binding for Python. So mobile is
+served by a **web version** that installs like an app:
+
+### **[hawkosm.github.io/rsvp-reader](https://hawkosm.github.io/rsvp-reader/)**
+
+Open that on your phone, then *Add to Home Screen* (iOS Safari) or *Install
+app* (Android Chrome). It then runs full-screen with no browser chrome, works
+offline, and keeps your library on the device.
+
+*(Open the link above on a phone to try it — there is nothing to install
+and nothing to sign up for.)*
+
+- Tap the middle to play or pause, the left and right edges to step a word
+- Drag the progress bar to scrub
+- **Page** shows the real PDF page with your word highlighted
+- Your files and reading positions never leave the device — there is no
+  server, no account, and nothing is uploaded
+
+It works in a desktop browser too. It is a separate implementation in
+`web/`, not a port of the Python: the ORP, pacing and tokenising rules are
+reimplemented in JavaScript and **verified to produce identical output** to
+the Python version, so both read at the same rhythm.
+
+To run it locally:
+
+```bash
+python serve.py          # http://localhost:8770
+```
 
 ## Download
 
@@ -270,6 +303,11 @@ copied.
 | `ui/main_window.py` | Wires the two views together |
 | `ui/style.py` | Dark palette and stylesheet |
 | `tools/make_icons.py` | Renders the SVG into .png / .ico / .iconset |
+| `serve.py` | Serves the web app locally for development |
+| `web/js/rsvp.js` | The engine, ported to JavaScript |
+| `web/js/text.js` | Tokenizer, plus PDF.js word extraction |
+| `web/js/library.js` | The library, in IndexedDB |
+| `web/js/app.js` | Touch UI, canvas ORP drawing, page view |
 | `rsvp-reader.spec` | PyInstaller build definition |
 
 ## Contributing
