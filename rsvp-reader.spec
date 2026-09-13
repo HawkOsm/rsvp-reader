@@ -66,7 +66,7 @@ if sys.platform == "darwin":
         bundle_identifier="io.github.hawkosm.rsvpreader",
         info_plist={
             "CFBundleDisplayName": "RSVP Reader",
-            "CFBundleShortVersionString": "1.1",
+            "CFBundleShortVersionString": "1.0",
             "NSHighResolutionCapable": True,
         },
     )
