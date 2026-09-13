@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark from the first frame, so there is no white flash on launch. -->
+    <style name="Theme.RsvpReader" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#16181D</item>
+        <item name="android:statusBarColor">#1E2128</item>
+        <item name="android:navigationBarColor">#1E2128</item>
+    </style>
+</resources>
