@@ -280,7 +280,7 @@ private fun ReaderScreen(vm: ReaderViewModel) {
                 Text("WPM", color = DimCol, fontSize = 13.sp)
                 Slider(
                     value = vm.wpm.toFloat(),
-                    onValueChange = { vm.setWpm(it.toInt()) },
+                    onValueChange = { vm.changeWpm(it.toInt()) },
                     valueRange = Rsvp.MIN_WPM.toFloat()..Rsvp.MAX_WPM.toFloat(),
                     colors = SliderDefaults.colors(
                         thumbColor = Accent, activeTrackColor = Accent,
