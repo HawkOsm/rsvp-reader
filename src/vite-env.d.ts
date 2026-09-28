@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="vite-plugin-pwa/client" />
 
 interface ImportMetaEnv {
   /** Base URL of the deployed Gutenberg CORS proxy (proxy-worker.ts). Unset

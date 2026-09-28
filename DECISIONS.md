@@ -396,3 +396,54 @@ don't rewrite history here, append.
   bullets were skipped for time.** The Gutenberg license note and source
   credit live as a footer line on the Search screen itself instead of a
   separate About screen — same information, no extra screen.
+
+## Phase 6 log
+
+- **Manifest and icons reused as-is from the old `web/` PWA**
+  (`web/manifest.webmanifest`, `web/icons/icon-{192,512,512-maskable}.png`),
+  copied into `public/icons/` rather than regenerated — same name, same
+  `#16181d` theme color, same maskable icon, already correct. `vite-plugin-pwa`'s
+  `manifest` option in `vite.config.ts` mirrors that file's fields exactly.
+- **`registerType: 'prompt'`**, not `'autoUpdate'`: a new service-worker
+  version must never silently reload mid-read (the plan's own requirement,
+  matching the README's resume-position guarantees). `UpdatePrompt.tsx`
+  uses `vite-plugin-pwa`'s `virtual:pwa-register/react` hook
+  (`useRegisterSW()`) for the actual "reload now / later" banner, and an
+  "offline ready" toast the first time the precache completes. Needed an
+  explicit `workbox-window` dependency (`vite-plugin-pwa`'s React hook
+  imports it, but doesn't declare it — the build fails with an unresolved
+  import otherwise) and a `/// <reference types="vite-plugin-pwa/client" />`
+  in `vite-env.d.ts` so TypeScript knows about the `virtual:pwa-register/react`
+  module at all.
+- **Service worker registration could not be verified live in this
+  sandbox, and that's recorded honestly rather than assumed working.**
+  Confirmed independently working: the manifest resolves and its three
+  icons all 200 with the right content-type; `dist/sw.js` and the workbox
+  runtime chunk are both syntactically valid (`node --check`); `curl`
+  against `dist/sw.js` (served via `vite preview`) returns a completely
+  ordinary `200 text/javascript` response — nothing about the file or its
+  headers looks wrong. But `navigator.serviceWorker.register('/sw.js')`,
+  run directly in the Browser pane against that same running preview
+  server, fails every time with Chrome's generic `"An unknown error
+  occurred when fetching the script"` — the same error whether triggered
+  by the app's own `useRegisterSW()` or called by hand. Service worker
+  registration is unusually strict about proxying/header rewriting (more
+  so than a normal `fetch()`), and this environment's Browser pane likely
+  proxies `localhost` preview traffic in a way that trips it — consistent
+  with everything else about the response looking correct. This needs a
+  real check in an unrestricted browser before relying on offline support
+  actually working; noting it here rather than either claiming success or
+  silently dropping the feature.
+- **The new deploy workflow (`.github/workflows/deploy-app.yml`) is
+  `workflow_dispatch`-only, not wired to `push: main` yet.** The existing
+  `pages.yml` already deploys `web/` (the old PWA) to the *same* GitHub
+  Pages site on every push to `main` — turning on a second workflow that
+  also deploys to `main` right now would mean every ordinary commit to
+  this feature branch's eventual merge could silently overwrite the
+  currently-live, working PWA with a mid-migration build. That cutover
+  (delete `pages.yml`, point this workflow at `push: main`) belongs at the
+  Phase 10 "retire the old versions" step the plan already describes, once
+  the new app has actually been used as a daily reader — not now. Until
+  then this workflow exists, is reviewable, and can be run by hand from
+  the Actions tab to sanity-check a real deploy without touching the live
+  site's current content.
