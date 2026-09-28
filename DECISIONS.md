@@ -106,3 +106,55 @@ don't rewrite history here, append.
   drift correction exists for. The 100-words-at-600-WPM timing tolerance test
   does use `vi.useFakeTimers()` (with `performance` in `toFake`), since it
   only needs elapsed-time accuracy, not a way to inject lateness.
+
+## Phase 2 log
+
+- `src/storage/schema.ts` mirrors `db.py`'s two tables but isn't a literal
+  copy — three real differences, each forced by moving off SQLite/a
+  filesystem:
+  - **`tokens` is one Dexie row per book**, holding the whole token array as
+    its value, instead of one SQL row per word. `db.py`'s comment already
+    says the per-word design is what it is because SQLite needs rows;
+    IndexedDB doesn't, so there's no reason to pay N inserts per book.
+  - **`progress` is a separate table** (`bookId, wordIndex, wpm, mode,
+    updatedAt`) instead of a `last_index` column on `books`, because it's
+    the row saved on every ~20 words / pause / tab-hide (Phase 4), and
+    splitting it out means those frequent writes don't touch the `books`
+    row the library list reads from.
+  - **No `path` column.** There's no stable file path on web to key off of,
+    so `books.fingerprint` (`v<CACHE_VERSION>:<size>:<lastModified>`, from
+    `fingerprintOf(file: File)`) is what `addBook()` dedups local imports
+    by; a Gutendex import dedups by `sourceId` instead, since re-fetching
+    the same remote book can yield slightly different bytes (and so a
+    different fingerprint) than the first import produced.
+  - `settings` (key/value) and `files` (original bytes, for offline PDF
+    rendering) are both new — `db.py` has no equivalent of either, since the
+    desktop app keeps settings in Qt's own config and always has the
+    original file on disk.
+- **Migration test**: `schema.ts` is still only at version 1, so
+  `tests/storage/migration.test.ts` doesn't test *the* schema — it defines
+  its own inline v1/v2 Dexie classes to prove Dexie's
+  `.version(2).stores({...}).upgrade(...)` mechanism actually carries old
+  rows forward in this project's setup (Dexie + fake-indexeddb). Replace the
+  inline classes with the real schema once it grows an actual version 2.
+- **fake-indexeddb + jsdom can't round-trip a `Blob`.** Storing a `Blob` via
+  Dexie/fake-indexeddb and reading it back came out as `{}` — not missing
+  methods, an *empty plain object*, constructor `Object`. The cause:
+  fake-indexeddb clones stored values with `structuredClone`, and whatever
+  `structuredClone` shim jsdom's test environment installs doesn't
+  recognize jsdom's own `Blob` class, so it falls through to a generic
+  (property-copying) clone path and jsdom's `Blob` has no *own* enumerable
+  properties (`size`/`type` are getters on the prototype) — nothing to
+  copy. Node's native `Blob`/`File` (`node:buffer`) has no such gap and
+  clones correctly, so `tests/setup.ts` swaps `globalThis.Blob`/`File` for
+  Node's before any test runs. Real browsers, Tauri's webview and
+  Capacitor's WebView all support `structuredClone`-ing a `Blob` natively —
+  this only ever bit the test environment.
+- **Backup format** (`src/storage/backup.ts`): one JSON file, base64-encoding
+  any included file bytes so the whole thing stays a single document
+  (`src/storage/base64.ts`, plain-JS chunked `btoa`/`atob` rather than
+  Node's `Buffer`, so it also runs in the browser/Tauri/Capacitor). Tokens
+  are deliberately left out of the backup — they're cheap to rebuild from
+  the source (an included file, a re-added local file matched by
+  fingerprint, or a Gutendex re-fetch by `sourceId`) and would otherwise
+  make the backup as large as the whole library.
