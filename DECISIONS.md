@@ -334,3 +334,65 @@ don't rewrite history here, append.
   (probably from the library row's menu) not yet built. Fine for now:
   the common case (import once, read many times) works; the edit-after-
   import edge case doesn't yet.
+
+## Phase 5 log
+
+- **CORS test, run from a real page's `fetch()` in the browser (not
+  `curl`, which doesn't enforce CORS and would give a false read) on
+  2026-09-28:**
+  - `gutenberg.org` book file downloads (`/cache/epub/<id>/pg<id>.txt`,
+    `/ebooks/<id>.epub.noimages`) are **blocked by CORS** — confirmed
+    cleanly: a normal `fetch()` throws `TypeError: Failed to fetch`, while
+    the identical URL with `mode: 'no-cors'` succeeds (opaque response),
+    which is the specific signature of "the server responded, the browser
+    just won't hand the body to script because there's no
+    `Access-Control-Allow-Origin`" rather than a network failure. This is
+    exactly the risk the plan's own table already named.
+  - `gutendex.com`'s search endpoint (`/books?search=...` or any other
+    query string, e.g. `?languages=en`) **could not be cleanly tested** —
+    every request with a `?` in the URL hung until timeout, in both `cors`
+    and `no-cors` mode, while the bare path `/books` (no query string)
+    resolved in ~200ms. A real CORS block fails fast; a real network
+    outage would fail the bare path too. That specific pattern — query
+    strings hang, everything else on the same host is fine, and an
+    unrelated cross-origin host (`api.github.com`) works fine with real
+    CORS headers — points at this sandbox's own browser tooling
+    mishandling query strings for this host, not at `gutendex.com` itself.
+    Documented honestly rather than guessed past: `src/sources/gutendex.ts`
+    is written to call `fetch()` directly (consistent with Gutendex being
+    a public API designed for exactly this, unlike Gutenberg's raw file
+    host), but this needs a real re-check once the app is actually
+    deployed and reachable from an unrestricted browser — flagged in the
+    PR/README rather than silently assumed.
+  - Net effect, matching the plan's own fallback exactly: search calls
+    Gutendex directly; book *file* downloads go through a small
+    allow-listed proxy (below) on web, and through Tauri's/Capacitor's
+    native HTTP plugins once those shells exist (Phase 7/8), which skip
+    browser CORS entirely.
+- **`src/sources/proxy-worker.ts`**: the Cloudflare Worker source for that
+  proxy — forwards only `GET` requests whose path matches
+  `gutenberg.org`/`www.gutenberg.org` file paths, adds
+  `Access-Control-Allow-Origin: *` to the response, and 403s anything else,
+  so it can't become an open proxy. **Not deployed** — deploying it needs a
+  Cloudflare account and `wrangler login`, neither of which exists in this
+  environment (checked: `wrangler` isn't installed here at all). Deploying
+  it is a one-time step for whoever owns the Cloudflare account:
+  `npx wrangler deploy src/sources/proxy-worker.ts`, then set
+  `VITE_GUTENBERG_PROXY_URL` to the resulting `*.workers.dev` URL. Until
+  that happens, Gutendex *search* works but *importing* a found book over
+  the web build will fail with a clear "couldn't download" error — the
+  code path exists and is tested against the abstraction
+  (`src/sources/http.ts`'s `httpGet()`), just not against a live proxy.
+- **`requestJson()` (in `gutendex.ts`) times out after 15s**
+  (`AbortSignal.timeout()`), found necessary while testing the Search
+  screen live: whatever is going on with this sandbox's handling of
+  query-string URLs to `gutendex.com` (above) left a real `fetch()` call
+  hanging with no error and no response, ever — confirmed by watching the
+  Search screen sit on "Searching…" indefinitely. A production app can't
+  assume every network condition resolves either way in finite time, so
+  the timeout stays regardless of whether that specific hang turns out to
+  be sandbox-only.
+- **Chapter list / a dedicated "About" screen from the plan's optional
+  bullets were skipped for time.** The Gutenberg license note and source
+  credit live as a footer line on the Search screen itself instead of a
+  separate About screen — same information, no extra screen.

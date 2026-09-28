@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import { LibraryScreen } from './ui/screens/LibraryScreen'
 import { ReaderScreen } from './ui/screens/ReaderScreen'
+import { SearchScreen } from './ui/screens/SearchScreen'
 import { SettingsScreen } from './ui/screens/SettingsScreen'
 import { useGlobalShortcuts } from './ui/hooks/useKeyboardShortcuts'
 import { useAppStore } from './ui/store'
@@ -12,6 +13,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<LibraryScreen />} />
       <Route path="/reader/:bookId" element={<ReaderScreen />} />
+      <Route path="/search" element={<SearchScreen />} />
       <Route path="/settings" element={<SettingsScreen />} />
     </Routes>
   )

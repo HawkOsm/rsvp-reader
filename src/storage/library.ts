@@ -21,6 +21,7 @@ export interface AddBookInput {
    * bytes (and so a different fingerprint) than the fingerprint the user's
    * first import produced. */
   sourceId?: string
+  author?: string
   fingerprint: string
 }
 
@@ -36,6 +37,7 @@ export async function addBook(db: RsvpDatabase, input: AddBookInput): Promise<Bo
     title: input.title,
     source: input.source,
     sourceId: input.sourceId,
+    author: input.author,
     totalWords: 0,
     fingerprint: input.fingerprint,
     addedAt: Date.now(),
