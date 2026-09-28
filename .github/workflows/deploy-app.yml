@@ -1,0 +1,39 @@
+# Deploy the new TypeScript PWA (this replaces pages.yml's web/ deploy at
+# the Phase 10 cutover — see DECISIONS.md's Phase 6 log for why it isn't
+# wired to `push: main` yet). Until then: manual only, via the Actions tab
+# or `gh workflow run deploy-app.yml`.
+name: Deploy app (PWA)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deploy
+        uses: actions/deploy-pages@v4

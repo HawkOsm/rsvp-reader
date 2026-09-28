@@ -4,6 +4,7 @@ import { LibraryScreen } from './ui/screens/LibraryScreen'
 import { ReaderScreen } from './ui/screens/ReaderScreen'
 import { SearchScreen } from './ui/screens/SearchScreen'
 import { SettingsScreen } from './ui/screens/SettingsScreen'
+import { UpdatePrompt } from './ui/components/UpdatePrompt'
 import { useGlobalShortcuts } from './ui/hooks/useKeyboardShortcuts'
 import { useAppStore } from './ui/store'
 
@@ -34,6 +35,7 @@ function App() {
   return (
     <HashRouter>
       <AppRoutes />
+      <UpdatePrompt />
     </HashRouter>
   )
 }
