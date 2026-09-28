@@ -59,3 +59,50 @@ don't rewrite history here, append.
   (`tests/fixtures/generate_pdfs.py`, needs `reportlab` — not in
   `requirements.txt` since it's a fixture-only dev tool) be re-run if more
   coverage is needed.
+
+## Phase 1 log
+
+- `src/core/{tokenize,pacing,orp,engine}.ts` port `text_extract.py`'s
+  `normalize()`/`tokenize()` and `rsvp_engine.py`'s `delay_for()`/
+  `orp_index()`/`RsvpEngine` word for word. `src/core/unicode.ts` holds
+  codepoint-aware helpers (`stripChars`, `isAlnum`, ...) so JS string
+  indexing — which counts UTF-16 code units — doesn't drift from Python's,
+  which counts codepoints.
+- **Golden fixtures** (`tests/parity/*.json`) come from
+  `tests/parity/generate_fixtures.py`, which imports `rsvp_engine.py` and
+  `text_extract.py` directly and dumps `{text, paraEnd, orp, delayMs}` per
+  token at 300 and 600 WPM. Re-run it (`.venv/bin/python
+  tests/parity/generate_fixtures.py`) whenever the Python engine or these
+  fixture source books change.
+  - Dumping every token of Moby-Dick was a 31 MB JSON file — too big to
+    commit sensibly. Fixtures longer than 4000 tokens are sampled: the
+    first ~3800 tokens (where most punctuation/pacing cases show up) plus
+    the last 200 (to keep the true end-of-book `paraEnd` covered), with
+    `totalTokenCount`/`headCount`/`tailCount` in the JSON so
+    `tests/parity/txt.parity.test.ts` can still assert the *full* TS token
+    count matches Python's, even though only the sampled slice is compared
+    token-by-token.
+  - Only the two TXT books are consumed by a parity test so far — `tokenize.ts`
+    has no PDF-extraction counterpart yet (that's `pdf.js` in Phase 3, a
+    different algorithm entirely from PyMuPDF's `tokenize_pdf()`). The two
+    PDF fixtures are dumped now and will be compared once that parser exists.
+- **ORP rule for non-Latin text, decided now rather than deferred**: no
+  `Intl.Segmenter`/grapheme clustering. `orp_index()` in Python indexes by
+  Python `str` codepoints, and Turkish `ı`/`ğ` are each already a single
+  codepoint, so Python's existing behavior already treats them as one
+  letter each — grapheme clustering would only matter for base+combining-mark
+  sequences, which Python's version doesn't handle specially either. Matching
+  codepoint-for-codepoint (via `Array.from`/`unicode.ts`) keeps the TS port in
+  exact parity with the Python original; reaching for `Intl.Segmenter` would
+  make the *port* more sophisticated than the thing it's supposed to match,
+  which isn't the goal of a parity port.
+- **Engine timing**: `engine.ts` takes injectable `now`/`setTimer`/`clearTimer`
+  (defaulting to `performance.now`/`setTimeout`/`clearTimeout`) specifically
+  so `tests/core/engine.test.ts` can drive it with a hand-rolled clock rather
+  than `vi.useFakeTimers()` — Vitest's fake timers fire a callback at its own
+  scheduled instant no matter how far you advance the clock, so they can't
+  express "this callback actually ran later than it was scheduled for" (tab
+  throttling, a busy main thread, GC pause), which is the real-world case
+  drift correction exists for. The 100-words-at-600-WPM timing tolerance test
+  does use `vi.useFakeTimers()` (with `performance` in `toFake`), since it
+  only needs elapsed-time accuracy, not a way to inject lateness.
