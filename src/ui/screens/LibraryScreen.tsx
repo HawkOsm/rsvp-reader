@@ -121,6 +121,13 @@ export function LibraryScreen() {
           </button>
           <button
             type="button"
+            onClick={() => navigate('/search')}
+            className="text-sm text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
+          >
+            Find a book
+          </button>
+          <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
             className="rounded bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-bg)]"
           >

@@ -1,0 +1,7 @@
+# Config for deploying proxy-worker.ts. Run from the repo root:
+#   npx wrangler deploy --config src/sources/wrangler.toml
+# then set VITE_GUTENBERG_PROXY_URL to the printed *.workers.dev URL.
+
+name = "rsvp-reader-gutenberg-proxy"
+main = "proxy-worker.ts"
+compatibility_date = "2026-01-01"
