@@ -90,10 +90,11 @@ export async function saveTokens(
   bookId: number,
   tokens: Token[],
   fingerprint: string,
+  pages?: number,
 ): Promise<void> {
   await db.transaction('rw', db.tokens, db.books, async () => {
     await db.tokens.put({ bookId, tokens })
-    await db.books.update(bookId, { totalWords: tokens.length, fingerprint })
+    await db.books.update(bookId, { totalWords: tokens.length, fingerprint, pages })
   })
 }
 

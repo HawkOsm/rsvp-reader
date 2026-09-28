@@ -15,6 +15,9 @@ export interface BookRecord {
   /** Gutendex book id, for re-import dedup; absent for local files. */
   sourceId?: string
   totalWords: number
+  /** PDFs only — drives the page panel's PDF-vs-reflow choice and the
+   * transport bar's "page N / M". */
+  pages?: number
   /** `v<CACHE_VERSION>:<size>:<lastModified>` — no file path exists on
    * web, so this (not a path) is what decides whether cached tokens are
    * still good. */

@@ -1,1 +1,61 @@
 @import 'tailwindcss';
+
+/* Color values are duplicated in src/ui/theme.ts (canvas drawing reads
+   plain hex there instead of computed CSS) — keep the two in sync. Dark
+   values are the PyQt app's ui/style.py palette; light is new for the web
+   app (no PyQt equivalent). */
+:root,
+:root[data-theme='dark'] {
+  --color-bg: #16181d;
+  --color-bg-raised: #1e2128;
+  --color-bg-hover: #272b34;
+  --color-border: #32373f;
+  --color-text: #e6e8ec;
+  --color-text-dim: #8c93a0;
+  --color-accent: #ff5a5f;
+  --color-accent-dim: #7a2e31;
+  --color-guide: #3a404a;
+}
+
+:root[data-theme='light'] {
+  --color-bg: #fafafa;
+  --color-bg-raised: #ffffff;
+  --color-bg-hover: #f0f0f2;
+  --color-border: #dcdfe4;
+  --color-text: #16181d;
+  --color-text-dim: #6b7280;
+  --color-accent: #e0393e;
+  --color-accent-dim: #f6d4d5;
+  --color-guide: #c7cbd1;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --color-bg: #fafafa;
+    --color-bg-raised: #ffffff;
+    --color-bg-hover: #f0f0f2;
+    --color-border: #dcdfe4;
+    --color-text: #16181d;
+    --color-text-dim: #6b7280;
+    --color-accent: #e0393e;
+    --color-accent-dim: #f6d4d5;
+    --color-guide: #c7cbd1;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-bg-raised: var(--color-bg-raised);
+  --color-bg-hover: var(--color-bg-hover);
+  --color-border: var(--color-border);
+  --color-text: var(--color-text);
+  --color-text-dim: var(--color-text-dim);
+  --color-accent: var(--color-accent);
+  --color-accent-dim: var(--color-accent-dim);
+  --color-guide: var(--color-guide);
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+}

@@ -1,8 +1,38 @@
-function App() {
+import { useEffect } from 'react'
+import { HashRouter, Route, Routes } from 'react-router-dom'
+import { LibraryScreen } from './ui/screens/LibraryScreen'
+import { ReaderScreen } from './ui/screens/ReaderScreen'
+import { SettingsScreen } from './ui/screens/SettingsScreen'
+import { useGlobalShortcuts } from './ui/hooks/useKeyboardShortcuts'
+import { useAppStore } from './ui/store'
+
+function AppRoutes() {
+  useGlobalShortcuts()
   return (
-    <main className="flex min-h-screen items-center justify-center bg-neutral-950 text-neutral-100">
-      <p className="text-sm text-neutral-400">RSVP Reader — scaffold ready.</p>
-    </main>
+    <Routes>
+      <Route path="/" element={<LibraryScreen />} />
+      <Route path="/reader/:bookId" element={<ReaderScreen />} />
+      <Route path="/settings" element={<SettingsScreen />} />
+    </Routes>
+  )
+}
+
+function App() {
+  const loadSettings = useAppStore((s) => s.loadSettings)
+  const settingsLoaded = useAppStore((s) => s.settingsLoaded)
+
+  useEffect(() => {
+    void loadSettings()
+  }, [loadSettings])
+
+  if (!settingsLoaded) {
+    return <div className="min-h-screen bg-[var(--color-bg)]" />
+  }
+
+  return (
+    <HashRouter>
+      <AppRoutes />
+    </HashRouter>
   )
 }
 
