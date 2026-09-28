@@ -158,3 +158,97 @@ don't rewrite history here, append.
   the source (an included file, a re-added local file matched by
   fingerprint, or a Gutendex re-fetch by `sourceId`) and would otherwise
   make the backup as large as the whole library.
+
+## Phase 3 log
+
+- **pdf.js is pinned to `^5.4.149`, resolving to `5.7.284`, and imported from
+  its `legacy` build.** The current `pdfjs-dist@6.x` dropped the `legacy`
+  build entirely and its modern build calls `Uint8Array.prototype.toHex()`,
+  a very recent engine feature — `Uint8Array.prototype.toHex` doesn't exist
+  even in plain Node 24 here, and opening any PDF threw
+  `hashOriginal.toHex is not a function` before a single page was read. The
+  `legacy` build (still shipped by `5.x`) has no such requirement and is
+  the safer choice anyway given the plan's own flagged risk around
+  WebKitGTK (Phase 7) — broader engine compatibility, not just newer-is-better.
+- **No nested pdf.js worker.** `getDocument()` normally spawns its own
+  internal worker; since `parsePdf()` already only ever runs inside *our*
+  `parse.worker.ts` (Phase 3's shared worker), there's no separate
+  `pdf.worker.mjs` to bundle or offline-serve — pdf.js just runs on the
+  calling (our worker's) thread, which keeps the UI thread unblocked either
+  way. This also means there's nothing to configure for Tauri/Capacitor
+  offline use, unlike the plan's original "bundle the pdf.js worker file"
+  wording assumed.
+- **PDF word extraction is a heuristic, not exact.** pdf.js's
+  `getTextContent()` returns style *runs* (`TextItem`), not words — most
+  PDF generators (including this project's own fixtures) emit a whole line
+  as one run with real spaces inside it, so splitting on whitespace
+  recovers most words directly (`src/parse/pdf/lines.ts`). A word's bbox is
+  a *proportional* estimate from the run's total width, not real glyph
+  metrics — fine for a highlight rectangle or click-to-jump target, not
+  pixel-accurate. Two runs with no whitespace between them and no real
+  horizontal gap are glued into one word (a font/style change mid-word);
+  this only operates within one line, never across a line break — that's a
+  separate concern:
+  - **Hyphen rejoin** (`src/parse/pdf/flatten.ts`) uses the same heuristic
+    as `rsvp_engine.py`'s `tokenize_pdf()`: a line-final hyphen followed by
+    a lowercase start on the next line means the hyphen only existed to
+    break the line (drop it, join); anything else is treated as a real
+    hyphen (kept). This is a known-imperfect heuristic in *both*
+    implementations — `tests/parse/pdf.test.ts`'s hyphenated fixture
+    documents two cases (`self-same` -> `selfsame`, `half-remembered` ->
+    `halfremembered`) where the heuristic reads a real compound as a
+    line-break artifact. That's the heuristic doing what it's defined to
+    do, not a bug — Python's version would make the identical call on the
+    identical input.
+  - **Multi-column reading order** (`src/parse/pdf/columns.ts`) clusters
+    lines by left-edge (`x0`) position (single-linkage, threshold scaled to
+    page width) rather than real layout analysis. Works for the common
+    case; can be fooled by heavily indented or ragged-left layouts. There's
+    no PyMuPDF "block" concept to lean on here the way `tokenize_pdf()`
+    does for paragraph breaks, so **paragraph-break detection**
+    (`paragraphs.ts`) is its own heuristic too: a page/column turn always
+    breaks; otherwise a line-to-line vertical gap noticeably bigger than
+    the page's own median gap does.
+  - **Header/footer stripping** (`repeats.ts`) is new — `db.py`/PyMuPDF's
+    version has no equivalent. A page's first or last line gets dropped if
+    that same (page-number-digits-normalised) line appears on at least half
+    the document's pages.
+  - Together, these are why the *golden* PDF fixtures generated in Phase 1
+    (`tests/parity/two-column-text.json`, `hyphenated-line-breaks.json`)
+    were never meant to be compared token-for-token against the TS PDF
+    parser — pdf.js's layout model is fundamentally different from
+    PyMuPDF's. What *does* match Python exactly: the two-column fixture's
+    **total token count** (2200, both sides) — strong independent evidence
+    the extraction is sound even though the algorithms differ completely.
+- **EPUB chapter titles**: Project Gutenberg's own EPUB conversions
+  sometimes embed an illustration's caption *inside* the following
+  chapter's `<h2>` itself (`<span class="caption">...</span>` nested in the
+  heading) — found by testing against the real `austen-pride-and-prejudice`
+  fixture, not something that would show up in a hand-written test HTML
+  snippet. `extractBlocks()` strips any `.caption`-classed element from a
+  block before reading its text, alongside the footnote-marker (`[12]`)
+  stripping the plan already called for.
+- **Text extraction fallback encoding is windows-1254, not latin-1.**
+  `text_extract.py` tries utf-8, utf-8-sig, then latin-1 (which never
+  actually fails — it's a full 256-byte-value mapping, so it was really
+  functioning as "give up gracefully", not a real Turkish-text fallback).
+  The *plan* asks for windows-1254 specifically for old Turkish files, so
+  that's what `parseTextFile()` does; being a real single-byte encoding
+  with genuine invalid sequences, `TextDecoder('windows-1254')` can still
+  fail to be the *right* answer for some other legacy encoding, but it's a
+  closer match to the stated intent than latin-1 was.
+- **Cancellation** is plumbed through as a standard `AbortSignal` end to
+  end (`parseFile` -> `parsePdf`/`parseEpub`, checked once per page/spine
+  document — coarse-grained, not mid-page, since that's the natural unit of
+  work each parser already progress-reports at) rather than a bespoke
+  cancel token type.
+- **`src/parse/client.ts` (the worker-communication layer) has no unit
+  tests.** jsdom has no real Web Worker implementation, and the file is
+  thin postMessage plumbing around `parseFile()` (in `index.ts`), which has
+  full coverage. Confirmed the Vite worker-bundling itself works — `new
+  Worker(new URL('./parse.worker.ts', import.meta.url), { type: 'module'
+  })` — with a throwaway smoke build (temporarily importing `client.ts`
+  from `main.tsx`, confirming pdf.js + JSZip + the parse logic all land in
+  a separate `parse.worker-*.js` chunk, then reverting the import); full
+  runtime verification (progress bar, cancel button) happens once Phase 4
+  wires a real "Add book" flow up to it.
