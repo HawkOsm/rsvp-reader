@@ -6,6 +6,7 @@ tests/fixtures/.
 import re
 from pathlib import Path
 
+import pymupdf
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
@@ -31,6 +32,7 @@ def load_body_text() -> str:
 
 def make_two_column_pdf(text: str, out_path: Path) -> None:
     doc = BaseDocTemplate(str(out_path), pagesize=LETTER)
+    doc.title = "Two-Column Excerpt"
     width, height = LETTER
     margin = 0.75 * inch
     gutter = 0.3 * inch
@@ -48,6 +50,7 @@ def make_two_column_pdf(text: str, out_path: Path) -> None:
 
 def make_hyphenated_pdf(out_path: Path) -> None:
     c = canvas.Canvas(str(out_path), pagesize=LETTER)
+    c.setTitle("Hyphenated Line Breaks")
     width, height = LETTER
     c.setFont("Times-Roman", 12)
     x = 1 * inch
@@ -76,12 +79,44 @@ def make_hyphenated_pdf(out_path: Path) -> None:
     c.save()
 
 
+def make_scanned_pdf(out_path: Path) -> None:
+    """A stand-in for a scanned page: just a page number, no real prose —
+    well under the "this PDF has no text layer" words-per-page threshold."""
+    c = canvas.Canvas(str(out_path), pagesize=LETTER)
+    c.setTitle("Scanned Pages")
+    for page_no in (1, 2):
+        c.setFont("Times-Roman", 10)
+        c.drawString(LETTER[0] / 2, 0.5 * inch, str(page_no))
+        c.showPage()
+    c.save()
+
+
+def make_password_protected_pdf(source_path: Path, out_path: Path) -> None:
+    """Re-saves an existing PDF with a user password, via PyMuPDF."""
+    with pymupdf.open(source_path) as doc:
+        doc.save(
+            out_path,
+            encryption=pymupdf.PDF_ENCRYPT_AES_256,
+            owner_pw="owner-secret",
+            user_pw="user-secret",
+        )
+
+
 def main() -> None:
     text = load_body_text()
     make_two_column_pdf(text, FIXTURES / "two-column-text.pdf")
     make_hyphenated_pdf(FIXTURES / "hyphenated-line-breaks.pdf")
-    print("wrote", FIXTURES / "two-column-text.pdf")
-    print("wrote", FIXTURES / "hyphenated-line-breaks.pdf")
+    make_scanned_pdf(FIXTURES / "scanned-blank.pdf")
+    make_password_protected_pdf(
+        FIXTURES / "hyphenated-line-breaks.pdf", FIXTURES / "password-protected.pdf"
+    )
+    for name in (
+        "two-column-text.pdf",
+        "hyphenated-line-breaks.pdf",
+        "scanned-blank.pdf",
+        "password-protected.pdf",
+    ):
+        print("wrote", FIXTURES / name)
 
 
 if __name__ == "__main__":
