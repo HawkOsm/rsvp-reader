@@ -1,3 +1,5 @@
+import '@testing-library/jest-dom/vitest'
+
 // jsdom doesn't implement IndexedDB; fake-indexeddb polyfills the globals
 // (indexedDB, IDBKeyRange, ...) that Dexie needs, so storage tests run
 // without a real browser.

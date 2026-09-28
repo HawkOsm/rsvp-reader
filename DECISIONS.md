@@ -252,3 +252,85 @@ don't rewrite history here, append.
   a separate `parse.worker-*.js` chunk, then reverting the import); full
   runtime verification (progress bar, cancel button) happens once Phase 4
   wires a real "Add book" flow up to it.
+
+## Phase 4 log
+
+- **Colors and the ORP display's exact geometry came straight from
+  `ui/style.py` and `ui/reader_view.py`**, not redesigned: `FOCUS_X_RATIO =
+  0.42`, `BASE_FONT_PX = 56`, the same two-pass shrink-to-fit (min 12px, 12px
+  side margin), the same tick-mark guides, the same dark palette
+  (`#16181d`/`#ff5a5f`/etc.). `src/ui/theme.ts` and `src/index.css` hold the
+  same hex values in two places on purpose — canvas drawing needs plain
+  JS values, Tailwind utilities need CSS custom properties, and duplicating
+  nine small constants was simpler than routing canvas draws through
+  `getComputedStyle()`. The light theme has no PyQt equivalent — new,
+  picked for reasonable contrast against the same accent red.
+- **Runtime dark/light switching with Tailwind v4** uses `@theme inline`
+  mapping `--color-*` tokens to themselves (`--color-bg: var(--color-bg)`),
+  so generated utilities like `bg-[var(--color-bg)]`-equivalent classes
+  read a CSS custom property at paint time instead of a value baked in at
+  build time — confirmed by switching the Settings theme selector live in
+  the browser and watching the whole app repaint without a reload.
+- **Keeping the token list out of React state**: `RsvpCanvas` and
+  `TransportBar` each subscribe to the engine directly and hold their own
+  local `useState` for just the piece they draw (current word; index/
+  playing/wpm) — a step/play/pause only re-renders whichever of those two
+  actually cares, never a shared parent. Both are wrapped in `React.memo`
+  too, since `ReaderBody` itself re-renders on the wake-lock's
+  playing-state change (needed there to drive `useWakeLock`), and without
+  `memo` that would cascade into both children even though neither one's
+  own props changed.
+- **Found live, not by reading the code**: an early version of the ↑/↓ WPM
+  shortcut called the Zustand store's `setWpm`, which only touched UI
+  state — never `engine.setWpm()`. Typecheck, lint and the full test suite
+  were all green, because nothing exercised the keyboard shortcut against
+  a real running engine. It surfaced immediately when actually pressing
+  ArrowUp in the browser and watching the WPM field not move. Fixed by
+  having the shortcut call `engine.setWpm()` directly, removing the
+  now-pointless `wpm`/`setWpm`/`currentBookId`/`setCurrentBook` fields from
+  the store entirely, and giving the engine its own `'wpm'` event so
+  `TransportBar` picks up a change made anywhere, not just from its own
+  input. This is the reason `tests/ui/TransportBar.test.tsx` specifically
+  covers "a WPM change made elsewhere" as its own case, and why component
+  tests exist at all rather than trusting typecheck/lint alone for wiring
+  bugs like this one.
+- **Book mode is one page/reflow view, not the plan's fuller two-page
+  spread + draggable side panel.** `PagePanel` picks `PdfPagePanel`
+  (renders the current page via pdf.js, current word highlighted by its
+  stored bbox — no click-to-jump; hit-testing a click against every word's
+  proportional bbox on a rendered page is real extra work, left for later)
+  or `TextReflowPanel` (CSS multi-column reflow, current word highlighted,
+  click any word to jump — this one fully implements the plan's "click a
+  word to jump" for text/EPUB). No draggable-width divider, no D (page
+  layout)/F (fit) shortcuts, since single-page-at-a-time doesn't need
+  them. `P` toggles this panel alongside RSVP mode; `B` switches to it
+  full-screen.
+- **`TextReflowPanel` renders a bounded window** (±1500 tokens around the
+  current position, re-centering once the reader drifts >400 tokens from
+  the window's center) rather than the whole book as one flow of per-word
+  `<span>`s — a 200k-word book (Moby-Dick) would be 200k DOM nodes laid
+  out at once otherwise.
+- **Routing is `HashRouter`, not `BrowserRouter`**: this is a static
+  export (GitHub Pages / Cloudflare Pages, Phase 6), so a hard refresh or
+  a shared link to `/reader/5` needs to resolve without server-side
+  rewrite rules. `HashRouter` keeps that working with zero server config,
+  at the cost of a `#` in the URL — worth it for a client-only app with no
+  backend to add rewrite rules to.
+- **`Ctrl+O` (add book) and `Ctrl+L` (library) are split across two
+  hooks**, not one shared table: `useGlobalShortcuts()` (Ctrl+L only,
+  mounted once at the app root) needs no `EngineProvider`, while
+  `useReaderKeyboardShortcuts()` (space/arrows/P/B/Esc) needs the engine
+  and reading-mode state that only exist inside the reader. `Ctrl+O` lives
+  as a tiny local listener in `LibraryScreen` itself, since only it holds
+  the file-input ref to click. `Ctrl+Q` (quit) is skipped — meaningless in
+  a browser tab; revisit for Tauri (Phase 7).
+- **No "is this book's cached content still fresh" check on open.**
+  `db.py`'s desktop app always has the original file on disk to re-stat;
+  the storage layer already has `tokensAreFresh()` (Phase 2) for exactly
+  this, but nothing calls it yet — the Reader screen trusts whatever
+  tokens are already cached from import. Re-deriving tokens for a local
+  file that changed after import needs the user to re-pick that file (no
+  stable path on web to silently re-read), which is a real UI flow
+  (probably from the library row's menu) not yet built. Fine for now:
+  the common case (import once, read many times) works; the edit-after-
+  import edge case doesn't yet.

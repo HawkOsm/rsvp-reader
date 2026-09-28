@@ -8,6 +8,7 @@ export type EngineEventMap = {
   word: number
   playing: boolean
   finished: undefined
+  wpm: number
 }
 
 type Listener<E extends keyof EngineEventMap> = (payload: EngineEventMap[E]) => void
@@ -62,6 +63,7 @@ export function createEngine(tokens: Token[], options: EngineOptions = {}): Engi
     word: new Set(),
     playing: new Set(),
     finished: new Set(),
+    wpm: new Set(),
   }
 
   function clamp(i: number): number {
@@ -165,6 +167,7 @@ export function createEngine(tokens: Token[], options: EngineOptions = {}): Engi
       // word is already mid-hold, re-schedule so the change applies
       // immediately rather than after the current word finishes.
       wpm = clampWpm(w)
+      emit('wpm', wpm)
       if (isPlaying()) {
         stopTimer()
         schedule()
