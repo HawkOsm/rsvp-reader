@@ -5,6 +5,9 @@ import { defineConfig } from 'vitest/config'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Must match `devUrl` in src-tauri/tauri.conf.json, or `pnpm tauri dev`
+  // waits forever on a port nothing is listening on.
+  server: { port: 5180, strictPort: true },
   plugins: [
     react(),
     tailwindcss(),
