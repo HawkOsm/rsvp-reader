@@ -129,12 +129,6 @@ export function LibraryScreen() {
             Settings
           </Button>
           <Button
-            onClick={() => navigate('/search')}
-            variant="link"
-          >
-            Find a book
-          </Button>
-          <Button
             onClick={() => fileInputRef.current?.click()}
             variant="primary"
           >

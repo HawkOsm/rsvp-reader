@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import { LibraryScreen } from './ui/screens/LibraryScreen'
 import { ReaderScreen } from './ui/screens/ReaderScreen'
-import { SearchScreen } from './ui/screens/SearchScreen'
 import { SettingsScreen } from './ui/screens/SettingsScreen'
 import { UpdatePrompt } from './ui/components/UpdatePrompt'
 import { useAndroidBackButton } from './ui/hooks/useAndroidBackButton'
@@ -17,7 +16,6 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<LibraryScreen />} />
       <Route path="/reader/:bookId" element={<ReaderScreen />} />
-      <Route path="/search" element={<SearchScreen />} />
       <Route path="/settings" element={<SettingsScreen />} />
     </Routes>
   )

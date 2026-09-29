@@ -2,7 +2,7 @@ import { ExtractionError } from './errors'
 import { TEXT_EXTENSIONS, parseTextFile } from './text'
 import type { ParseResult, ProgressCallback } from './types'
 
-export type { ParseResult, ParseProgress, ProgressCallback, ParsedChapter } from './types'
+export type { ParseResult } from './types'
 export { ExtractionError } from './errors'
 
 export interface ParseFileOptions {

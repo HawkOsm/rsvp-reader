@@ -4,17 +4,17 @@ import { codePoints, rstripChars, stripChars } from './unicode'
 // Ported from rsvp_engine.py — keep the two in sync.
 
 /** Words longer than this get extra time, per character over the limit. */
-export const LONG_WORD_THRESHOLD = 6
-export const MS_PER_EXTRA_CHAR = 30.0
+const LONG_WORD_THRESHOLD = 6
+const MS_PER_EXTRA_CHAR = 30.0
 
 /** Multipliers applied for the punctuation a word ends on. */
-export const SHORT_PAUSE_MULT = 1.5 // , ; : — and friends
-export const LONG_PAUSE_MULT = 2.5 // . ! ? …
+const SHORT_PAUSE_MULT = 1.5 // , ; : — and friends
+const LONG_PAUSE_MULT = 2.5 // . ! ? …
 
 /** Flat extra pause at the end of a paragraph, on top of everything else. */
-export const PARAGRAPH_PAUSE_MS = 350.0
+const PARAGRAPH_PAUSE_MS = 350.0
 
-export const MIN_DELAY_MS = 20.0
+const MIN_DELAY_MS = 20.0
 
 export const MIN_WPM = 50
 export const MAX_WPM = 1500
@@ -35,7 +35,7 @@ export function core(word: string): string {
 }
 
 /** How much longer to hold a word, based on what it ends with. */
-export function punctuationMultiplier(word: string): number {
+function punctuationMultiplier(word: string): number {
   const trimmed = rstripChars(word, CLOSERS)
   if (trimmed.length === 0) return 1.0
   const cps = codePoints(trimmed)

@@ -7,16 +7,16 @@ import type { Token } from '../core/types'
  * db.py's CACHE_VERSION. */
 export const CACHE_VERSION = 1
 
+/** `'gutendex'` only on books imported by the since-removed Project
+ * Gutenberg search; kept so those rows still type-check. */
 export type BookSource = 'local' | 'gutendex'
 
 export interface BookRecord {
   id?: number
   title: string
   source: BookSource
-  /** Gutendex book id, for re-import dedup; absent for local files. */
+  /** Legacy Gutendex imports only: the Gutenberg book id and author. */
   sourceId?: string
-  /** Gutendex imports only — text_extract.py has no author concept for
-   * local files. */
   author?: string
   totalWords: number
   /** PDFs only — drives the page panel's PDF-vs-reflow choice and the

@@ -21,7 +21,6 @@ fn cli_file_argument() -> Option<String> {
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_fs::init())
-    .plugin(tauri_plugin_http::init())
     .plugin(tauri_plugin_window_state::Builder::default().build())
     .manage(PendingOpenFile(Mutex::new(cli_file_argument())))
     .invoke_handler(tauri::generate_handler![pending_open_file])

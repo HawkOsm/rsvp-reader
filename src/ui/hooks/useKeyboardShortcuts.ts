@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ZOOM_STEP, goToPage, scrollOrTurn, turn } from '../book-nav'
+import { SCALE_STEP, goToPage, scrollOrTurn, turn } from '../book-nav'
 import { useEngine } from '../engine-context'
 import { useAppStore } from '../store'
 
@@ -46,11 +46,9 @@ export function useReaderKeyboardShortcuts(pageCount?: number): void {
     panelOpen,
     setPanelOpen,
     bookLayout,
-    bookFit,
-    bookZoom,
     setBookLayout,
-    setBookFit,
-    setBookZoom,
+    stepBookScale,
+    fitBook,
   } = useAppStore()
 
   useEffect(() => {
@@ -72,10 +70,9 @@ export function useReaderKeyboardShortcuts(pageCount?: number): void {
       }
     } else if (pageCount !== undefined) {
       // Book mode over a PDF: turn pages, scrolling a tall page first.
-      const zoomBy = (step: number) => setBookZoom(bookZoom + step)
       modeKeys = {
-        ...bind(['+', '='], () => zoomBy(ZOOM_STEP)),
-        '-': () => zoomBy(-ZOOM_STEP),
+        ...bind(['+', '='], () => stepBookScale(SCALE_STEP)),
+        '-': () => stepBookScale(-SCALE_STEP),
         ...bind([' ', 'ArrowRight', 'ArrowDown'], () => scrollOrTurn(engine, pageCount, bookLayout, 1)),
         ...bind(['ArrowLeft', 'ArrowUp'], () => scrollOrTurn(engine, pageCount, bookLayout, -1)),
         PageDown: () => turn(engine, pageCount, bookLayout, 1),
@@ -83,7 +80,7 @@ export function useReaderKeyboardShortcuts(pageCount?: number): void {
         Home: () => goToPage(engine, pageCount, bookLayout, 0),
         End: () => goToPage(engine, pageCount, bookLayout, pageCount - 1),
         d: () => setBookLayout(bookLayout === 'spread' ? 'single' : 'spread'),
-        f: () => setBookFit(bookFit === 'page' ? 'width' : 'page'),
+        f: fitBook,
       }
     } else {
       // Book mode over reflowed text has no pages, so keys step words.
@@ -121,10 +118,8 @@ export function useReaderKeyboardShortcuts(pageCount?: number): void {
     setPanelOpen,
     pageCount,
     bookLayout,
-    bookFit,
-    bookZoom,
     setBookLayout,
-    setBookFit,
-    setBookZoom,
+    stepBookScale,
+    fitBook,
   ])
 }

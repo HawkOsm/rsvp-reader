@@ -50,23 +50,6 @@ describe('addBook', () => {
     expect(second.id).toBe(first.id)
     expect(await db.books.count()).toBe(1)
   })
-
-  it('dedups a Gutendex re-import by sourceId, even with a new fingerprint', async () => {
-    const first = await addBook(db, {
-      title: 'Pride and Prejudice',
-      source: 'gutendex',
-      sourceId: '1342',
-      fingerprint: 'v1:100:1700000000000',
-    })
-    const second = await addBook(db, {
-      title: 'Pride and Prejudice',
-      source: 'gutendex',
-      sourceId: '1342',
-      fingerprint: 'v1:105:1700000005000', // refetched bytes differ slightly
-    })
-    expect(second.id).toBe(first.id)
-    expect(await db.books.count()).toBe(1)
-  })
 })
 
 describe('listBooks', () => {

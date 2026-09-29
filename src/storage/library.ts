@@ -16,28 +16,17 @@ import type {
 export interface AddBookInput {
   title: string
   source: BookSource
-  /** Gutendex book id; used to dedup a re-import instead of the fingerprint,
-   * since re-fetching the same remote book can yield slightly different
-   * bytes (and so a different fingerprint) than the fingerprint the user's
-   * first import produced. */
-  sourceId?: string
-  author?: string
   fingerprint: string
 }
 
 /** Add a book, or return the existing row if it's already in the library. */
 export async function addBook(db: RsvpDatabase, input: AddBookInput): Promise<BookRecord> {
-  const existing =
-    input.source === 'gutendex' && input.sourceId
-      ? await db.books.where({ source: 'gutendex', sourceId: input.sourceId }).first()
-      : await db.books.where('fingerprint').equals(input.fingerprint).first()
+  const existing = await db.books.where('fingerprint').equals(input.fingerprint).first()
   if (existing) return existing
 
   const id = await db.books.add({
     title: input.title,
     source: input.source,
-    sourceId: input.sourceId,
-    author: input.author,
     totalWords: 0,
     fingerprint: input.fingerprint,
     addedAt: Date.now(),

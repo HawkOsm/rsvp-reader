@@ -1,8 +1,7 @@
 import { memo } from 'react'
 import {
-  MAX_ZOOM,
-  MIN_ZOOM,
-  ZOOM_STEP,
+  MAX_SCALE,
+  MIN_SCALE,
   pageLabel,
   pageOfToken,
   perSpread,
@@ -25,14 +24,17 @@ export const BookControls = memo(function BookControls({ pageCount }: BookContro
   const engine = useEngine()
   const index = useEngineIndex()
   const layout = useAppStore((s) => s.bookLayout)
-  const fit = useAppStore((s) => s.bookFit)
   const setBookLayout = useAppStore((s) => s.setBookLayout)
-  const setBookFit = useAppStore((s) => s.setBookFit)
-  const zoom = useAppStore((s) => s.bookZoom)
-  const setBookZoom = useAppStore((s) => s.setBookZoom)
+  const scale = useAppStore((s) => s.bookScale)
+  const fits = useAppStore((s) => s.bookFits)
+  const setBookScale = useAppStore((s) => s.setBookScale)
+  const fitBook = useAppStore((s) => s.fitBook)
 
   const page = spreadStart(pageOfToken(engine.tokens[index]), layout)
   const spread = layout === 'spread'
+  const percent = Math.round((scale ?? fits?.page ?? 1) * 100)
+  // The button says what it will do next: fit the page, then the width.
+  const atPage = scale !== null && fits !== null && Math.abs(scale - fits.page) < 0.001
 
   return (
     <div className="flex w-full flex-col gap-2 px-4 pb-2">
@@ -51,16 +53,16 @@ export const BookControls = memo(function BookControls({ pageCount }: BookContro
           Size
           <input
             type="range"
-            min={MIN_ZOOM * 100}
-            max={MAX_ZOOM * 100}
-            step={ZOOM_STEP * 100}
-            value={Math.round(zoom * 100)}
-            onChange={(e) => setBookZoom(Number(e.target.value) / 100)}
+            min={MIN_SCALE * 100}
+            max={MAX_SCALE * 100}
+            step={5}
+            value={percent}
+            onChange={(e) => setBookScale(Number(e.target.value) / 100)}
             aria-label="Page size"
             className="w-32 accent-[var(--color-accent)]"
           />
-          <span className="w-10 text-right tabular-nums" data-testid="book-zoom">
-            {Math.round(zoom * 100)}%
+          <span className="w-10 text-right tabular-nums" data-testid="book-scale">
+            {percent}%
           </span>
         </label>
         <div className="flex items-center gap-2">
@@ -71,10 +73,10 @@ export const BookControls = memo(function BookControls({ pageCount }: BookContro
             {spread ? 'Single page' : 'Two pages'}
           </Button>
           <Button
-            title={fit === 'page' ? 'Fill the width and scroll down  (F)' : 'Show the whole spread at once  (F)'}
-            onClick={() => setBookFit(fit === 'page' ? 'width' : 'page')}
+            title={atPage ? 'Fill the width and scroll down  (F)' : 'Show the whole spread at once  (F)'}
+            onClick={fitBook}
           >
-            {fit === 'page' ? 'Fit width' : 'Fit page'}
+            {atPage ? 'Fit width' : 'Fit page'}
           </Button>
           <Button
             disabled={page + perSpread(layout) > pageCount - 1}

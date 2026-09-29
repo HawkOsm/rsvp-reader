@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Fails if the Android manifest declares any permission beyond the
-# allow-list below. The old Kotlin app asked for none; this app added
-# exactly one on purpose (INTERNET, for Gutendex search/import — see
-# DECISIONS.md's Phase 8 log) and nothing else should sneak in un-reviewed.
+# allow-list below. The app reads local files only, so the list is empty
+# (INTERNET went with the Gutendex search) — nothing should sneak in
+# un-reviewed.
 set -euo pipefail
 
 MANIFEST="android/app/src/main/AndroidManifest.xml"
-ALLOWED=("android.permission.INTERNET")
+ALLOWED=()
 
 if [[ ! -f "$MANIFEST" ]]; then
   echo "error: $MANIFEST not found (run from the repo root, after \`npx cap add android\`)" >&2
@@ -14,7 +14,7 @@ if [[ ! -f "$MANIFEST" ]]; then
 fi
 
 found=$(grep -o 'android:name="android\.permission\.[A-Z_]*"' "$MANIFEST" \
-  | sed -E 's/android:name="(.*)"/\1/' | sort -u)
+  | sed -E 's/android:name="(.*)"/\1/' | sort -u || true)
 
 unexpected=()
 while IFS= read -r perm; do
@@ -34,4 +34,4 @@ if [[ ${#unexpected[@]} -gt 0 ]]; then
   exit 1
 fi
 
-echo "OK: AndroidManifest.xml only declares ${ALLOWED[*]}"
+echo "OK: AndroidManifest.xml declares no permissions beyond: ${ALLOWED[*]:-(none)}"

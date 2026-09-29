@@ -19,7 +19,7 @@ const BOOK_PDF: Hint[] = [
   [['pgup', 'pgdn'], 'turn the page'],
   [['+', '−'], 'page size'],
   [['d'], 'one or two pages'],
-  [['f'], 'fit to page / width'],
+  [['f'], 'fit page / width'],
   [['b'], 'back to RSVP'],
   [['esc'], 'library'],
 ]
