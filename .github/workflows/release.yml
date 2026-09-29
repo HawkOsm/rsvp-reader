@@ -1,0 +1,117 @@
+# On a version tag: build Tauri installers for Linux/Windows/macOS and an
+# Android APK, then attach all of them to one GitHub release. Not run
+# locally — this environment has no Windows/macOS runners and (see
+# DECISIONS.md's Phase 8 log) no working Android SDK/Gradle-compatible JDK
+# either, so this is written from documented, well-established patterns
+# (tauri-action, android-actions/setup-android) rather than verified here.
+# Sanity-check with `workflow_dispatch` on a real tag before trusting it
+# for an actual release.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write # to create the release and upload assets
+
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            args: ''
+          - os: windows-latest
+            args: ''
+          - os: macos-latest
+            args: '--target universal-apple-darwin'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'RSVP Reader ${{ github.ref_name }}'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21' # Gradle 8.x needs <= 21; see DECISIONS.md's Phase 8 log
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          build-root-directory: android
+
+      - run: ./tools/check-android-permissions.sh
+
+      - name: Decode signing keystore
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/release.keystore
+
+      - name: Build release APK
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -f release.keystore ]; then
+            ./gradlew assembleRelease
+          else
+            echo "No ANDROID_KEYSTORE_BASE64 secret set — building an unsigned debug APK instead."
+            echo "See the plan's Phase 8 note: generate a release keystore yourself, never commit it,"
+            echo "and add it (base64-encoded) plus its passwords as repo secrets to sign real releases."
+            ./gradlew assembleDebug
+          fi
+
+      - name: Upload APK to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          files: android/app/build/outputs/apk/**/*.apk
