@@ -598,3 +598,70 @@ don't rewrite history here, append.
   generated `AndroidManifest.xml` has exactly the one intended permission,
   and the web build this all wraps has its own full test suite (177
   tests) passing.
+
+## Phase 9 log
+
+- **Licensing: asked the user, kept GPL-3.0-or-later end to end** rather
+  than relicensing the new TS/Rust code to something permissive, even
+  though the plan noted that's now legally possible (the GPL/AGPL
+  requirement came from PyQt6/PyMuPDF, neither of which the new stack
+  uses). Checked it was actually a free choice first: `license-checker-
+  rseidelsohn` (npm, production deps) and `cargo license` (474 transitive
+  Rust crates) both come back entirely permissive — MIT, Apache-2.0,
+  BSD-3-Clause, ISC, MPL-2.0, Zlib, Unicode-3.0, CDLA-Permissive-2.0, or a
+  dual/triple license that includes one of those — so every dependency is
+  fine to redistribute inside a GPL-3.0-or-later work either way; the
+  license choice really was just the user's call to make, not something
+  a dependency forced. `THIRD_PARTY.md` records the audit and how to
+  re-run it; `package.json` and `src-tauri/Cargo.toml` both now declare
+  `GPL-3.0-or-later` explicitly (`package.json` had no `license` field at
+  all before this, which is why `license-checker` flagged this project's
+  own package as `UNLICENSED` in its first pass).
+- **`ci.yml` is new** (lint, type-check, full test suite, build, bundle-size
+  check, Android manifest check) — the plan's "Workflow 1, on every push."
+  Deliberately separate from `build.yml` (the *existing* workflow, still
+  building the old PyInstaller binaries) rather than repurposing it: on
+  `next`, right now, both a Python app and a TypeScript app technically
+  exist in the same repo, and `build.yml` has its own job for exactly the
+  Python one. Phase 10's real retirement of the old codebase is where
+  `build.yml` should actually go away — until then, having a second,
+  independent CI file for the new stack means neither can accidentally
+  break the other's checks.
+- **`release.yml` (tag-triggered, multi-platform) is written but
+  unverified beyond `pnpm build`'s and the Android permission check's own
+  steps**, which this session ran directly rather than through the
+  workflow file. There's no way to actually run a Windows/macOS runner or
+  a working Android SDK from here (see Phase 7/8's logs) — it's built from
+  `tauri-action`'s and `android-actions/setup-android`'s own documented,
+  widely-used patterns, not verified end to end. It also duplicates
+  `build.yml`'s existing `tags: ['v*']` trigger — the same overlap
+  `build.yml`/`ci.yml` have, same reasoning, same "Phase 10 resolves it."
+  A real release tag shouldn't be pushed until this workflow has been
+  sanity-checked (`workflow_dispatch` first, on a throwaway tag) at least
+  once.
+- **`android/app/build.gradle` gained a conditional `signingConfigs.release`
+  block** that only activates when `android/release.keystore` exists —
+  reads its password/alias from environment variables
+  (`ANDROID_KEYSTORE_PASSWORD` etc.), never from a committed file. Local
+  `assembleDebug` and an unsigned `assembleRelease` are both unaffected
+  either way. Still no keystore generated — same reasoning as Phase 8's
+  log entry (a release-signing key is a permanent identity, not something
+  to invent on the user's behalf); `release.yml` falls back to an unsigned
+  debug APK when the `ANDROID_KEYSTORE_BASE64` secret isn't set, so the
+  workflow itself doesn't silently produce a real-looking-but-unsigned
+  release artifact without saying so in the build log.
+- **`tools/check-bundle-size.mjs`**: gzip-size budgets for the main JS
+  entry chunk (400 KB), the lazy-loaded `parse.worker` chunk — pdf.js +
+  JSZip, so it gets a much bigger 700 KB budget since it never blocks
+  first paint — and total CSS (30 KB). Current actual sizes (258 KB / 170
+  KB / 4 KB) are well under all three; the budgets have real headroom on
+  purpose, since the point is catching a future regression (an
+  accidentally-bundled heavy dependency), not fighting today's bundle
+  down to the wire.
+- **Version stayed at `0.1.0` everywhere** (`package.json`,
+  `src-tauri/tauri.conf.json`, `android/app/build.gradle`'s
+  `versionName`, matching what Phase 7 already set) — nothing here
+  warranted a version bump on its own; `CHANGELOG.md` (new, Keep a
+  Changelog format) logs the whole migration-in-progress under that one
+  `[0.1.0]` heading rather than inventing intermediate version numbers for
+  work that hasn't shipped anywhere yet.

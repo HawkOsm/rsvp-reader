@@ -7,8 +7,12 @@ android {
         applicationId "io.github.hawkosm.rsvpreader"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
+        // Keep in sync with package.json/src-tauri/tauri.conf.json's version
+        // (see DECISIONS.md's Phase 9 log) — versionCode just needs to
+        // strictly increase release over release, so it's separate from
+        // the semver string.
         versionCode 1
-        versionName "1.0"
+        versionName "0.1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +20,29 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            // Only activates when release.keystore actually exists (see
+            // .github/workflows/release.yml) — local `assembleDebug` and
+            // an unsigned `assembleRelease` both still work with none of
+            // these set. Never commit release.keystore or these values;
+            // they're read from environment variables / CI secrets only.
+            def keystoreFile = file('release.keystore')
+            if (keystoreFile.exists()) {
+                storeFile keystoreFile
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (file('release.keystore').exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

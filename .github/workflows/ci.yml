@@ -1,0 +1,52 @@
+# Runs on every push/PR: the checks that should block a merge. Separate
+# from build.yml (native installers) and deploy-app.yml (PWA deploy) —
+# this one is cheap and fast, so it should never be blocked waiting on
+# either of those.
+name: CI
+
+on:
+  push:
+    branches: [next, main]
+  pull_request:
+    branches: [next, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type-check
+        run: pnpm exec tsc -b
+
+      - name: Test (includes the Phase 1 Python parity fixtures)
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Bundle size check
+        run: node tools/check-bundle-size.mjs
+
+      - name: Android manifest permission check
+        run: |
+          if [ -d android ]; then
+            ./tools/check-android-permissions.sh
+          else
+            echo "no android/ directory on this branch — skipping"
+          fi
