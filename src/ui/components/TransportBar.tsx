@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from 'react'
 import { MAX_WPM, MIN_WPM } from '../../core/pacing'
 import { useEngine } from '../engine-context'
+import { WpmInput } from './WpmInput'
 
 export interface TransportBarProps {
   /** Total page count, for the "page N / M" segment of the counter — PDFs
@@ -88,12 +89,9 @@ export const TransportBar = memo(function TransportBar({
         </div>
         <label className="flex items-center gap-2 text-sm text-[var(--color-text-dim)]">
           WPM
-          <input
-            type="number"
-            min={MIN_WPM}
-            max={MAX_WPM}
+          <WpmInput
             value={wpm}
-            onChange={(e) => setWpm(Number(e.target.value))}
+            onCommit={setWpm}
             className="w-16 rounded border border-[var(--color-border)] bg-[var(--color-bg-raised)] px-1 py-0.5 text-[var(--color-text)]"
           />
         </label>
