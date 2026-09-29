@@ -88,6 +88,9 @@ jobs:
           distribution: temurin
           java-version: '21' # Gradle 8.x needs <= 21; see DECISIONS.md's Phase 8 log
       - uses: android-actions/setup-android@v3
+        with:
+          # The default also asks for 'tools', which current sdkmanager no longer has.
+          packages: platform-tools
       - uses: gradle/actions/setup-gradle@v4
         with:
           build-root-directory: android
