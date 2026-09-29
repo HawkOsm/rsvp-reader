@@ -369,7 +369,7 @@ don't rewrite history here, append.
     allow-listed proxy (below) on web, and through Tauri's/Capacitor's
     native HTTP plugins once those shells exist (Phase 7/8), which skip
     browser CORS entirely.
-- **`src/sources/proxy-worker.ts`**: the Cloudflare Worker source for that
+- **`workers/gutenberg-proxy.ts`**: the Cloudflare Worker source for that
   proxy — forwards only `GET` requests whose path matches
   `gutenberg.org`/`www.gutenberg.org` file paths, adds
   `Access-Control-Allow-Origin: *` to the response, and 403s anything else,
@@ -377,7 +377,7 @@ don't rewrite history here, append.
   Cloudflare account and `wrangler login`, neither of which exists in this
   environment (checked: `wrangler` isn't installed here at all). Deploying
   it is a one-time step for whoever owns the Cloudflare account:
-  `npx wrangler deploy src/sources/proxy-worker.ts`, then set
+  `npx wrangler deploy workers/gutenberg-proxy.ts`, then set
   `VITE_GUTENBERG_PROXY_URL` to the resulting `*.workers.dev` URL. Until
   that happens, Gutendex *search* works but *importing* a found book over
   the web build will fail with a clear "couldn't download" error — the
@@ -784,3 +784,26 @@ so it went ahead rather than re-litigating a call the user had just made:
   Releases as before, but nothing has actually been released from this
   codebase yet — those links resolve once `release.yml` (Phase 9) is
   actually run against a real tag.
+
+## Gutendex search removed
+
+The Project Gutenberg search (Phase 5) was taken out at the user's request:
+Gutendex, the free API in front of it, was too slow to be usable. Measured
+2026-09-29 with curl: an uncached search took 21–80 s (well past the app's
+15 s timeout), and only repeat queries came back in under a second. The
+imported EPUBs were also the with-images variant, ~45× the size of the
+text-only one (24.8 MB vs 0.56 MB for Pride and Prejudice).
+
+Gone with it: `src/sources/`, the search screen and its cache, the Cloudflare
+CORS proxy (never deployed), Tauri's http plugin and its URL allow-list,
+`CapacitorHttp`, and Android's `INTERNET` permission — the app is back to
+reading local files only, with no network access on any platform.
+`tools/check-android-permissions.sh` now allows no permissions. Books
+already imported from Gutendex keep working (their tokens are stored);
+`BookSource` still includes `'gutendex'` so those rows type-check, and the
+Dexie `source`/`sourceId` indexes stay so no schema bump is needed.
+
+A local copy of Gutenberg's own catalog (`pg_catalog.csv.gz`, 5.6 MB,
+searched in IndexedDB) was considered as a replacement and declined as not
+worth the effort for now.
+

@@ -26,7 +26,7 @@ export const DARK_PALETTE: Palette = {
   guide: '#3a404a',
 }
 
-export const LIGHT_PALETTE: Palette = {
+const LIGHT_PALETTE: Palette = {
   bg: '#fafafa',
   bgRaised: '#ffffff',
   bgHover: '#f0f0f2',

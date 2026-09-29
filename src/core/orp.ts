@@ -30,29 +30,3 @@ export function orpIndex(word: string): number {
   else offset = 4
   return Math.min(start + offset, cps.length - 1)
 }
-
-export interface OrpOffset {
-  /** Pixel x-offset of the ORP letter's left edge, from the word's left edge. */
-  offsetPx: number
-  /** Pixel width of the ORP letter itself. */
-  letterWidthPx: number
-}
-
-/**
- * Where the ORP letter falls horizontally, in CSS pixels, using real font
- * metrics — so the focus letter lands on the same x for every word. Has no
- * Python equivalent (the desktop app draws with Qt's own metrics); this is
- * new for the canvas renderer.
- */
-export function orpOffset(
-  word: string,
-  ctx: Pick<CanvasRenderingContext2D, 'measureText'>,
-): OrpOffset {
-  const index = orpIndex(word)
-  const cps = codePoints(word)
-  const before = cps.slice(0, index).join('')
-  const letter = cps[index] ?? ''
-  const offsetPx = ctx.measureText(before).width
-  const letterWidthPx = ctx.measureText(letter).width
-  return { offsetPx, letterWidthPx }
-}

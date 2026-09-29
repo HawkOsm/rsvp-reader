@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { createEngine } from '../../src/core/engine'
 import { makeToken } from '../../src/core/types'
 import {
-  clampZoom,
+  clampScale,
   firstIndexAt,
+  fitScales,
   goToPage,
   pageLabel,
   spreadStart,
@@ -115,10 +116,38 @@ describe('wordAt', () => {
   })
 })
 
-describe('clampZoom', () => {
-  it('keeps the page size within 50%–300% and on whole percents', () => {
-    expect(clampZoom(0.1)).toBe(0.5)
-    expect(clampZoom(9)).toBe(3)
-    expect(clampZoom(1 + 0.1 + 0.1)).toBe(1.2) // 1.2000000000000002 without rounding
+describe('clampScale', () => {
+  it('keeps the page size within 25%–500% and on whole percents', () => {
+    expect(clampScale(0.1)).toBe(0.25)
+    expect(clampScale(9)).toBe(5)
+    expect(clampScale(1 + 0.1 + 0.1)).toBe(1.2) // 1.2000000000000002 without rounding
+  })
+})
+
+describe('fitScales', () => {
+  const letter = { width: 612, height: 792 }
+
+  it('fits a single page to the width, or to the whole page when height is tighter', () => {
+    // 1024 wide: (1024 - 16) / 612 = 1.647 -> 1.64; 700 tall: (700 - 16) / 792 = 0.863 -> 0.86
+    const fit = fitScales([letter], { width: 1024, height: 700 })
+    expect(fit.width).toBe(1.64)
+    expect(fit.page).toBe(0.86)
+  })
+
+  it('has the page fit equal the width fit when the window is tall enough', () => {
+    const fit = fitScales([letter], { width: 400, height: 2000 })
+    expect(fit.page).toBe(fit.width)
+  })
+
+  it('splits the width between the pages of a spread, minus the gutter', () => {
+    // (1000 - 16 - 38) / (2 * 612) = 0.7729 -> 0.77
+    expect(fitScales([letter, letter], { width: 1000, height: 5000 }).width).toBe(0.77)
+  })
+
+  it('sizes to the widest and tallest page in the spread', () => {
+    const wide = { width: 900, height: 500 }
+    expect(fitScales([letter, wide], { width: 2000, height: 5000 }).width).toBe(
+      fitScales([wide, wide], { width: 2000, height: 5000 }).width,
+    )
   })
 })

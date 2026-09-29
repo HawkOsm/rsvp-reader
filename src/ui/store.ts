@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { DEFAULT_WPM } from '../core/pacing'
 import { getDb } from '../storage/schema'
 import { getSetting, setSetting } from '../storage/settings'
-import { clampZoom, type BookFit, type BookLayout } from './book-nav'
+import { clampScale, type BookLayout, type FitScales } from './book-nav'
 import { applyTheme, type ThemeMode } from './theme'
 
 export type ReadingMode = 'rsvp' | 'book'
@@ -18,8 +18,8 @@ export interface Settings {
   panelOpen: boolean
   /** Book mode: an open two-page spread, or one page at a time. */
   bookLayout: BookLayout
-  /** Book mode: page size as a multiple of the fitted size. */
-  bookZoom: number
+  /** Book mode page size — the PDF scale, 1 = 100%. `null` until first fitted. */
+  bookScale: number | null
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -30,15 +30,16 @@ const DEFAULT_SETTINGS: Settings = {
   orpColor: null,
   panelOpen: false,
   bookLayout: 'spread',
-  bookZoom: 1,
+  bookScale: null,
 }
 
 interface AppState extends Settings {
   settingsLoaded: boolean
   mode: ReadingMode
-  /** Not persisted: it follows the layout (whole spread / fill the width).
-   * Picking one snaps the page size back to that fit. */
-  bookFit: BookFit
+  /** What fitting the page / the width would currently come to. */
+  bookFits: FitScales | null
+  /** A fit to apply as soon as the page sizes are known. */
+  pendingFit: keyof FitScales | null
 
   loadSettings: () => Promise<void>
   setTheme: (theme: ThemeMode) => void
@@ -48,16 +49,17 @@ interface AppState extends Settings {
   setOrpColor: (color: string | null) => void
   setPanelOpen: (open: boolean) => void
   setBookLayout: (layout: BookLayout) => void
-  setBookZoom: (zoom: number) => void
+  setBookScale: (scale: number) => void
+  stepBookScale: (delta: number) => void
+  setBookFits: (fits: FitScales) => void
+  fitBook: () => void
   setMode: (mode: ReadingMode) => void
-  setBookFit: (fit: BookFit) => void
 }
 
-// A spread is meant to be seen whole; a single page usually wants the
-// width. The fit button can still override either.
-const fitFor = (layout: BookLayout): BookFit => (layout === 'spread' ? 'page' : 'width')
+// A spread is meant to be seen whole; a single page usually wants the width.
+const fitFor = (layout: BookLayout): keyof FitScales => (layout === 'spread' ? 'page' : 'width')
 
-export const useAppStore = create<AppState>((set) => {
+export const useAppStore = create<AppState>((set, get) => {
   /** A setter that saves the value and updates the store. */
   const setter =
     <K extends keyof Settings>(key: K) =>
@@ -70,7 +72,8 @@ export const useAppStore = create<AppState>((set) => {
     ...DEFAULT_SETTINGS,
     settingsLoaded: false,
     mode: 'rsvp',
-    bookFit: fitFor(DEFAULT_SETTINGS.bookLayout),
+    bookFits: null,
+    pendingFit: fitFor(DEFAULT_SETTINGS.bookLayout),
 
     loadSettings: async () => {
       const db = getDb()
@@ -78,7 +81,11 @@ export const useAppStore = create<AppState>((set) => {
       const values = await Promise.all(keys.map((k) => getSetting(db, k, DEFAULT_SETTINGS[k])))
       const loaded = Object.fromEntries(keys.map((k, i) => [k, values[i]])) as unknown as Settings
       applyTheme(loaded.theme)
-      set({ ...loaded, bookFit: fitFor(loaded.bookLayout), settingsLoaded: true })
+      set({
+        ...loaded,
+        settingsLoaded: true,
+        pendingFit: loaded.bookScale === null ? fitFor(loaded.bookLayout) : null,
+      })
     },
 
     setTheme: (theme) => {
@@ -90,19 +97,34 @@ export const useAppStore = create<AppState>((set) => {
     setFontSize: setter('fontSize'),
     setOrpColor: setter('orpColor'),
     setPanelOpen: setter('panelOpen'),
-    setBookZoom: (zoom) => setter('bookZoom')(clampZoom(zoom)),
-    // Choosing a fit (or a layout, which picks one) sizes the page to that
-    // fit, so any manual size from the slider is dropped.
+    // The layout picks a fit; it lands once the new page sizes are known.
     setBookLayout: (bookLayout) => {
       setter('bookLayout')(bookLayout)
-      setter('bookZoom')(1)
-      set({ bookFit: fitFor(bookLayout) })
+      set({ pendingFit: fitFor(bookLayout) })
+    },
+
+    setBookScale: (scale) => {
+      setter('bookScale')(clampScale(scale))
+      set({ pendingFit: null })
+    },
+    stepBookScale: (delta) => {
+      const { bookScale, bookFits, setBookScale } = get()
+      setBookScale((bookScale ?? bookFits?.page ?? 1) + delta)
+    },
+
+    setBookFits: (bookFits) => {
+      const { pendingFit, setBookScale } = get()
+      set({ bookFits })
+      if (pendingFit) setBookScale(bookFits[pendingFit])
+    },
+    /** Fit the whole page; pressed again, fit the width. Just sets the scale. */
+    fitBook: () => {
+      const { bookFits, bookScale, setBookScale } = get()
+      if (!bookFits) return
+      const atPage = bookScale !== null && Math.abs(bookScale - bookFits.page) < 0.001
+      setBookScale(atPage ? bookFits.width : bookFits.page)
     },
 
     setMode: (mode) => set({ mode }),
-    setBookFit: (bookFit) => {
-      setter('bookZoom')(1)
-      set({ bookFit })
-    },
   }
 })

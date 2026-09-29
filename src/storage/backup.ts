@@ -3,14 +3,13 @@ import type { BookRecord, ProgressRecord, RsvpDatabase, SettingRecord } from './
 
 // One JSON file with books metadata and progress — this is also the
 // cross-device sync until cloud sync exists. Tokens are deliberately left
-// out: they're cheap to rebuild from the source (the included file, a
-// re-added local file matched by fingerprint, or a Gutendex re-fetch by
-// sourceId) and would otherwise make the backup as large as the library
-// itself. See DECISIONS.md.
+// out: they're cheap to rebuild from the source (the included file, or a
+// re-added local file matched by fingerprint) and would otherwise make the
+// backup as large as the library itself. See DECISIONS.md.
 
-export const BACKUP_FORMAT_VERSION = 1
+const BACKUP_FORMAT_VERSION = 1
 
-export interface BackupFile {
+interface BackupFile {
   fileName: string
   mimeType: string
   /** Base64-encoded bytes, so the whole backup is one JSON document. */
