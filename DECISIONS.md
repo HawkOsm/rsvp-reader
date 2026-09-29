@@ -447,3 +447,78 @@ don't rewrite history here, append.
   then this workflow exists, is reviewable, and can be run by hand from
   the Actions tab to sanity-check a real deploy without touching the live
   site's current content.
+
+## Phase 7 log
+
+- **No dialog plugin.** The plan calls for "the native file dialog to pick
+  books," and it turns out a plain HTML `<input type="file">` — the same
+  element the web build already uses (Phase 4) — already shows the real
+  OS file picker once it's running inside Tauri's system webview
+  (WebKitGTK/WebView2/WKWebView), with zero Tauri-specific code. Started
+  by adding `tauri-plugin-dialog` per the plan's checklist wording, then
+  removed it once this became clear — it would have been a second way to
+  do something the existing code already does.
+- **`fs` plugin is for one thing only: reading a file path passed on the
+  command line** (`rsvp-reader ~/books/essay.pdf`), an explicit plan
+  checklist item. Rust captures `std::env::args()` at launch
+  (`src-tauri/src/lib.rs`) and hands it back once via a
+  `pending_open_file` command — pull-based rather than a Tauri event,
+  specifically to avoid a startup race between the frontend's listener
+  attaching and Rust emitting before it's ready. `src/ui/tauri-open.ts`
+  reads it into a `File` via `@tauri-apps/plugin-fs`, then feeds it
+  through the exact same `importLocalFile()` pipeline the drag-and-drop
+  and file-picker paths already use.
+- **`http` plugin skips CORS entirely for Gutendex/Gutenberg**, as the
+  plan expects — `src/sources/http.ts` now branches on `isTauri()` first,
+  before the web proxy logic, so the whole "does gutenberg.org send CORS
+  headers" question (Phase 5) simply doesn't apply inside Tauri. Scoped in
+  `capabilities/default.json` to exactly `gutendex.com` and
+  `*.gutenberg.org` — nothing else.
+- **`window-state` plugin needed no application code at all** — just
+  registering it in `lib.rs` is the entire feature (remembers window size
+  and position across launches automatically).
+- **Capabilities file only grants what's actually used**: `fs:allow-read-file`/
+  `allow-read-text-file` scoped to `$HOME/**` (the CLI-open feature could
+  reasonably point anywhere under the user's home directory — not root-level
+  access), the three HTTP origins above, and `window-state:default`. No
+  `dialog:*` permission, since nothing calls that plugin.
+- **Identifier**: `io.github.hawkosm.rsvpreader` (was the `com.tauri.dev`
+  placeholder) — reverse-DNS under the actual GitHub repo, the common
+  convention for a project with no owned domain.
+- **License left as GPL-3.0-or-later** in `src-tauri/Cargo.toml`, matching
+  the repo's current top-level `LICENSE` — *not* pre-emptively switched to
+  MIT/Apache-2.0. The plan's own Phase 9 explicitly treats relicensing (now
+  legally possible, since the GPL/AGPL requirement came from PyQt6/PyMuPDF,
+  neither of which this stack uses) as its own deliberate step; doing it
+  piecemeal here, in one `Cargo.toml`, ahead of that decision would leave
+  the repo in a half-relicensed state.
+- **`tauri build` checks that the Rust crate and JS package for each
+  plugin are on the same major.minor** — `cargo add tauri-plugin-http@2.7`
+  looked like it pinned the Rust side to match `@tauri-apps/plugin-http`
+  (2.7.0, the latest non-alpha), but `"2.7"` in Cargo.toml is a caret
+  requirement (`>=2.7.0, <3.0.0`), so it happily resolved back to the
+  newer 2.8.0 already in `Cargo.lock` and the build failed the version
+  check again, identically, on the very next attempt. Needed `@=2.7.0`
+  (exact) to actually pin it. `fs` and `window-state` matched their JS
+  packages already, by luck of when each was last released.
+- **Verified for real, not just `cargo check`**: `pnpm tauri build`
+  (release) ran to completion locally (Arch Linux, WebKitGTK 4.1) and
+  produced all three Linux targets:
+  `rsvp-reader_0.1.0_amd64.deb` (6.07 MiB),
+  `rsvp-reader-0.1.0-1.x86_64.rpm` (6.07 MiB), and
+  `rsvp-reader_0.1.0_amd64.AppImage` (101 MiB — expected to be much
+  bigger than the other two; unlike them it bundles its own WebKitGTK
+  runtime instead of depending on the system's). The `.deb`/`.rpm` sizes
+  are the actual point here: **6 MB versus the PyQt build's ~100 MB** —
+  the exact win the plan named going in. Then launched the built binary
+  directly (`./src-tauri/target/release/app`) against this machine's real
+  Wayland session: it ran for several seconds with no crash and no error
+  output before being stopped, which is as far as verification goes
+  without either a user watching the window or `computer-use` access to
+  actually interact with it — not attempted here, since granting that
+  access wasn't asked for and the build/launch check already answers the
+  question this phase needed answered (does it build, does it start).
+  Windows and macOS builds need their own runners (GitHub Actions'
+  windows-latest/macos-latest, per the existing `build.yml`, which Phase 9
+  should extend to build Tauri instead of the old PyInstaller spec) —
+  nothing to verify locally on Linux for those.
