@@ -1,0 +1,28 @@
+[package]
+name = "app"
+version = "0.1.0"
+description = "RSVP Reader — a local speed reader, desktop shell"
+authors = ["Osman Sahin Guler"]
+license = "GPL-3.0-or-later"
+repository = "https://github.com/HawkOsm/rsvp-reader"
+edition = "2024"
+rust-version = "1.90"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.0", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.12.0", features = [] }
+tauri-plugin-log = "2"
+tauri-plugin-fs = "2.6.0"
+tauri-plugin-http = "=2.7.0"
+tauri-plugin-window-state = "2.5.0"

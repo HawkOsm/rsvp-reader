@@ -1,7 +1,14 @@
+import { isTauri } from '@tauri-apps/api/core'
+
 /**
  * The one place that knows how to make a cross-origin GET work, so
  * Gutendex search/import code doesn't care whether it's running in a
  * browser tab, Tauri or Capacitor.
+ *
+ * In Tauri: `@tauri-apps/plugin-http`'s `fetch` makes the request from the
+ * Rust side, which never goes through the webview's CORS enforcement at
+ * all — no proxy needed there (see capabilities/default.json for the
+ * gutendex.com/gutenberg.org scope that permission requires).
  *
  * On the web: Gutendex's own API is called directly (a public API meant
  * for browser use); a Project Gutenberg *file* download is routed through
@@ -9,9 +16,7 @@
  * itself doesn't send CORS headers (confirmed empirically — see
  * DECISIONS.md's Phase 5 log) and a direct fetch() would just fail.
  *
- * Tauri and Capacitor both skip browser CORS entirely via their own native
- * HTTP plugins — once those shells exist (Phase 7/8), this file gets a
- * platform check and calls the matching plugin instead of fetch().
+ * Capacitor gets the same platform check once that shell exists (Phase 8).
  */
 
 const GUTENBERG_HOSTS = new Set(['www.gutenberg.org', 'gutenberg.org'])
@@ -29,6 +34,11 @@ export function needsProxy(url: string): boolean {
 }
 
 export async function httpGet(url: string, init: RequestInit = {}): Promise<Response> {
+  if (isTauri()) {
+    const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http')
+    return tauriFetch(url, init)
+  }
+
   if (needsProxy(url)) {
     const base = proxyBase()
     if (base) {
@@ -37,8 +47,7 @@ export async function httpGet(url: string, init: RequestInit = {}): Promise<Resp
       return fetch(proxied, init)
     }
     // No proxy configured: this will most likely fail with a CORS error in
-    // a browser, but the failure itself is informative (and this still
-    // works unmodified once a platform HTTP plugin replaces this function).
+    // a browser, but the failure itself is informative.
   }
   return fetch(url, init)
 }

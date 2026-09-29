@@ -11,6 +11,7 @@ import { getDb, type BookRecord } from '../../storage/schema'
 import { ResumeDialog } from '../components/ResumeDialog'
 import { importLocalFile } from '../import-book'
 import { requestPersistence } from '../../storage/quota'
+import { pendingOpenFile } from '../tauri-open'
 
 interface PendingResume {
   book: BookRecord
@@ -64,6 +65,14 @@ export function LibraryScreen() {
     },
     [navigate, refresh],
   )
+
+  useEffect(() => {
+    void pendingOpenFile().then((file) => {
+      if (file) void addFile(file)
+    })
+    // Only on mount: a CLI-launch argument is only ever relevant once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function onFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
