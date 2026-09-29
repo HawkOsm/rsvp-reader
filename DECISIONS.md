@@ -820,3 +820,11 @@ otherwise ship without it. The legacy `build.yml`, `android.yml` and
 `pages.yml` (PyInstaller, the Kotlin app and `web/`, all retired) were
 deleted — two of them also fired on `v*` tags. The old PyQt6 release was
 renamed from v1.0 to v0.1 so the new app's version sorts after it.
+
+Follow-up: v0.2 shipped eight files (deb, rpm, AppImage, msi, setup.exe, dmg,
+app.tar.gz, apk). `release.yml` now builds one download per platform with
+plain, version-free names — `rsvp-reader-linux-x86_64.AppImage`,
+`rsvp-reader-windows-x86_64-setup.exe`, `rsvp-reader-macos-universal.dmg`,
+`rsvp-reader.apk` — via `tauri build --bundles` instead of tauri-action, and
+a final `publish` job attaches them with `gh`. If the token still can't
+create the release, create the draft by hand and re-run only that job.

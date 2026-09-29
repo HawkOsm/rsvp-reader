@@ -1,11 +1,12 @@
-# On a version tag: build Tauri installers for Linux/Windows/macOS and an
-# Android APK, then attach all of them to one GitHub release. Not run
-# locally — this environment has no Windows/macOS runners and (see
-# DECISIONS.md's Phase 8 log) no working Android SDK/Gradle-compatible JDK
-# either, so this is written from documented, well-established patterns
-# (tauri-action, android-actions/setup-android) rather than verified here.
-# Sanity-check with `workflow_dispatch` on a real tag before trusting it
-# for an actual release.
+# On a version tag: build one download per platform and attach them to a
+# draft GitHub release, to publish by hand once checked:
+#   rsvp-reader-linux-x86_64.AppImage     (chmod +x and run)
+#   rsvp-reader-windows-x86_64-setup.exe
+#   rsvp-reader-macos-universal.dmg
+#   rsvp-reader.apk
+# The Actions token has been refused permission to *create* a release
+# (see DECISIONS.md's v0.2 log), so the publish job uploads into a draft
+# you created yourself if it can't create one.
 name: Release
 
 on:
@@ -23,11 +24,17 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            args: ''
+            args: --bundles appimage
+            built: src-tauri/target/release/bundle/appimage/*.AppImage
+            asset: rsvp-reader-linux-x86_64.AppImage
           - os: windows-latest
-            args: ''
+            args: --bundles nsis
+            built: src-tauri/target/release/bundle/nsis/*-setup.exe
+            asset: rsvp-reader-windows-x86_64-setup.exe
           - os: macos-latest
-            args: '--target universal-apple-darwin'
+            args: --target universal-apple-darwin --bundles dmg
+            built: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            asset: rsvp-reader-macos-universal.dmg
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -54,16 +61,17 @@ jobs:
           workspaces: src-tauri
 
       - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tauri build ${{ matrix.args }}
 
-      - uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Give the download a plain name
+        shell: bash
+        run: mkdir out && cp ${{ matrix.built }} out/${{ matrix.asset }}
+
+      - uses: actions/upload-artifact@v4
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'RSVP Reader ${{ github.ref_name }}'
-          releaseDraft: true
-          prerelease: false
-          args: ${{ matrix.args }}
+          name: ${{ matrix.asset }}
+          path: out/${{ matrix.asset }}
+          if-no-files-found: error
 
   android:
     runs-on: ubuntu-latest
@@ -117,9 +125,37 @@ jobs:
             ./gradlew assembleDebug
           fi
 
-      - name: Upload APK to the release
-        uses: softprops/action-gh-release@v2
+      - name: Give the download a plain name
+        run: |
+          mkdir out
+          apks=(android/app/build/outputs/apk/*/*.apk)
+          [ ${#apks[@]} -eq 1 ] || { echo "expected one APK, got: ${apks[*]}"; exit 1; }
+          cp "${apks[0]}" out/rsvp-reader.apk
+
+      - uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ github.ref_name }}
-          draft: true
-          files: android/app/build/outputs/apk/**/*.apk
+          name: rsvp-reader.apk
+          path: out/rsvp-reader.apk
+          if-no-files-found: error
+
+  publish:
+    needs: [desktop, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+
+      - name: Attach to a draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          ls -l out
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --draft --verify-tag --title "RSVP Reader $TAG" --notes "" \
+              || { echo "::error::Couldn't create the release. Create a draft for $TAG yourself and re-run this job."; exit 1; }
+          fi
+          gh release upload "$TAG" out/* --clobber
