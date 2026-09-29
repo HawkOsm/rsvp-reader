@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MAX_WPM, MIN_WPM } from '../../core/pacing'
+import { ZOOM_STEP, goToPage, scrollOrTurn, turn } from '../book-nav'
 import { useEngine } from '../engine-context'
 import { useAppStore } from '../store'
 
@@ -27,102 +27,104 @@ export function useGlobalShortcuts(): void {
   }, [navigate])
 }
 
-/** Reader-only shortcuts: the RSVP transport table and the book-mode
- * paging table from the README, plus P (panel)/B (mode)/Esc (library),
- * which need the engine and reading-mode state that only exist here. */
-export function useReaderKeyboardShortcuts(): void {
+type Keys = Record<string, (event: KeyboardEvent) => void>
+
+/** One handler under several key names. */
+function bind(names: string[], handler: Keys[string]): Keys {
+  return Object.fromEntries(names.map((name) => [name, handler]))
+}
+
+/** Reader-only shortcuts, from the README's tables: one key map per reading
+ * mode, plus P (panel), B (mode) and Esc (library), which need the
+ * reading-mode state that only exists here. */
+export function useReaderKeyboardShortcuts(pageCount?: number): void {
   const engine = useEngine()
   const navigate = useNavigate()
-  const mode = useAppStore((s) => s.mode)
-  const setMode = useAppStore((s) => s.setMode)
-  const panelOpen = useAppStore((s) => s.panelOpen)
-  const setPanelOpen = useAppStore((s) => s.setPanelOpen)
+  const {
+    mode,
+    setMode,
+    panelOpen,
+    setPanelOpen,
+    bookLayout,
+    bookFit,
+    bookZoom,
+    setBookLayout,
+    setBookFit,
+    setBookZoom,
+  } = useAppStore()
 
   useEffect(() => {
+    const last = engine.count - 1
+    const onward = () => engine.skip(1)
+    const back = () => engine.skip(-1)
+
+    let modeKeys: Keys
+    if (mode === 'rsvp') {
+      modeKeys = {
+        ' ': () => engine.toggle(),
+        ArrowLeft: (e) => engine.skip(e.shiftKey ? -10 : -1),
+        ArrowRight: (e) => engine.skip(e.shiftKey ? 10 : 1),
+        ArrowUp: () => engine.setWpm(engine.wpm + 25),
+        ArrowDown: () => engine.setWpm(engine.wpm - 25),
+        Home: () => engine.seek(0),
+        End: () => engine.seek(last),
+        p: () => setPanelOpen(!panelOpen),
+      }
+    } else if (pageCount !== undefined) {
+      // Book mode over a PDF: turn pages, scrolling a tall page first.
+      const zoomBy = (step: number) => setBookZoom(bookZoom + step)
+      modeKeys = {
+        ...bind(['+', '='], () => zoomBy(ZOOM_STEP)),
+        '-': () => zoomBy(-ZOOM_STEP),
+        ...bind([' ', 'ArrowRight', 'ArrowDown'], () => scrollOrTurn(engine, pageCount, bookLayout, 1)),
+        ...bind(['ArrowLeft', 'ArrowUp'], () => scrollOrTurn(engine, pageCount, bookLayout, -1)),
+        PageDown: () => turn(engine, pageCount, bookLayout, 1),
+        PageUp: () => turn(engine, pageCount, bookLayout, -1),
+        Home: () => goToPage(engine, pageCount, bookLayout, 0),
+        End: () => goToPage(engine, pageCount, bookLayout, pageCount - 1),
+        d: () => setBookLayout(bookLayout === 'spread' ? 'single' : 'spread'),
+        f: () => setBookFit(bookFit === 'page' ? 'width' : 'page'),
+      }
+    } else {
+      // Book mode over reflowed text has no pages, so keys step words.
+      modeKeys = {
+        ...bind([' ', 'ArrowRight', 'ArrowDown', 'PageDown'], onward),
+        ...bind(['ArrowLeft', 'ArrowUp', 'PageUp'], back),
+        Home: () => engine.seek(0),
+        End: () => engine.seek(last),
+      }
+    }
+
+    const keys: Keys = {
+      ...modeKeys,
+      Escape: () => navigate('/'),
+      b: () => setMode(mode === 'rsvp' ? 'book' : 'rsvp'),
+    }
+
     function onKeyDown(event: KeyboardEvent) {
       if (isTypingTarget(event.target)) return
       if (event.ctrlKey || event.metaKey) return // handled globally, or not ours
-
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        navigate('/')
-        return
-      }
-      if (event.key.toLowerCase() === 'p') {
-        event.preventDefault()
-        setPanelOpen(!panelOpen)
-        return
-      }
-      if (event.key.toLowerCase() === 'b') {
-        event.preventDefault()
-        setMode(mode === 'rsvp' ? 'book' : 'rsvp')
-        return
-      }
-
-      if (mode === 'book') handleBookModeKey(event, engine)
-      else handleRsvpModeKey(event, engine)
+      const handler = keys[event.key.length === 1 ? event.key.toLowerCase() : event.key]
+      if (!handler) return
+      event.preventDefault()
+      handler(event)
     }
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [engine, navigate, mode, panelOpen, setPanelOpen, setMode])
-}
-
-function handleRsvpModeKey(event: KeyboardEvent, engine: ReturnType<typeof useEngine>): void {
-  switch (event.key) {
-    case ' ':
-      event.preventDefault()
-      engine.toggle()
-      break
-    case 'ArrowLeft':
-      event.preventDefault()
-      engine.skip(event.shiftKey ? -10 : -1)
-      break
-    case 'ArrowRight':
-      event.preventDefault()
-      engine.skip(event.shiftKey ? 10 : 1)
-      break
-    case 'ArrowUp':
-      event.preventDefault()
-      engine.setWpm(Math.min(MAX_WPM, engine.wpm + 25))
-      break
-    case 'ArrowDown':
-      event.preventDefault()
-      engine.setWpm(Math.max(MIN_WPM, engine.wpm - 25))
-      break
-    case 'Home':
-      event.preventDefault()
-      engine.seek(0)
-      break
-    case 'End':
-      event.preventDefault()
-      engine.seek(engine.count - 1)
-      break
-  }
-}
-
-function handleBookModeKey(event: KeyboardEvent, engine: ReturnType<typeof useEngine>): void {
-  switch (event.key) {
-    case ' ':
-    case 'ArrowRight':
-    case 'ArrowDown':
-    case 'PageDown':
-      event.preventDefault()
-      engine.skip(1)
-      break
-    case 'ArrowLeft':
-    case 'ArrowUp':
-    case 'PageUp':
-      event.preventDefault()
-      engine.skip(-1)
-      break
-    case 'Home':
-      event.preventDefault()
-      engine.seek(0)
-      break
-    case 'End':
-      event.preventDefault()
-      engine.seek(engine.count - 1)
-      break
-  }
+  }, [
+    engine,
+    navigate,
+    mode,
+    setMode,
+    panelOpen,
+    setPanelOpen,
+    pageCount,
+    bookLayout,
+    bookFit,
+    bookZoom,
+    setBookLayout,
+    setBookFit,
+    setBookZoom,
+  ])
 }

@@ -1,3 +1,4 @@
+import './worker-src'
 import { getDocument, VerbosityLevel } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { ExtractionError } from '../errors'

@@ -87,10 +87,6 @@ describe('parsePdf', () => {
     const result = await parsePdf(fileFrom(`${FIXTURES}/two-column-text.pdf`, 't.pdf'))
 
     expect(result.title).toBe('Two-Column Excerpt')
-    // Matches the Python golden fixture's total token count exactly
-    // (tests/parity/two-column-text.json) — same source text, same word
-    // count, even though the extraction algorithm is completely different
-    // (pdf.js layout vs PyMuPDF's word-level extraction).
     expect(result.tokens.length).toBe(2200)
     expect(result.tokens.slice(0, 8).map((t) => t.text)).toEqual([
       'The',

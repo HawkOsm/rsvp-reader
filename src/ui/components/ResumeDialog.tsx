@@ -1,3 +1,6 @@
+import { Button } from './Button'
+
+
 export interface ResumeDialogProps {
   title: string
   progressPercent: number
@@ -26,24 +29,22 @@ export function ResumeDialog({
           You're {progressPercent.toFixed(0)}% through this book.
         </p>
         <div className="flex flex-col gap-2">
-          <button
-            type="button"
+          <Button
             onClick={onResume}
             autoFocus
-            className="rounded bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-bg)]"
+            variant="primary"
           >
             Resume
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
             onClick={onStartOver}
-            className="rounded border border-[var(--color-border)] px-3 py-1.5 text-sm"
+            
           >
             Start over
-          </button>
-          <button type="button" onClick={onCancel} className="px-3 py-1.5 text-sm text-[var(--color-text-dim)]">
+          </Button>
+          <Button onClick={onCancel} variant="link" className="px-3 py-1.5">
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
     </div>

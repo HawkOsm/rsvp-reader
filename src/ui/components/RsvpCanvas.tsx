@@ -1,8 +1,9 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { orpIndex } from '../../core/orp'
 import { codePoints } from '../../core/unicode'
-import { useEngine } from '../engine-context'
-import type { Palette } from '../theme'
+import { useEngine, useEngineIndex } from '../engine-context'
+import { useAppStore } from '../store'
+import { resolvePalette, type Palette } from '../theme'
 
 /** Horizontal position of the ORP letter, as a fraction of the canvas
  * width — matches ui/reader_view.py's FOCUS_X_RATIO exactly. */
@@ -10,41 +11,25 @@ const FOCUS_X_RATIO = 0.42
 const MIN_FONT_PX = 12
 const SIDE_MARGIN_PX = 12
 
-export interface RsvpCanvasProps {
-  palette: Palette
-  fontFamily: string
-  fontSizePx: number
-  orpColor?: string | null
-}
-
 /**
  * Draws the current word with its ORP letter pinned to a fixed x — the eye
  * never moves between words. Ported from RsvpDisplay in ui/reader_view.py:
  * same focus ratio, same two-pass shrink-to-fit, same tick-mark guides.
  *
- * Holds its own `word` state (fed by subscribing to the engine directly,
- * not by a prop from a re-rendering parent) so a word change only ever
- * re-renders this one component — the whole point of keeping the token
- * list out of React state in the first place.
+ * Subscribes to the engine itself, so a word change only ever re-renders
+ * this one component.
  */
-export const RsvpCanvas = memo(function RsvpCanvas({
-  palette,
-  fontFamily,
-  fontSizePx,
-  orpColor,
-}: RsvpCanvasProps) {
+export const RsvpCanvas = memo(function RsvpCanvas() {
   const engine = useEngine()
+  const index = useEngineIndex()
+  const palette = resolvePalette(useAppStore((s) => s.theme))
+  const fontFamily = useAppStore((s) => s.fontFamily)
+  const fontSizePx = useAppStore((s) => s.fontSize)
+  const orpColor = useAppStore((s) => s.orpColor)
+  const word = engine.tokens[index]?.text ?? ''
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [word, setWord] = useState(() => engine.currentToken()?.text ?? '')
   const rafRef = useRef<number | null>(null)
-
-  useEffect(() => {
-    setWord(engine.currentToken()?.text ?? '')
-    return engine.on('word', (index) => {
-      setWord(engine.tokens[index]?.text ?? '')
-    })
-  }, [engine])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -97,7 +82,7 @@ export const RsvpCanvas = memo(function RsvpCanvas({
   }, [word, palette, fontFamily, fontSizePx, orpColor])
 
   return (
-    <div ref={containerRef} className="min-h-[200px] w-full flex-1">
+    <div ref={containerRef} className="min-h-[200px] w-full min-w-0 flex-1 overflow-hidden">
       <canvas ref={canvasRef} />
     </div>
   )

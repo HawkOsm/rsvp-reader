@@ -34,7 +34,7 @@ jobs:
       - name: Type-check
         run: pnpm exec tsc -b
 
-      - name: Test (includes the Phase 1 Python parity fixtures)
+      - name: Test
         run: pnpm test
 
       - name: Build

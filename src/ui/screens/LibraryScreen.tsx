@@ -12,6 +12,7 @@ import { ResumeDialog } from '../components/ResumeDialog'
 import { importLocalFile } from '../import-book'
 import { requestPersistence } from '../../storage/quota'
 import { pendingOpenFile } from '../tauri-open'
+import { Button } from '../components/Button'
 
 interface PendingResume {
   book: BookRecord
@@ -121,27 +122,24 @@ export function LibraryScreen() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">RSVP Reader</h1>
         <div className="flex items-center gap-3">
-          <button
-            type="button"
+          <Button
             onClick={() => navigate('/settings')}
-            className="text-sm text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
+            variant="link"
           >
             Settings
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
             onClick={() => navigate('/search')}
-            className="text-sm text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
+            variant="link"
           >
             Find a book
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
             onClick={() => fileInputRef.current?.click()}
-            className="rounded bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-bg)]"
+            variant="primary"
           >
             Add book
-          </button>
+          </Button>
         </div>
         <input
           ref={fileInputRef}
@@ -202,20 +200,18 @@ export function LibraryScreen() {
                   {book.lastOpenedAt ? new Date(book.lastOpenedAt).toLocaleDateString() : '—'}
                 </td>
                 <td className="py-2 text-right">
-                  <button
-                    type="button"
+                  <Button
                     onClick={(e) => void onResetProgress(book, e)}
-                    className="mr-2 text-xs text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
+                    variant="link" small className="mr-2"
                   >
                     Reset
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
                     onClick={(e) => void onRemove(book, e)}
-                    className="text-xs text-[var(--color-text-dim)] hover:text-[var(--color-accent)]"
+                    variant="danger" small
                   >
                     Remove
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}

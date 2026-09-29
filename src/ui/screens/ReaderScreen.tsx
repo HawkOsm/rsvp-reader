@@ -1,20 +1,22 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { DEFAULT_WPM } from '../../core/pacing'
 import { createEngine } from '../../core/engine'
 import type { Token } from '../../core/types'
 import { getProgress, getTokens, touchOpened } from '../../storage/library'
 import { getDb, type BookRecord } from '../../storage/schema'
+import { BookControls } from '../components/BookControls'
+import { Button } from '../components/Button'
 import { PagePanel } from '../components/PagePanel'
+import { ReaderHints } from '../components/ReaderHints'
 import { RsvpCanvas } from '../components/RsvpCanvas'
 import { TransportBar } from '../components/TransportBar'
-import { EngineProvider, useEngine } from '../engine-context'
+import { EngineProvider, useEngine, useEnginePlaying } from '../engine-context'
 import { useAutosaveProgress } from '../hooks/useAutosaveProgress'
 import { useReaderKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useTouchControls } from '../hooks/useTouchControls'
 import { useWakeLock } from '../hooks/useWakeLock'
 import { useAppStore } from '../store'
-import { resolvePalette } from '../theme'
 
 interface LoadedBook {
   book: BookRecord
@@ -23,18 +25,21 @@ interface LoadedBook {
   startWpm: number
 }
 
+function Centered({ children, dim }: { children: ReactNode; dim?: boolean }) {
+  const color = dim ? 'text-[var(--color-text-dim)]' : 'text-[var(--color-text)]'
+  return (
+    <div className={`flex min-h-screen flex-col items-center justify-center gap-4 bg-[var(--color-bg)] p-6 ${color}`}>
+      {children}
+    </div>
+  )
+}
+
 export function ReaderScreen() {
   const { bookId } = useParams<{ bookId: string }>()
   const navigate = useNavigate()
+  const setMode = useAppStore((s) => s.setMode)
   const [loaded, setLoaded] = useState<LoadedBook | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const theme = useAppStore((s) => s.theme)
-  const fontFamily = useAppStore((s) => s.fontFamily)
-  const fontSize = useAppStore((s) => s.fontSize)
-  const orpColor = useAppStore((s) => s.orpColor)
-  const mode = useAppStore((s) => s.mode)
-  const panelOpen = useAppStore((s) => s.panelOpen)
-  const setMode = useAppStore((s) => s.setMode)
 
   useEffect(() => {
     const id = Number(bookId)
@@ -72,59 +77,23 @@ export function ReaderScreen() {
 
   if (loadError) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[var(--color-bg)] p-6 text-[var(--color-text)]">
+      <Centered>
         <p>{loadError}</p>
-        <button
-          type="button"
+        <Button
           onClick={() => navigate('/')}
-          className="rounded bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-bg)]"
+          variant="primary"
         >
           Back to library
-        </button>
-      </div>
+        </Button>
+      </Centered>
     )
   }
+  if (!loaded) return <Centered dim>Loading…</Centered>
 
-  if (!loaded) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--color-bg)] text-[var(--color-text-dim)]">
-        Loading…
-      </div>
-    )
-  }
-
-  return (
-    <ReaderContent
-      loaded={loaded}
-      mode={mode}
-      panelOpen={panelOpen}
-      palette={resolvePalette(theme)}
-      fontFamily={fontFamily}
-      fontSize={fontSize}
-      orpColor={orpColor}
-    />
-  )
+  return <ReaderContent loaded={loaded} />
 }
 
-interface ReaderContentProps {
-  loaded: LoadedBook
-  mode: 'rsvp' | 'book'
-  panelOpen: boolean
-  palette: ReturnType<typeof resolvePalette>
-  fontFamily: string
-  fontSize: number
-  orpColor: string | null
-}
-
-function ReaderContent({
-  loaded,
-  mode,
-  panelOpen,
-  palette,
-  fontFamily,
-  fontSize,
-  orpColor,
-}: ReaderContentProps) {
+function ReaderContent({ loaded }: { loaded: LoadedBook }) {
   const { book, tokens, startIndex, startWpm } = loaded
   const engine = useMemo(
     () => createEngine(tokens, { index: startIndex, wpm: startWpm }),
@@ -138,96 +107,81 @@ function ReaderContent({
 
   return (
     <EngineProvider value={engine}>
-      <ReaderBody
-        bookId={book.id as number}
-        title={book.title}
-        pages={book.pages}
-        mode={mode}
-        panelOpen={panelOpen}
-        palette={palette}
-        fontFamily={fontFamily}
-        fontSize={fontSize}
-        orpColor={orpColor}
-      />
+      <ReaderBody book={book} />
     </EngineProvider>
   )
 }
 
-interface ReaderBodyProps {
-  bookId: number
-  title: string
-  pages?: number
-  mode: 'rsvp' | 'book'
-  panelOpen: boolean
-  palette: ReturnType<typeof resolvePalette>
-  fontFamily: string
-  fontSize: number
-  orpColor: string | null
-}
-
-function ReaderBody({
-  bookId,
-  title,
-  pages,
-  mode,
-  panelOpen,
-  palette,
-  fontFamily,
-  fontSize,
-  orpColor,
-}: ReaderBodyProps) {
-  const [playing, setPlaying] = useState(false)
+function ReaderBody({ book }: { book: BookRecord }) {
+  const bookId = book.id as number
+  const pages = book.pages
   const navigate = useNavigate()
+  const engine = useEngine()
+  const playing = useEnginePlaying()
   const onTap = useTouchControls()
+  const mode = useAppStore((s) => s.mode)
+  const setMode = useAppStore((s) => s.setMode)
+  const panelOpen = useAppStore((s) => s.panelOpen)
+  const setPanelOpen = useAppStore((s) => s.setPanelOpen)
 
-  useReaderKeyboardShortcuts()
+  useReaderKeyboardShortcuts(pages)
   useAutosaveProgress(bookId, mode)
   useWakeLock(playing)
 
-  const showPanel = mode === 'book' || panelOpen
+  // Flashing words while reading a page would be absurd.
+  useEffect(() => {
+    if (mode === 'book') engine.pause()
+  }, [mode, engine])
 
   return (
     <div className="flex h-screen flex-col bg-[var(--color-bg)] text-[var(--color-text)]">
-      <header className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-2 text-sm">
-        <button type="button" onClick={() => navigate('/')} className="text-[var(--color-text-dim)]">
-          ← Library
-        </button>
-        <span className="truncate">{title}</span>
-        <span className="w-16" />
+      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-[var(--color-border)] px-4 py-2 text-sm">
+        <div>
+          <Button onClick={() => navigate('/')}>‹ Library</Button>
+        </div>
+        <span className="max-w-[40vw] truncate">{book.title}</span>
+        <div className="flex justify-end gap-2">
+          <Button
+            onClick={() => setMode(mode === 'book' ? 'rsvp' : 'book')}
+            title={mode === 'book' ? 'Back to one word at a time  (B)' : 'Read normally, a page at a time  (B)'}
+          >
+            {mode === 'book' ? 'RSVP' : 'Book'}
+          </Button>
+          {mode === 'rsvp' && (
+            <Button onClick={() => setPanelOpen(!panelOpen)} title="Show the page you are on  (P)">
+              {panelOpen ? 'Page ‹' : 'Page ›'}
+            </Button>
+          )}
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1">
         {mode === 'rsvp' && (
-          <div className="flex min-h-0 flex-1 flex-col" onClick={onTap}>
-            <RsvpCanvas
-              palette={palette}
-              fontFamily={fontFamily}
-              fontSizePx={fontSize}
-              orpColor={orpColor}
-            />
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col" onClick={onTap}>
+            <RsvpCanvas />
           </div>
         )}
-        {showPanel && (
-          <div className={mode === 'book' ? 'min-h-0 flex-1' : 'min-h-0 w-[45%] border-l border-[var(--color-border)]'}>
-            <PagePanel bookId={bookId} pages={pages} />
+        {(mode === 'book' || panelOpen) && (
+          <div
+            className={
+              mode === 'book'
+                ? 'relative min-h-0 flex-1'
+                : 'relative min-h-0 w-[min(380px,45%)] shrink-0 border-l border-[var(--color-border)]'
+            }
+          >
+            <div className="absolute inset-0">
+              <PagePanel bookId={bookId} pages={pages} variant={mode === 'book' ? 'book' : 'side'} />
+            </div>
           </div>
         )}
       </div>
 
-      <PlayingWatcher onChange={setPlaying} />
-      <TransportBar totalPages={pages} />
+      {mode === 'book' && pages !== undefined ? (
+        <BookControls pageCount={pages} />
+      ) : (
+        <TransportBar totalPages={pages} />
+      )}
+      <ReaderHints mode={mode} paged={pages !== undefined} />
     </div>
   )
-}
-
-/** A dedicated subscriber for the wake-lock flag, so that flag's own state
- * doesn't live in ReaderBody (which would re-render the header/layout on
- * every play/pause too). */
-function PlayingWatcher({ onChange }: { onChange: (playing: boolean) => void }) {
-  const engine = useEngine()
-  useEffect(() => {
-    onChange(engine.isPlaying)
-    return engine.on('playing', onChange)
-  }, [engine, onChange])
-  return null
 }
