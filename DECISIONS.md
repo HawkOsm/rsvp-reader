@@ -807,3 +807,16 @@ A local copy of Gutenberg's own catalog (`pg_catalog.csv.gz`, 5.6 MB,
 searched in IndexedDB) was considered as a replacement and declined as not
 worth the effort for now.
 
+
+## v0.2 release: first run of the release pipeline
+
+CI had failed on every run (9 of 9) and `release.yml` had never run. Fixed
+before tagging v0.2: `package.json` now pins `packageManager`
+(`pnpm/action-setup` refuses to guess); `release.yml` read a secret in a
+step `if:`, which GitHub rejects, so the file was invalid — the secret is
+now exposed as a job env var; and the Android job now runs `cap sync`,
+since `android/`'s copy of the web app is gitignored and the APK would
+otherwise ship without it. The legacy `build.yml`, `android.yml` and
+`pages.yml` (PyInstaller, the Kotlin app and `web/`, all retired) were
+deleted — two of them also fired on `v*` tags. The old PyQt6 release was
+renamed from v1.0 to v0.1 so the new app's version sorts after it.
