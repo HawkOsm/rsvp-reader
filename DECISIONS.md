@@ -665,3 +665,66 @@ don't rewrite history here, append.
   Changelog format) logs the whole migration-in-progress under that one
   `[0.1.0]` heading rather than inventing intermediate version numbers for
   work that hasn't shipped anywhere yet.
+
+## Phase 10 log — partial: real-world usage can't be simulated
+
+Most of Phase 10 is explicitly gated by the plan itself on "the new app
+has actually been used as a daily reader for about two weeks" —
+reading real books on each platform, logging real bugs, and only then
+retiring `main.py`/`ui/`/`db.py`/`android-legacy-kotlin/`/old `web/` to a
+`legacy/` branch and rewriting the README. None of that can be
+substituted with anything done in this session — there's no way to make
+two weeks of a person's actual reading habit happen, and doing the
+archival/README-rewrite step now would jump straight past the validation
+it exists to wait for. Left undone, on purpose, for the repo owner.
+
+One item *was* independently checkable without the two-week wait, and
+turned into real, load-bearing work once actually looked into rather than
+deferred with everything else:
+
+- **The old web app's IndexedDB and the new app's Dexie database use the
+  same name — `"rsvp-reader"` — found while checking the plan's "confirm
+  the migration path works" item.** That's not a coincidence to shrug
+  off: the plan's own deployment approach (Phase 6) replaces the old PWA
+  at the *same URL*, meaning the same origin, meaning both databases
+  would genuinely collide in a real user's browser. Before this fix, that
+  collision would have been silent and specifically dangerous: opening
+  the new app would `indexedDB.open("rsvp-reader", 1)`, find a database
+  already at version 1 (the old app's), and — since IndexedDB only runs
+  an upgrade when the *requested* version is higher than the existing one
+  — skip any upgrade entirely and just use the old app's raw structure
+  as-is. The new code would then throw the first time it touched an index
+  the old structure never had (`fingerprint`, `source`, ...), or silently
+  read/write the wrong shape.
+  - Fixed by declaring `RsvpDatabase`'s `.version(1)` to *exactly* match
+    what `web/js/library.js` actually creates (bare `books`/`tokens`/`files`
+    stores, no secondary indexes — not this app's own "day one" schema,
+    which now lives at `.version(2)`), then adding a real
+    `.version(2).upgrade()` that transforms every existing record: `books`
+    gains `source`/`fingerprint` (synthesized from the old `size` field,
+    since the old schema never recorded `lastModified` to compute a real
+    one from — harmless, since nothing re-derives tokens from it yet, see
+    Phase 4's log), a `progress` row is created from the old `lastIndex`
+    field (only for books with actual progress), and `files` rows go from
+    a bare `{bookId, data: ArrayBuffer}` to the new `{bookId, blob,
+    fileName, mimeType}` shape. A PDF book's `pages` (a field the old
+    schema never stored at all) gets computed from the *existing* tokens'
+    own page numbers, in the same upgrade pass.
+  - This is exactly the plan's "confirm the migration path works... export
+    from the old web app, import into the new one, positions intact" —
+    except automatic rather than a manual export/import file, since the
+    old app never had an export feature to begin with and both databases
+    living at the same name/origin makes an in-place upgrade the more
+    direct fix anyway.
+  - Verified twice, not once: `tests/storage/legacy-migration.test.ts`
+    builds a database with *raw* `indexedDB.open()` calls copied line for
+    line from `web/js/library.js`'s actual behavior (not Dexie, not a
+    simulation of Dexie) and checks the upgrade — TXT book, PDF book with
+    computed `pages`, a multi-book library, and the brand-new-user no-op
+    case. Then, live in the browser pane: seeded a real `"rsvp-reader"`
+    IndexedDB database by hand to the old shape, loaded the new app fresh
+    against it, and watched "Legacy Book" appear in the library at the
+    correct 33% progress, the resume dialog offer correctly, and Resume
+    land on the exact right word (index 1 of 3) — the same
+    live-verification standard used throughout this migration, applied to
+    the one Phase 10 item that didn't require two weeks to check.
