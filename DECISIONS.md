@@ -522,3 +522,79 @@ don't rewrite history here, append.
   windows-latest/macos-latest, per the existing `build.yml`, which Phase 9
   should extend to build Tauri instead of the old PyInstaller spec) —
   nothing to verify locally on Linux for those.
+
+## Phase 8 log
+
+- **The old Kotlin `android/` directory was renamed to
+  `android-legacy-kotlin/`, in place, on `next`** — not deleted, not moved
+  to a separate branch yet. Capacitor's tooling wants the path `android/`
+  specifically and refuses to touch it if something's already there; the
+  real archival (a `legacy/` branch, per the plan's Phase 10) is a
+  deliberate later step, not something to improvise here just to clear a
+  directory name. The existing `.github/workflows/android.yml` (old
+  Kotlin CI, path-triggered on `android/**`) simply goes dormant on this
+  branch as a result — nothing under that path exists here anymore for it
+  to trigger on. Phase 9 should replace it with a Capacitor-based one.
+- **`INTERNET` permission: kept, asked the user first.** The old Kotlin
+  app's manifest declared zero permissions on purpose (its own comment:
+  "the app cannot phone home"); Capacitor's default template adds
+  `INTERNET` unconditionally, and unlike web/desktop, Android's WebView
+  can't make *any* network request — including the Gutendex
+  search/import feature from Phase 5 — without it being declared. This is
+  a real, user-visible change from the old app's privacy stance, not a
+  build detail, so it went through `AskUserQuestion` rather than being
+  picked silently either way. Decided: keep it, so Gutendex works on
+  Android like every other platform. `tools/check-android-permissions.sh`
+  encodes that decision as a checkable allow-list (exactly `INTERNET`,
+  nothing else) — the plan's "CI check that fails if the manifest gains
+  any [permission]" adjusted for the fact that this app, unlike the old
+  one, has a permission it's supposed to have; Phase 9 should wire this
+  script into the CI workflow.
+- **No dialog plugin here either** (see Phase 7's identical `<input
+  type="file">` reasoning) — Capacitor's WebView shows the same native
+  Android document picker for a plain HTML file input, no plugin needed.
+- **No keep-awake plugin.** `useWakeLock` (Phase 4) already uses the
+  standard Web Wake Lock API, which Android's WebView — real Chromium,
+  auto-updated via Play Store — has supported since 2020 (Chrome 84).
+  Adding `@capacitor-community/keep-awake` on top would be a second way to
+  do something the existing code should already do on any reasonably
+  current device; skipped for the same reason the Tauri dialog plugin was.
+- **`CapacitorHttp: { enabled: true }`** (`capacitor.config.ts`) patches
+  `window.fetch` to route through native networking — `src/sources/http.ts`
+  needed *zero* code changes for Capacitor, unlike the explicit
+  `isTauri()` branch Phase 7 needed (Tauri's plugin uses its own `fetch`
+  export rather than patching the global one).
+- **Icons and splash screens generated via `@capacitor/assets`** from
+  `share/rsvp-reader.png` (the existing 512×512 project icon) — adaptive
+  icons, all mipmap densities, and light/dark splash screens, 74 files
+  from one source image and one command.
+- **No signing keystore generated.** The plan calls for a real release
+  keystore instead of the debug key — deliberately not done here. Unlike
+  everything else in this phase, a release keystore is a permanent
+  identity: Google Play requires the *same* key for every future update
+  of an app, so generating one means choosing (and being responsible for
+  never losing) a real password and identity, not a build artifact I
+  should invent and hold on someone else's behalf. That command
+  (`keytool -genkeypair -v -keystore release.keystore -alias rsvp-reader
+  -keyalg RSA -keysize 2048 -validity 10000`) is for the repo owner to run
+  themselves, whenever they're actually ready to sign a release build —
+  along with backing up the resulting file somewhere durable, per the
+  plan's own warning.
+- **No actual Android build could be verified**, and it's worth being
+  precise about exactly where it stops, since there are two independent
+  blockers, not one: (1) no Android SDK is installed in this environment
+  at all (same gap Phase 0 already flagged for Android Studio) — no
+  `ANDROID_HOME`, no `sdkmanager`; and, found only by actually trying,
+  (2) even the Gradle wrapper itself can't run here — this machine's only
+  installed JDK is OpenJDK 27, and Gradle 8.14.3 (what Capacitor's
+  template pins) fails immediately with `Unsupported class file major
+  version 71` trying to compile its own Groovy build script under it,
+  before ever reaching the point where the missing SDK would matter.
+  Fixing either one (installing an older JDK system-wide, or downloading
+  the multi-GB Android SDK and accepting its license) is a real
+  environment change beyond what this session should do unprompted;
+  documented rather than silently skipped. What *is* verified: `cap sync
+  android` runs clean and picks up all three registered plugins, the
+  generated `AndroidManifest.xml` has exactly the one intended permission,
+  and the web build this all wraps has its own full test suite (177
+  tests) passing.
