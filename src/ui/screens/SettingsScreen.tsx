@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { MAX_WPM, MIN_WPM } from '../../core/pacing'
+import { WpmInput } from '../components/WpmInput'
 import { useAppStore } from '../store'
 import { DARK_PALETTE } from '../theme'
 
@@ -47,14 +47,9 @@ export function SettingsScreen() {
 
         <label className="flex flex-col gap-1 text-sm">
           Default WPM (used for newly-opened books)
-          <input
-            type="number"
-            min={MIN_WPM}
-            max={MAX_WPM}
+          <WpmInput
             value={defaultWpm}
-            onChange={(e) =>
-              setDefaultWpm(Math.max(MIN_WPM, Math.min(MAX_WPM, Number(e.target.value))))
-            }
+            onCommit={setDefaultWpm}
             className="rounded border border-[var(--color-border)] bg-[var(--color-bg-raised)] px-2 py-1"
           />
         </label>
