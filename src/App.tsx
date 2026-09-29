@@ -5,11 +5,14 @@ import { ReaderScreen } from './ui/screens/ReaderScreen'
 import { SearchScreen } from './ui/screens/SearchScreen'
 import { SettingsScreen } from './ui/screens/SettingsScreen'
 import { UpdatePrompt } from './ui/components/UpdatePrompt'
+import { useAndroidBackButton } from './ui/hooks/useAndroidBackButton'
 import { useGlobalShortcuts } from './ui/hooks/useKeyboardShortcuts'
+import { useNativeAppearance } from './ui/hooks/useNativeAppearance'
 import { useAppStore } from './ui/store'
 
 function AppRoutes() {
   useGlobalShortcuts()
+  useAndroidBackButton()
   return (
     <Routes>
       <Route path="/" element={<LibraryScreen />} />
@@ -27,6 +30,8 @@ function App() {
   useEffect(() => {
     void loadSettings()
   }, [loadSettings])
+
+  useNativeAppearance()
 
   if (!settingsLoaded) {
     return <div className="min-h-screen bg-[var(--color-bg)]" />

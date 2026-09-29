@@ -58,4 +58,8 @@
 body {
   background: var(--color-bg);
   color: var(--color-text);
+  /* No-ops on web/desktop (the env() vars are 0 there); on Android/iOS
+   * this keeps content clear of the notch/status bar/gesture bar. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
