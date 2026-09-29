@@ -1,5 +1,5 @@
 import { TextLayer } from 'pdfjs-dist/legacy/build/pdf.mjs'
-import 'pdfjs-dist/web/pdf_viewer.css'
+import './pdf-text-layer.css'
 import type { PDFDocumentProxy, PageViewport, RenderTask } from 'pdfjs-dist'
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { wordAt } from '../book-nav'

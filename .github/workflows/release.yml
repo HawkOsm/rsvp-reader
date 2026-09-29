@@ -67,6 +67,9 @@ jobs:
 
   android:
     runs-on: ubuntu-latest
+    # Secrets can't be read in a step's `if:`, so expose the one it tests here.
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
     steps:
       - uses: actions/checkout@v4
 
@@ -77,6 +80,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      # android/'s copy of the web app is gitignored — sync puts dist/ in it.
+      - run: pnpm exec cap sync android
 
       - uses: actions/setup-java@v4
         with:
@@ -90,8 +95,8 @@ jobs:
       - run: ./tools/check-android-permissions.sh
 
       - name: Decode signing keystore
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
-        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/release.keystore
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/release.keystore
 
       - name: Build release APK
         working-directory: android

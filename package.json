@@ -2,8 +2,9 @@
   "name": "rsvp-reader",
   "private": true,
   "license": "GPL-3.0-or-later",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
+  "packageManager": "pnpm@12.6.0",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
