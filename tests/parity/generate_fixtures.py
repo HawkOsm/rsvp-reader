@@ -1,14 +1,22 @@
 """Dump golden fixtures from the Python engine for the TypeScript port to
 match exactly: tokens, per-token delay at 300 and 600 WPM, and the ORP index.
 
-Run from the repo root (needs the project's .venv, for PyMuPDF):
+The already-generated JSON fixtures in this directory are what
+tests/parity/*.test.ts actually runs against — this script itself doesn't
+need to run for the test suite to pass. It's only for regenerating them
+(e.g. if a Python-side bug is found and fixed retroactively, which
+shouldn't happen now that rsvp_engine.py/text_extract.py have been
+retired to the `legacy` branch): check out rsvp_engine.py and
+text_extract.py from `legacy` into the repo root first, recreate a
+venv with PyMuPDF, then:
 
-    .venv/bin/python tests/parity/generate_fixtures.py
+    python tests/parity/generate_fixtures.py
 
 The output JSON is what tests/parity/*.test.ts compares the TS core
 (tokenize.ts / pacing.ts / orp.ts) against. Only tokenize()'s plain-text path
-has a TS counterpart so far (Phase 1); the PDF fixtures are dumped now and
-consumed once the pdf.js parser lands in Phase 3.
+has a TS counterpart (Phase 1); the PDF fixtures are dumped for Phase 3's
+own comparison, which uses a different (pdf.js-based) algorithm entirely —
+see DECISIONS.md's Phase 3 log for why an exact match isn't expected there.
 """
 import json
 import sys
