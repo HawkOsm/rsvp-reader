@@ -1,9 +1,5 @@
 import { makeToken, type Token } from './types'
 
-// Ported from text_extract.py's normalize()/tokenize(). Keep the two in
-// sync — tests/parity/*.json is generated from the Python side and this
-// must match it token for token.
-
 const SOFT_HYPHEN = '\u00ad'
 
 // A hyphen at the end of a line, between two letters, is almost always a

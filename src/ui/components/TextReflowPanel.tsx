@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useEngine } from '../engine-context'
+import { useEngine, useEngineIndex } from '../engine-context'
 
 /** How many tokens on either side of the current word to actually render
  * as DOM spans. A 200k-word book as one giant flow of per-word <span>s
@@ -11,19 +11,13 @@ const RECENTER_THRESHOLD = 400
 
 export function TextReflowPanel() {
   const engine = useEngine()
-  const [index, setIndex] = useState(engine.index)
+  const index = useEngineIndex()
   const [windowCenter, setWindowCenter] = useState(engine.index)
 
+  // Re-center the rendered window once the reader drifts far from its middle.
   useEffect(() => {
-    setIndex(engine.index)
-    setWindowCenter(engine.index)
-    return engine.on('word', (i) => {
-      setIndex(i)
-      setWindowCenter((center) =>
-        Math.abs(i - center) > RECENTER_THRESHOLD ? i : center,
-      )
-    })
-  }, [engine])
+    setWindowCenter((center) => (Math.abs(index - center) > RECENTER_THRESHOLD ? index : center))
+  }, [index])
 
   const start = Math.max(0, windowCenter - WINDOW_RADIUS)
   const end = Math.min(engine.count, windowCenter + WINDOW_RADIUS)

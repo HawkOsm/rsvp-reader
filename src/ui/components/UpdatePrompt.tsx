@@ -1,4 +1,5 @@
 import { useRegisterSW } from 'virtual:pwa-register/react'
+import { Button } from './Button'
 
 /**
  * "Prompt to update" per the plan: a new service-worker version never
@@ -21,31 +22,28 @@ export function UpdatePrompt() {
         {needRefresh ? (
           <>
             <span>A new version is ready.</span>
-            <button
-              type="button"
+            <Button
               onClick={() => void updateServiceWorker(true)}
-              className="rounded bg-[var(--color-accent)] px-3 py-1 font-medium text-[var(--color-bg)]"
+              variant="primary"
             >
               Reload
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
               onClick={() => setNeedRefresh(false)}
-              className="text-[var(--color-text-dim)]"
+              variant="link"
             >
               Later
-            </button>
+            </Button>
           </>
         ) : (
           <>
             <span>Ready to read offline.</span>
-            <button
-              type="button"
+            <Button
               onClick={() => setOfflineReady(false)}
-              className="text-[var(--color-text-dim)]"
+              variant="link"
             >
               Dismiss
-            </button>
+            </Button>
           </>
         )}
       </div>

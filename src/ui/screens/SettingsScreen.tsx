@@ -49,7 +49,7 @@ export function SettingsScreen() {
           Default WPM (used for newly-opened books)
           <WpmInput
             value={defaultWpm}
-            onCommit={setDefaultWpm}
+            onCommit={setDefaultWpm} // Check the WpmInput component for details on how this works
             className="rounded border border-[var(--color-border)] bg-[var(--color-bg-raised)] px-2 py-1"
           />
         </label>

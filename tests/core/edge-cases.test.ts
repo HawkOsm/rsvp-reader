@@ -6,9 +6,8 @@ import { makeToken } from '../../src/core/types'
 
 // Expected values below were computed by calling rsvp_engine.py's
 // delay_for()/orp_index() directly on the same inputs (not re-derived by
-// hand), so this is a small hand-picked parity check rather than a guess
-// at what "should" happen. See tests/parity/ for the bulk fixture-driven
-// version of the same check.
+// hand), so this is a small hand-picked check rather than a guess
+// at what "should" happen.
 const WORD_CASES: {
   word: string
   orp: number

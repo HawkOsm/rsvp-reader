@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { cachedSearch } from '../gutendex-cache'
 import { GutendexError, type GutendexBook } from '../../sources/gutendex'
 import { importGutendexBook } from '../import-book'
+import { Button } from '../components/Button'
 
 const DEBOUNCE_MS = 300
 const LANGUAGE_CHOICES = [
@@ -69,9 +70,9 @@ export function SearchScreen() {
   return (
     <div className="flex min-h-screen flex-col gap-4 bg-[var(--color-bg)] p-6 text-[var(--color-text)]">
       <div className="flex items-center gap-4">
-        <button type="button" onClick={() => navigate('/')} className="text-sm text-[var(--color-text-dim)]">
+        <Button onClick={() => navigate('/')} variant="link">
           ← Library
-        </button>
+        </Button>
         <h1 className="text-xl font-semibold">Find a book</h1>
       </div>
 
@@ -120,14 +121,13 @@ export function SearchScreen() {
                 {book.downloadCount.toLocaleString()} downloads
               </p>
             </div>
-            <button
-              type="button"
+            <Button
               disabled={importingId === book.id}
               onClick={() => void onImport(book)}
-              className="shrink-0 rounded bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-bg)] disabled:opacity-50"
+              variant="primary" className="shrink-0"
             >
               {importingId === book.id ? 'Adding…' : 'Add'}
-            </button>
+            </Button>
           </li>
         ))}
       </ul>
