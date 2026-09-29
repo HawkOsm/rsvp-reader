@@ -728,3 +728,59 @@ deferred with everything else:
     land on the exact right word (index 1 of 3) — the same
     live-verification standard used throughout this migration, applied to
     the one Phase 10 item that didn't require two weeks to check.
+
+### Old code retired early, at the user's explicit request
+
+The rest of Phase 10 stayed blocked on the two-week usage gate right up
+until the user directly asked to "clean the old codes" — overriding that
+gate deliberately, not something this session decided on its own. Once
+asked, the archival step itself was mechanical and low-risk (full git
+history, plus the `v-legacy` tag, made every removed file recoverable),
+so it went ahead rather than re-litigating a call the user had just made:
+
+- **`legacy` branch created from the `v-legacy` tag** (not from `next`,
+  which now has old and new code intermixed) and pushed to `origin` —
+  durable, not just a local ref. It's an exact copy of the pre-migration
+  state: PyQt6 (`main.py`, `db.py`, `text_extract.py`, `pdf_render.py`,
+  `rsvp_engine.py`, `ui/`), the old vanilla-JS PWA (`web/`), and the
+  original Kotlin Android app still at its original `android/` path
+  (predates the Phase 8 rename to `android-legacy-kotlin/` entirely,
+  since `v-legacy` was tagged before any migration work began).
+- **Removed from `next`**: all of the above, plus the Python
+  packaging/dev scripts (`install.sh`, `serve.py`, `rsvp-reader.spec`,
+  `requirements.txt`, the `rsvp-reader` launcher), the old icon-generation
+  scripts in `tools/` (superseded by `pnpm tauri icon` and
+  `@capacitor/assets`), and the local `.venv/` (not tracked by git, but
+  no longer useful without `rsvp_engine.py`/`text_extract.py` to import).
+  Checked first that nothing in the active codebase or test suite
+  actually imports any of it — the handful of hits were all comments
+  documenting the Python origin of a port (`// Ported from
+  rsvp_engine.py's RsvpEngine`, etc.), which stayed, since they're still
+  accurate and still useful context.
+  - One real dependency, not just a comment:
+    `tests/parity/generate_fixtures.py` (Phase 1's golden-fixture
+    generator) does `from rsvp_engine import ...` for real. It doesn't
+    need to run for the test suite to pass — the fixture JSON it produces
+    is already committed — but it would need `rsvp_engine.py`/
+    `text_extract.py` checked out from `legacy` to run again. Its
+    docstring now says so explicitly, rather than just silently breaking
+    for whoever tries it next.
+- **`docs/`'s three screenshots removed**, not kept — they showed the old
+  PyQt6 UI, which no longer exists in this tree, and a screenshot of a
+  removed interface is actively misleading in a way that stale prose
+  isn't. New ones weren't generated to replace them: capturing a
+  screenshot in this session's Browser pane produces an image visible in
+  the conversation, but there's no tool available here to save that image
+  to a file on disk for the repo — a real tooling gap, not a skipped
+  step. Whoever next has a real browser handy can add them back.
+- **`README.md` rewritten** — kept what still holds exactly as it was
+  (the keyboard shortcut tables, the pacing table and its formula, the
+  "fully local, no telemetry" claims, the GPL rationale reshaped around
+  the Phase 9 relicensing decision instead of PyQt6/PyMuPDF forcing it),
+  replaced what changed (build instructions for four targets instead of
+  one Python install, the storage section now describing Dexie/IndexedDB
+  and pointing at the Phase 10 migration above, the file-layout table).
+  Download links for the desktop/Android releases point at GitHub
+  Releases as before, but nothing has actually been released from this
+  codebase yet — those links resolve once `release.yml` (Phase 9) is
+  actually run against a real tag.

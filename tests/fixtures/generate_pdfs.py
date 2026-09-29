@@ -2,6 +2,10 @@
 PDF and a PDF with words hyphenated across line breaks. Source text is a
 public-domain excerpt from the Jekyll & Hyde fixture already in
 tests/fixtures/.
+
+Only needed to regenerate the fixtures, not to run the test suite — the
+generated PDFs are already committed. Needs `pip install reportlab
+pymupdf` in a venv; none is checked into the repo.
 """
 import re
 from pathlib import Path
