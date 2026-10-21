@@ -24,3 +24,8 @@ export interface ParseProgress {
 }
 
 export type ProgressCallback = (progress: ParseProgress) => void
+
+export interface ParseOptions {
+  onProgress?: ProgressCallback
+  signal?: AbortSignal
+}

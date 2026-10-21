@@ -3,7 +3,7 @@ import { getDocument, VerbosityLevel } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { ExtractionError } from '../errors'
 import { chooseTitle } from '../title'
-import type { ParseResult, ProgressCallback } from '../types'
+import type { ParseResult, ParseOptions } from '../types'
 import { sortReadingOrder } from './columns'
 import { flattenPdfWords } from './flatten'
 import { itemsToLines } from './lines'
@@ -15,12 +15,7 @@ import type { PdfTextItem, RawLine } from './types'
  * with no text layer rather than a thin page of real prose. */
 const SCANNED_PDF_WORDS_PER_PAGE = 5
 
-export interface ParsePdfOptions {
-  onProgress?: ProgressCallback
-  signal?: AbortSignal
-}
-
-export async function parsePdf(file: File, options: ParsePdfOptions = {}): Promise<ParseResult> {
+export async function parsePdf(file: File, options: ParseOptions = {}): Promise<ParseResult> {
   const data = new Uint8Array(await file.arrayBuffer())
   let doc: PDFDocumentProxy
   try {

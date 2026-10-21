@@ -1,16 +1,11 @@
 import { tokenizeText } from '../core/tokenize'
 import { ExtractionError } from './errors'
+import { extensionOf } from './file-name'
 import { stripMarkdown } from './markdown'
 import { titleFromFileName } from './title'
 import type { ParseResult } from './types'
 
-export const TEXT_EXTENSIONS = new Set(['txt', 'md', 'markdown', 'text', 'rst', 'org'])
 const MARKDOWN_EXTENSIONS = new Set(['md', 'markdown'])
-
-function extensionOf(fileName: string): string {
-  const idx = fileName.lastIndexOf('.')
-  return idx >= 0 ? fileName.slice(idx + 1).toLowerCase() : ''
-}
 
 /** UTF-8 first; old Turkish files saved as Windows-1254 fail UTF-8
  * decoding (it's not a superset), so that's the fallback — mirrors

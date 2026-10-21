@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ACCEPTED_EXTENSIONS } from '../../parse/formats'
 import { ExtractionError } from '../../parse'
 import {
   getProgress,
@@ -138,7 +139,7 @@ export function LibraryScreen() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".txt,.md,.markdown,.text,.rst,.org,.pdf,.epub"
+          accept={ACCEPTED_EXTENSIONS.join(',')}
           className="hidden"
           onChange={onFilePicked}
           aria-label="Add book"

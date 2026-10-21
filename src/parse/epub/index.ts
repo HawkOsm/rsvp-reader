@@ -3,19 +3,14 @@ import { tokenize } from '../../core/tokenize'
 import type { Token } from '../../core/types'
 import { ExtractionError } from '../errors'
 import { titleFromFileName } from '../title'
-import type { ParsedChapter, ParseResult, ProgressCallback } from '../types'
+import type { ParsedChapter, ParseResult, ParseOptions } from '../types'
 import { extractBlocks } from './content'
 import { parseContainer, parseOpf } from './opf'
 import { dirname, resolveEpubPath } from './path'
 
 const CHAPTER_HEADING_TAGS = new Set(['h1', 'h2'])
 
-export interface ParseEpubOptions {
-  onProgress?: ProgressCallback
-  signal?: AbortSignal
-}
-
-export async function parseEpub(file: File, options: ParseEpubOptions = {}): Promise<ParseResult> {
+export async function parseEpub(file: File, options: ParseOptions = {}): Promise<ParseResult> {
   let zip: JSZip
   try {
     zip = await JSZip.loadAsync(file)
