@@ -71,62 +71,30 @@ The book record replaces `pages?: number` with a discriminated union:
 `layout: { kind: 'paged', pages } | { kind: 'reflow' }`, plus an optional chapters list. The
 compiler then forces every UI branch to handle both cases.
 
-## 5. PDF engine: MuPDF for extraction and rendering
+## 5. PDF engine: MuPDF for extraction, rendering and OCR input
 
-One engine does everything PDF: extraction, page rendering, and (later) feeding OCR. pdf.js is
-removed once the acceptance check in section 8 passes, which also pays back part of MuPDF's
-size (`mupdf` is ~14 MB unpacked; pdf.js and its worker go away).
+One engine does everything PDF. pdf.js is gone. See the end of `DECISIONS.md` for the
+reasoning and the measurements; this is the shape.
 
-### Extractor Strategy
-
-A `PdfExtractor` is selected at import, **automatically** for now:
-
-| Extractor | Role | Status |
-|---|---|---|
-| `mupdf` | default for any PDF with a text layer | new; lazy-loaded WASM |
-| `ocr` | PDF with no usable text layer | in scope; see below |
-| `pdfjs` | current implementation | transitional fallback only; deleted after the acceptance check |
-
-Auto-pick: try `mupdf`; if the result is under the existing "words per page" threshold
-(`SCANNED_PDF_WORDS_PER_PAGE`), the file is classed as scanned and `ocr` is offered. If automatic
-choice proves wrong, add a setting to force an extractor, or a hybrid (per-page: text layer where
-present, OCR for pages without). The seam is built so either is an additive change.
-
-All extractors return the same token shape and bbox convention.
-
-### OCR
-
-`tesseract.js` (Apache-2.0, WASM, offline). It is slow, so it is **opt-in per file with a
-visible progress bar and cancel**, never silent. Page images for OCR come from MuPDF's renderer,
-so no second engine is needed. Tesseract reports word boxes in image pixels; they are converted
-to the bbox convention using the render scale. OCR'd books are marked as such on the record,
-since their quality differs from a real text layer.
-
-### Rendering
-
-Parsing today uses one throwaway worker per file. Rendering needs the opposite: a **long-lived
-render worker that holds the open document** and answers `pageSizes`, `renderPage(page, scale)`
-(returns a transferable bitmap) and cancellation, so flipping pages does not reparse the file.
-Parse worker and render worker share the same MuPDF wrapper module but have different
-lifecycles; both stay in worker-safe code.
-
-Things the pdf.js version gave for free that must be rebuilt:
-
-- **Selectable text layer.** `PdfPageView` uses pdf.js `TextLayer`. Replacement: an invisible
-  text layer built from MuPDF's structured text (or from the page's own tokens, which already
-  carry word boxes). Decide which when this is built; tokens are simpler but only cover
-  extracted words.
-- **Viewport maths.** `convertToViewportPoint` / `convertToPdfPoint` (highlight and
-  click-to-word) become small pure functions in `formats/pdf/`, covered by unit tests.
-- **Cancellation** of an in-flight render when a newer one is requested.
-- **Fit scales** (`fitScales` in `book-nav.ts`) only need page sizes at scale 1, so they carry
-  over unchanged.
-
-### Coordinate convention
-
-`Token.bbox` drives the highlight and click-to-word. MuPDF and pdf.js disagree on origin. The
-convention is fixed once, in `core/types.ts` (PDF points, one stated origin), and the extractors,
-the renderer's viewport maths and OCR conversion all go through one shared helper.
+- `src/pdf/document.ts` is the only code that touches MuPDF. `PdfDocument`: page count, title,
+  page size and user-to-page transform, lines (MuPDF's block order), render, close.
+- `src/pdf/service.ts` + `pdf.worker.ts`: **one long-lived worker** serves import (`parse`) and the
+  open book (`open`, `pageSize`, `render`, `lines`, `close`), so a phone holds one engine. Renders
+  go through a queue that coalesces and honours cancel. `src/pdf/client.ts` is the main-thread
+  side: idle shutdown, crash recovery (`onLost`), cached sizes and lines.
+- `src/parse/pdf/extract.ts` turns a `PdfDocument` into tokens: `extractPdf` for a text layer,
+  and `linesToTokens` (shared with OCR) for header/footer removal, letter-spaced heading joining,
+  paragraph ends (a block change), hyphen rejoining.
+- `src/ocr/`: scanned PDFs (`NoTextLayerError`) are offered OCR, never run silently.
+  `extractByOcr` draws each page through the same worker and `recognizer.ts` reads it with
+  Tesseract (bundled English and Turkish data, `public/ocr/`). Lines are grouped by Tesseract's
+  layout block. Start-up is guarded against hangs (`startup.ts`).
+- Coordinates: `Token.bbox` is y-up. New books store it on the displayed page
+  (`layout.boxSpace: 'displayed'`); legacy books (no marker) store raw user space and are
+  converted with the page's transform. All of it is in `src/pdf/geometry.ts`.
+- The page view (`PdfPageView`) draws the worker's RGBA bitmap onto a canvas, puts the highlight
+  over the token's box, and lays a transparent text layer (`PdfTextLayer`, one span per MuPDF
+  line, with line breaks so copying keeps them) over it.
 
 ## 6. Pacing
 
@@ -162,9 +130,11 @@ when a second profile is wanted. Deferred.
    enough; the separate capabilities descriptor from section 4 is not needed yet (add it when a
    format needs something `paged`/`reflow` cannot express, e.g. chapters). The view registry is
    deferred too: until the MuPDF work, `paged` means the PDF renderer (`PagePanel`).
-4. MuPDF wrapper + `PdfExtractor` seam; compare against `pdfjs` and the Python reference.
-5. MuPDF render worker, text layer and viewport maths; then delete pdf.js.
-6. OCR extractor and its opt-in UI.
+4. MuPDF wrapper + extractor; compared against the Python reference. **Done.** The `PdfExtractor`
+   seam was not built: with pdf.js gone there is one text extractor (`extractPdf`) and OCR
+   (`extractByOcr`), sharing `linesToTokens`.
+5. MuPDF render worker, text layer and viewport maths; then delete pdf.js. **Done.**
+6. OCR extractor and its opt-in UI. **Done.**
 7. Bundled cleanups (section 7). **Done** for `book-nav`/`book-scroll`, the `arriveAtBottom` flag
    and `useLoadedBook`; the legacy `kind` field is still in the v2 migration types on purpose.
 8. Later, separately: injectable pacing, extractor setting / hybrid, sync.
@@ -183,4 +153,4 @@ when a second profile is wanted. Deferred.
 
 ## 11. Open questions
 
-None blocking. Revisit once the render worker exists.
+None. (The text layer is built from MuPDF's lines, and one worker serves import and reading.)

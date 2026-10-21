@@ -828,3 +828,103 @@ plain, version-free names — `rsvp-reader-linux-x86_64.AppImage`,
 `rsvp-reader.apk` — via `tauri build --bundles` instead of tauri-action, and
 a final `publish` job attaches them with `gh`. If the token still can't
 create the release, create the draft by hand and re-run only that job.
+
+## PDF engine: MuPDF, and OCR
+
+Moved PDF reading, page drawing and scanned-PDF OCR off pdf.js and onto
+MuPDF (WebAssembly, `mupdf` on npm) and Tesseract (`tesseract.js`). Design in
+`docs/ARCHITECTURE.md`.
+
+- **Why MuPDF.** The original Python reader used PyMuPDF, and its extraction
+  was visibly better than pdf.js's (real glyph boxes, MuPDF's own block and
+  reading order, no guessing columns from x positions). `mupdf` is the same
+  engine compiled to WebAssembly, so it runs offline in the PWA, Tauri and
+  Android alike with no server. The new extractor reproduces the legacy
+  Python output exactly on the PDF fixtures (words, paragraph ends, page
+  starts): `tests/parse/pdf-legacy-parity.test.ts` against
+  `tests/fixtures/legacy-pdf/`.
+- **Cost, accepted.** `mupdf` is AGPL-3.0-or-later (see `THIRD_PARTY.md`), so
+  relicensing to something permissive is no longer free, and its ~10 MB
+  WebAssembly module is precached by the PWA so PDFs still open offline. The
+  main bundle got smaller (pdf.js left it).
+- **One worker, one engine.** A single long-lived PDF worker both reads a PDF
+  at import and keeps the open book for drawing, so a phone holds one copy of
+  the engine. It is stopped after 30 s unused. Workers are built as ES
+  modules because MuPDF awaits its WebAssembly at the top level.
+- **Coordinates.** `Token.bbox` is PDF-style (origin bottom-left, y up). MuPDF
+  and the screen are y-down; every conversion is in `src/pdf/geometry.ts`.
+  New imports store boxes on the page *as displayed* (rotation and crop
+  applied) and say so: `layout.boxSpace: 'displayed'`. Books imported by the
+  pdf.js versions have no marker; their boxes are in raw PDF user space, and
+  on a rotated page or one with an offset box that is nowhere near where the
+  page is drawn. So for them the page view takes the page's own
+  user-to-page transform from the worker (`PDFPage.getTransform()`) and
+  converts on the fly (`userBoxToScreen` / `screenToUserPoint`), tested
+  against rotated, offset and cropped pages built by hand
+  (`tests/pdf/legacy-boxes.test.ts`). On an ordinary page the transform is a
+  plain flip, so nothing changes for them.
+- **Paragraphs.** A change of MuPDF block is a paragraph end, as in the
+  Python reader; the old gap-between-lines guess and the x-position column
+  sorter are gone. Running headers/footers are still dropped.
+- **OCR.** A PDF with under five words a page is offered OCR (never run
+  silently: it takes seconds a page). Tesseract's LSTM engine with bundled
+  English and Turkish data, drawn at 3x. Lines are grouped by Tesseract's
+  layout *block*, not its paragraphs, which split plain paragraphs after a
+  short first line. OCR'd books are flagged (`ocr: true`) and have no
+  selectable text layer, since there is no text in the file.
+- **OCR assets** (`public/ocr/`, copied from `node_modules` by
+  `scripts/copy-ocr-assets.mjs` before `dev`/`build`, git-ignored) are
+  deliberately outside the PWA precache and cached on first use. They are
+  fetched from fixed URLs rather than passed in as bytes because
+  tesseract.js 7.0.0 uses `Lang.data` as the language *name* when given
+  `{code, data}`.
+- **Error classes now cross the worker boundary.** Messages like "This PDF is
+  password protected" were being lost: errors became plain `Error`s on the way
+  out of the worker, so the library screen only ever showed "Could not add
+  that file." (`parse/worker-errors.ts`.)
+- **Small behaviour fixes made on the way:** hyphen rejoining now treats any
+  lowercase letter (not just a-z) as a continuation, so Turkish words rejoin.
+- **Drawing is cancellable and bounded.** The PDF worker keeps renders in a
+  queue of its own, one at a time with a gap between, and drops a render
+  whose page has been asked for again or whose request was cancelled before
+  it started. The page view cancels the draw it supersedes (a resize, a page
+  turn). Without it, every width change queued an 8-48 MB bitmap.
+- **The client survives the engine dying.** Open books are tracked by id; a
+  crash tells each handle (`onLost`), which stops answering, and
+  `usePdfDocument` reopens the book (up to 3 times). Previously a handle kept
+  sending to a fresh worker that had never opened it, and the open-book count
+  could go negative and let the idle timer kill the worker under a book.
+- **Older browsers.** MuPDF's WebAssembly needs exception handling (Chrome
+  and WebView 95, Safari 15.2, Firefox 100). The APK declares
+  `minWebViewVersion: 95` with `server.errorPath` pointing at
+  `webview-too-old.html` (Capacitor only logs the version check unless an
+  error page is set), so an old WebView shows "update Android System
+  WebView" instead of a broken app; a PWA in an older browser gets "This
+  browser is too old to open PDFs" when a PDF is added. pdf.js's legacy build ran on
+  older engines; this is the price of the engine.
+- **Letter-spaced headings** ("C H A P T E R  O N E") come out of MuPDF, as
+  they did out of PyMuPDF, as one-letter words. A line made only of single
+  capital letters (five or more) and short numbers is joined back into words
+  by the width of the gaps. Not applied to digits, lowercase, symbols or
+  short runs, which would turn `1 2 3 4 5` into `12345`.
+- **OCR can no longer hang.** tesseract.js 7.0.0 never settles `createWorker`
+  if the language data fails to load, so start-up is raced against its error
+  handler, a timeout and the cancel button, and a worker that starts late is
+  shut down (`ocr/startup.ts`). The files are checked fetchable first, so the
+  failure is a message ("connect once to download"), not a spinner. Cancel
+  also interrupts the page being recognised, not just between pages.
+- **Offline OCR needs one online use per language.** The engine and language
+  data are not precached; the service worker caches them on first use, in a
+  cache named for the tesseract.js version (older versions' caches are left
+  behind; they are never read). tesseract.js and tesseract.js-core are both
+  pinned exactly, because the engine files are copied from the latter.
+- **Import is one at a time and dies with the screen.** The library refuses a
+  second import while one runs, aborts it on leaving, and hands back a book
+  already in the library instead of reading (or OCRing) it again.
+- **Hyphenated word that ends a paragraph:** when a paragraph's last line is
+  only the tail of a hyphenated word, the paragraph pause is kept (it was
+  lost).
+- **Known and left alone:** a hyphen split across a page or block break puts
+  the paragraph pause one word early (as in the Python reader); the parse
+  worker's bundle still contains an unused copy of the MuPDF loader (~88 KB);
+  the OCR'd flag is shown as a small "OCR" tag in the library and nowhere else.

@@ -3,7 +3,7 @@ import { dropRepeatedHeadersFooters } from '../../../src/parse/pdf/repeats'
 import type { RawLine } from '../../../src/parse/pdf/types'
 
 function line(text: string): RawLine {
-  return { page: 0, x0: 72, y: 700, words: [{ text, page: 0, bbox: [72, 700, 100, 712] }] }
+  return { page: 0, block: 0, words: [{ text, page: 0, bbox: [72, 700, 100, 712] }] }
 }
 
 function page(header: string, body: string[], footer: string): RawLine[] {

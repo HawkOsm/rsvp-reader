@@ -1,21 +1,38 @@
-import { TextLayer } from 'pdfjs-dist/legacy/build/pdf.mjs'
-import './pdf-text-layer.css'
-import type { PDFDocumentProxy, PageViewport, RenderTask } from 'pdfjs-dist'
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
+import type { PdfHandle } from '../../pdf/client'
+import type { PageLine, PageSize } from '../../pdf/document'
+import {
+  screenToTokenPoint,
+  screenToUserPoint,
+  tokenBoxToScreen,
+  userBoxToScreen,
+  type Box,
+} from '../../pdf/geometry'
 import { wordAt } from '../book-nav'
 import { useEngine } from '../engine-context'
+import { PdfTextLayer } from './PdfTextLayer'
 
 /** Cap on the render density, so a 4K screen doesn't render giant bitmaps. */
 const MAX_PIXEL_RATIO = 3
 
 interface PdfPageViewProps {
-  doc: PDFDocumentProxy
+  doc: PdfHandle
   pageIndex: number
   boxWidth: number
   scale: number | undefined
-  highlight: [number, number, number, number] | null
+  highlight: Box | null
   peek: boolean
+  /** The book's boxes are in raw PDF user space (imported before MuPDF). */
+  legacyBoxes: boolean
   onReady: () => void
+}
+
+/** What the page is currently drawn as: its size in points, and the CSS
+ * pixels per point it was drawn at. */
+interface Drawn {
+  size: PageSize
+  scale: number
+  lines: PageLine[]
 }
 
 /** One rendered page: canvas, then the word highlight, then a text layer.
@@ -28,82 +45,61 @@ export function PdfPageView({
   scale,
   highlight,
   peek,
+  legacyBoxes,
   onReady,
 }: PdfPageViewProps) {
   const engine = useEngine()
   const markRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const textRef = useRef<HTMLDivElement>(null)
-  const [viewport, setViewport] = useState<PageViewport | null>(null)
+  const [drawn, setDrawn] = useState<Drawn | null>(null)
   const onReadyRef = useRef(onReady)
   onReadyRef.current = onReady
 
   useEffect(() => {
     let cancelled = false
-    let renderTask: RenderTask | null = null
-    let layer: TextLayer | null = null
+    // Leaving this render superseded (a new scale, another page) cancels the
+    // draw in the worker if it has not started, instead of letting it queue.
+    const drawing = new AbortController()
 
-    void doc.getPage(pageIndex + 1).then(async (page) => {
-      const canvas = canvasRef.current
-      const host = textRef.current
-      if (cancelled || !canvas || !host) return
-
-      const unscaled = page.getViewport({ scale: 1 })
-      const next = page.getViewport({ scale: Math.max(0.1, scale ?? boxWidth / unscaled.width) })
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
-
+    void (async () => {
+      const pageSize = await doc.pageSize(pageIndex)
+      if (cancelled) return
+      const cssScale = Math.max(0.1, scale ?? boxWidth / pageSize.width)
       // Draw at the screen's real pixel density, then size the canvas back
       // down to CSS pixels — otherwise the browser stretches a low-res
       // bitmap over the page and the text goes soft.
       const ratio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO)
-      canvas.width = Math.floor(next.width * ratio)
-      canvas.height = Math.floor(next.height * ratio)
-      canvas.style.width = `${next.width}px`
-      canvas.style.height = `${next.height}px`
-      host.replaceChildren()
-      host.style.setProperty('--total-scale-factor', String(next.scale))
-      setViewport(next)
+      const [bitmap, lines] = await Promise.all([
+        doc.render(pageIndex, cssScale * ratio, { signal: drawing.signal }),
+        doc.lines(pageIndex),
+      ])
+      const canvas = canvasRef.current
+      const ctx = canvas?.getContext('2d')
+      if (cancelled || !canvas || !ctx) return
 
-      layer = new TextLayer({
-        textContentSource: page.streamTextContent(),
-        container: host,
-        viewport: next,
-      })
-      layer.render().catch(() => {})
-
-      renderTask = page.render({
-        canvasContext: ctx,
-        viewport: next,
-        canvas,
-        transform: [ratio, 0, 0, ratio, 0, 0],
-      })
-      try {
-        await renderTask.promise
-        if (!cancelled) onReadyRef.current()
-      } catch {
-        // cancelled by a newer render — nothing to do
-      }
+      canvas.width = bitmap.width
+      canvas.height = bitmap.height
+      canvas.style.width = `${pageSize.width * cssScale}px`
+      canvas.style.height = `${pageSize.height * cssScale}px`
+      ctx.putImageData(new ImageData(bitmap.rgba, bitmap.width, bitmap.height), 0, 0)
+      setDrawn({ size: pageSize, scale: cssScale, lines })
+      onReadyRef.current()
+    })().catch(() => {
+      // The document was closed or replaced while this was in flight.
     })
 
     return () => {
       cancelled = true
-      renderTask?.cancel()
-      layer?.cancel()
+      drawing.abort()
     }
-  }, [doc, pageIndex, boxWidth, scale])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `boxWidth` only matters when there is no `scale`
+  }, [doc, pageIndex, scale === undefined ? boxWidth : null, scale])
 
   let mark: { left: number; top: number; width: number; height: number } | null = null
-  if (viewport && highlight) {
-    const [x0, y0, x1, y1] = highlight
-    const [rx0, ry0] = viewport.convertToViewportPoint(x0, y0)
-    const [rx1, ry1] = viewport.convertToViewportPoint(x1, y1)
-    mark = {
-      left: Math.min(rx0, rx1),
-      top: Math.min(ry0, ry1),
-      width: Math.abs(rx1 - rx0),
-      height: Math.abs(ry1 - ry0),
-    }
+  if (drawn && highlight) {
+    mark = legacyBoxes
+      ? userBoxToScreen(highlight, drawn.size.userToPage, drawn.scale)
+      : tokenBoxToScreen(highlight, drawn.size.height, drawn.scale)
   }
 
   // Keep the word being read in view as it moves down the page.
@@ -114,9 +110,21 @@ export function PdfPageView({
 
   /** Click a word to jump there — unless the click ends a text selection. */
   function onClick(event: MouseEvent<HTMLDivElement>) {
-    if (!peek || !viewport || !window.getSelection()?.isCollapsed) return
+    if (!peek || !drawn || !window.getSelection()?.isCollapsed) return
     const rect = event.currentTarget.getBoundingClientRect()
-    const [x, y] = viewport.convertToPdfPoint(event.clientX - rect.left, event.clientY - rect.top)
+    const [x, y] = legacyBoxes
+      ? screenToUserPoint(
+          event.clientX - rect.left,
+          event.clientY - rect.top,
+          drawn.size.userToPage,
+          drawn.scale,
+        )
+      : screenToTokenPoint(
+          event.clientX - rect.left,
+          event.clientY - rect.top,
+          drawn.size.height,
+          drawn.scale,
+        )
     const hit = wordAt(engine.tokens, pageIndex, x, y)
     if (hit !== null) engine.seek(hit)
   }
@@ -124,7 +132,11 @@ export function PdfPageView({
   return (
     <div
       className="relative shadow-lg"
-      style={viewport ? { width: viewport.width, height: viewport.height } : undefined}
+      style={
+        drawn
+          ? { width: drawn.size.width * drawn.scale, height: drawn.size.height * drawn.scale }
+          : undefined
+      }
       onClick={onClick}
     >
       <canvas ref={canvasRef} className="block" />
@@ -135,7 +147,7 @@ export function PdfPageView({
           style={{ ...mark, background: 'rgba(255, 90, 95, 0.35)' }}
         />
       )}
-      <div ref={textRef} className="textLayer" />
+      {drawn && <PdfTextLayer lines={drawn.lines} scale={drawn.scale} />}
     </div>
   )
 }

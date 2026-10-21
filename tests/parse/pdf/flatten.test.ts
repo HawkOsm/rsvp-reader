@@ -7,7 +7,7 @@ function word(text: string, page = 0): RawWord {
 }
 
 function line(page: number, words: string[]): RawLine {
-  return { page, x0: 0, y: 0, words: words.map((w) => word(w, page)) }
+  return { page, block: 0, words: words.map((w) => word(w, page)) }
 }
 
 describe('flattenPdfWords', () => {
@@ -15,6 +15,32 @@ describe('flattenPdfWords', () => {
     const lines = [line(0, ['extraor-']), line(0, ['dinary', 'stillness.'])]
     const tokens = flattenPdfWords(lines, [false, true])
     expect(tokens.map((t) => t.text)).toEqual(['extraordinary', 'stillness.'])
+  })
+
+  it('rejoins when the next word starts with a non-ASCII lowercase letter', () => {
+    const lines = [line(0, ['kitap-']), line(0, ['çılar.'])]
+    const tokens = flattenPdfWords(lines, [false, true])
+    expect(tokens.map((t) => t.text)).toEqual(['kitapçılar.'])
+  })
+
+  it('keeps the paragraph pause when the last line is only the tail of a hyphenated word', () => {
+    // "... infor-" / "mation." closes the paragraph, as the original reader did.
+    const lines = [line(0, ['Some', 'infor-']), line(0, ['mation.'])]
+    const tokens = flattenPdfWords(lines, [false, true])
+    expect(tokens.map((t) => [t.text, t.paraEnd])).toEqual([
+      ['Some', false],
+      ['information.', true],
+    ])
+  })
+
+  it('does not add a pause when the tail is mid-paragraph', () => {
+    const lines = [line(0, ['infor-']), line(0, ['mation', 'goes', 'on.'])]
+    const tokens = flattenPdfWords(lines, [false, true])
+    expect(tokens.map((t) => [t.text, t.paraEnd])).toEqual([
+      ['information', false],
+      ['goes', false],
+      ['on.', true],
+    ])
   })
 
   it('keeps the hyphen when the next word starts uppercase (a real hyphen, not a line break)', () => {

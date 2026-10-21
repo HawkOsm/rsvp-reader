@@ -29,6 +29,9 @@ export interface BookRecord {
    * web, so this (not a path) is what decides whether cached tokens are
    * still good. */
   fingerprint: string
+  /** The words were recognised from page images (OCR), not read from a
+   * text layer. */
+  ocr?: true
   addedAt: number
   lastOpenedAt: number | null
 }

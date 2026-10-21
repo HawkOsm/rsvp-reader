@@ -135,4 +135,16 @@ describe('LibraryScreen', () => {
     await user.click(screen.getByRole('button', { name: 'Settings' }))
     expect(await screen.findByTestId('settings-screen')).toBeInTheDocument()
   })
+
+  it('marks a book whose text was recognised from images', async () => {
+    const db = getDb()
+    await addBook(db, { title: 'Scanned', source: 'local', fingerprint: 'ocr1', ...TEXT_BOOK, ocr: true })
+    await addBook(db, { title: 'Normal', source: 'local', fingerprint: 'ocr2', ...TEXT_BOOK })
+    renderLibrary()
+    const rows = await screen.findAllByTestId('book-row')
+    const scanned = rows.find((row) => row.textContent?.includes('Scanned'))
+    const normal = rows.find((row) => row.textContent?.includes('Normal'))
+    expect(scanned).toHaveTextContent('OCR')
+    expect(normal).not.toHaveTextContent('OCR')
+  })
 })

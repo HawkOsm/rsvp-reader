@@ -1,4 +1,7 @@
+import { pdfClient } from '../pdf/client'
+import { formatOfFileName } from './formats'
 import type { ParseResult } from './types'
+import { reviveError } from './worker-errors'
 import type { WorkerRequest, WorkerResponse } from './parse.worker'
 
 export interface ParseFileInWorkerOptions {
@@ -7,7 +10,8 @@ export interface ParseFileInWorkerOptions {
 }
 
 /**
- * Main-thread entry point: parse a file off the UI thread. Spins up a
+ * Main-thread entry point: parse a file off the UI thread. PDFs go to the
+ * shared PDF worker (pdf/client.ts). Anything else spins up a
  * fresh dedicated worker per call and terminates it when done, cancelled,
  * or errored — see parse.worker.ts for why one worker only ever handles
  * one file.
@@ -21,6 +25,9 @@ export function parseFileInWorker(
   file: File,
   options: ParseFileInWorkerOptions = {},
 ): Promise<ParseResult> {
+  // PDFs are read by the shared PDF worker, which also renders the pages.
+  if (formatOfFileName(file.name) === 'pdf') return pdfClient.parse(file, options)
+
   const worker = new Worker(new URL('./parse.worker.ts', import.meta.url), { type: 'module' })
 
   return new Promise((resolve, reject) => {
@@ -45,7 +52,7 @@ export function parseFileInWorker(
         resolve(message.result)
       } else if (message.type === 'error') {
         cleanup()
-        reject(new Error(message.message))
+        reject(reviveError(message.kind, message.message))
       }
     }
 

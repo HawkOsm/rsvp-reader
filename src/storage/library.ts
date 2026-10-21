@@ -19,6 +19,7 @@ export interface AddBookInput {
   fingerprint: string
   formatId: FormatId
   layout: ContentLayout
+  ocr?: true
 }
 
 /** Add a book, or return the existing row if it's already in the library. */
@@ -33,6 +34,7 @@ export async function addBook(db: RsvpDatabase, input: AddBookInput): Promise<Bo
     fingerprint: input.fingerprint,
     formatId: input.formatId,
     layout: input.layout,
+    ...(input.ocr && { ocr: true as const }),
     addedAt: Date.now(),
     lastOpenedAt: null,
   })

@@ -13,6 +13,9 @@ export interface ParseResult {
   tokens: Token[]
   formatId: FormatId
   layout: ContentLayout
+  /** The words were recognised from page images, not read from a text
+   * layer, so expect the odd mistake. */
+  ocr?: true
   /** EPUBs only — lets the UI offer a chapter jump. */
   chapters?: ParsedChapter[]
 }

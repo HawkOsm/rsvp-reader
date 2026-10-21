@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { ExtractionError } from '../../src/parse/errors'
@@ -14,7 +15,7 @@ describe('parsePdf', () => {
     const result = await parsePdf(fileFrom(`${FIXTURES}/hyphenated-line-breaks.pdf`, 'h.pdf'))
 
     expect(result.title).toBe('Hyphenated Line Breaks')
-    expect(result.layout).toEqual({ kind: 'paged', pages: 1 })
+    expect(result.layout).toEqual({ kind: 'paged', pages: 1, boxSpace: 'displayed' })
     // "self-\nsame" and "half-\nremembered" both rejoin without a hyphen —
     // the next word starts lowercase, so the heuristic (shared with
     // rsvp_engine.py's tokenize_pdf) reads them as line-break artifacts,
@@ -140,5 +141,40 @@ describe('parsePdf', () => {
         signal: controller.signal,
       }),
     ).rejects.toMatchObject({ name: 'AbortError' })
+  })
+
+  it('stops part-way when cancelled during the read', async () => {
+    const controller = new AbortController()
+    await expect(
+      parsePdf(fileFrom(`${FIXTURES}/two-column-text.pdf`, 't.pdf'), {
+        signal: controller.signal,
+        // Cancel as soon as the first of three pages is done.
+        onProgress: (p) => p.fraction < 1 && controller.abort(),
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' })
+  })
+
+  it('reads a letter-spaced chapter heading as words, but leaves a row of numbers alone', async () => {
+    const result = await parsePdf(fileFrom(`${FIXTURES}/spaced-heading.pdf`, 's.pdf'))
+    const words = result.tokens.map((t) => t.text)
+    expect(words.slice(0, 2)).toEqual(['CHAPTER', 'ONE'])
+    expect(words.slice(2, 7)).toEqual(['1', '2', '3', '4', '5'])
+    expect(words.slice(7, 10)).toEqual(['It', 'was', 'the'])
+  })
+
+  it('stores word boxes on the page as displayed when the page is rotated', async () => {
+    const result = await parsePdf(fileFrom(`${FIXTURES}/rotated-page.pdf`, 'r.pdf'))
+    expect(result.tokens.slice(0, 5).map((t) => t.text)).toEqual(['The', 'quick', 'brown', 'fox', 'jumps'])
+    // The page is 612x792 turned on its side, so it is displayed 792 wide and 612 tall.
+    for (const token of result.tokens) {
+      const [x0, y0, x1, y1] = token.bbox as [number, number, number, number]
+      expect(x0).toBeGreaterThanOrEqual(0)
+      expect(x1).toBeLessThanOrEqual(792)
+      expect(y0).toBeGreaterThanOrEqual(0)
+      expect(y1).toBeLessThanOrEqual(612)
+      expect(x1).toBeGreaterThan(x0)
+      expect(y1).toBeGreaterThan(y0)
+    }
+    expect(result.layout).toMatchObject({ kind: 'paged', boxSpace: 'displayed' })
   })
 })

@@ -97,6 +97,41 @@ export function SettingsScreen() {
           )}
         </label>
       </section>
+
+      <section className="mt-8 flex max-w-xl flex-col gap-2 border-t border-[var(--color-border)] pt-4 text-sm text-[var(--color-text-dim)]">
+        <h2 className="text-base font-medium text-[var(--color-text)]">About and licences</h2>
+        <p>
+          RSVP Reader is free software under the GNU General Public License, version 3 or (at your
+          option) any later version. Its source code is at{' '}
+          <a
+            className="underline"
+            href="https://github.com/HawkOsm/rsvp-reader"
+            target="_blank"
+            rel="noreferrer"
+          >
+            github.com/HawkOsm/rsvp-reader
+          </a>
+          .
+        </p>
+        <p>
+          PDFs are read and drawn by{' '}
+          <a className="underline" href="https://mupdf.com" target="_blank" rel="noreferrer">
+            MuPDF
+          </a>
+          , © Artifex Software, under the GNU Affero General Public License, version 3 or later
+          (source:{' '}
+          <a
+            className="underline"
+            href="https://github.com/ArtifexSoftware/mupdf.js"
+            target="_blank"
+            rel="noreferrer"
+          >
+            github.com/ArtifexSoftware/mupdf.js
+          </a>
+          ). Scanned pages are recognised with Tesseract (Apache License 2.0). The full list is in{' '}
+          <code>THIRD_PARTY.md</code> in the source.
+        </p>
+      </section>
     </div>
   )
 }

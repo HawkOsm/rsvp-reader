@@ -4,7 +4,7 @@ import { loadParser } from './registry'
 import type { ParseOptions, ParseResult } from './types'
 
 export type { ParseOptions, ParseResult } from './types'
-export { ExtractionError } from './errors'
+export { ExtractionError, NoTextLayerError } from './errors'
 
 /**
  * File -> ParseResult, using whichever parser is registered for the

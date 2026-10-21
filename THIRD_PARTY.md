@@ -1,14 +1,36 @@
 # Third-party licenses
 
 This project (`src/`, `src-tauri/`) is GPL-3.0-or-later — see [LICENSE](LICENSE).
-Keeping that license end to end (rather than relicensing to something
-permissive, which the new TS/Rust stack would otherwise allow — see
-DECISIONS.md's Phase 9 log) meant one thing to actually check: that every
-dependency's license permits being distributed as part of a GPL-3.0-or-later
-work. All of them do — everything below is MIT/Apache-2.0/BSD/ISC/MPL-2.0/
-Zlib/Unicode-3.0 or a dual license that includes one of those, which the
+Every dependency's license has to permit being distributed as part of a
+GPL-3.0-or-later work. All of them do. Everything below is MIT/Apache-2.0/
+BSD/ISC/MPL-2.0/Zlib/Unicode-3.0 (or a dual license that includes one of
+those), which the
 [FSF's own compatibility guidance](https://www.gnu.org/licenses/license-list.html)
-treats as GPL-compatible.
+treats as GPL-compatible — with **one copyleft exception, MuPDF** (below).
+
+## MuPDF is AGPL-3.0-or-later
+
+`mupdf` (Artifex's MuPDF compiled to WebAssembly) reads and draws every PDF.
+It is the same engine PyMuPDF wrapped, and carries the same licence:
+AGPL-3.0-or-later (or a commercial licence from Artifex).
+
+- **It is compatible with this project.** GPLv3 section 13 and AGPLv3 section
+  13 explicitly allow combining the two, so the app is distributed under
+  GPL-3.0-or-later. Section 13 of GPLv3 also says the AGPL's network terms
+  apply to the combination as such: if someone offers a *modified* build as a
+  service that users interact with over a network, they must offer those users
+  its source. This project runs nothing server-side, but a host of the PWA is
+  in that position if they modify it.
+- **Distributing the app conveys MuPDF.** The installers, the APK and a
+  hosted PWA each contain MuPDF's compiled WebAssembly, so the corresponding
+  source has to be available to recipients (GPLv3 section 6): this repository
+  for the app, <https://github.com/ArtifexSoftware/mupdf.js> and
+  <https://mupdf.com> for MuPDF at the version in the table below. Settings
+  carries the same notice in the app.
+- **It limits relicensing the distributed app.** Everything this project
+  wrote could be licensed more permissively, but an app that includes MuPDF
+  still has to meet the AGPL, unless Artifex's commercial licence is bought or
+  MuPDF is replaced.
 
 ## How this was checked
 
@@ -42,7 +64,10 @@ since that needs a maintained allow-list to compare against first).
 | @tauri-apps/plugin-window-state   | 2.5.0   | MIT OR Apache-2.0    |
 | dexie                              | 4.4.6   | Apache-2.0           |
 | jszip                              | 3.10.2  | MIT OR GPL-3.0-or-later (used under the MIT term) |
-| pdfjs-dist                         | 5.7.284 | Apache-2.0           |
+| mupdf                              | 1.28.1  | **AGPL-3.0-or-later** (see above) |
+| tesseract.js                       | 7.0.0   | Apache-2.0           |
+| tesseract.js-core                  | 7.0.0   | Apache-2.0           |
+| @tesseract.js-data/eng, /tur       | 1.0.0   | MIT (package); the trained models are tesseract-ocr/tessdata_best, Apache-2.0 |
 | react / react-dom                  | 19.3.0  | MIT                  |
 | react-router / react-router-dom    | 7.18.4  | MIT                  |
 | workbox-core / workbox-window      | 7.4.1   | MIT                  |

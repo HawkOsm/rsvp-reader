@@ -40,3 +40,6 @@ android/build/
 .idea/
 *.swp
 .DS_Store
+
+# OCR engine and language data, copied by scripts/copy-ocr-assets.mjs
+/public/ocr/

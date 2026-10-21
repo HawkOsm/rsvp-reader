@@ -25,7 +25,7 @@ describe('parseFile', () => {
       { type: 'application/pdf' },
     )
     const result = await parseFile(file)
-    expect(result.layout).toEqual({ kind: 'paged', pages: 1 })
+    expect(result.layout).toEqual({ kind: 'paged', pages: 1, boxSpace: 'displayed' })
     expect(result.formatId).toBe('pdf')
     expect(result.tokens.length).toBeGreaterThan(0)
   })

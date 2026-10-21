@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ACCEPTED_EXTENSIONS } from '../../parse/formats'
-import { ExtractionError } from '../../parse'
+import { ExtractionError, NoTextLayerError } from '../../parse'
+import type { OcrLanguage } from '../../ocr'
 import {
   getProgress,
   listBooks,
@@ -9,6 +10,7 @@ import {
   resetProgress,
 } from '../../storage/library'
 import { getDb, type BookRecord } from '../../storage/schema'
+import { OcrDialog } from '../components/OcrDialog'
 import { ResumeDialog } from '../components/ResumeDialog'
 import { importLocalFile } from '../import-book'
 import { requestPersistence } from '../../storage/quota'
@@ -27,6 +29,12 @@ export function LibraryScreen() {
   const [error, setError] = useState<string | null>(null)
   const [pendingResume, setPendingResume] = useState<PendingResume | null>(null)
   const [dragOver, setDragOver] = useState(false)
+  /** A PDF with no text, waiting for the reader to say whether to OCR it. */
+  const [ocrOffer, setOcrOffer] = useState<File | null>(null)
+  /** The import in progress, if any: what Cancel stops, and what stops the
+   * second import from starting. */
+  const abortRef = useRef<AbortController | null>(null)
+  const aliveRef = useRef(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const refresh = useCallback(async () => {
@@ -37,11 +45,21 @@ export function LibraryScreen() {
     void refresh()
   }, [refresh])
 
+  // Leaving the screen ends an import: OCR can run for minutes, and the
+  // reader should not be pulled into a book they walked away from.
+  useEffect(() => {
+    aliveRef.current = true
+    return () => {
+      aliveRef.current = false
+      abortRef.current?.abort()
+    }
+  }, [])
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
         e.preventDefault()
-        fileInputRef.current?.click()
+        if (!abortRef.current) fileInputRef.current?.click()
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -49,20 +67,31 @@ export function LibraryScreen() {
   }, [])
 
   const addFile = useCallback(
-    async (file: File) => {
+    async (file: File, ocr?: { language: OcrLanguage }) => {
+      if (abortRef.current) return // one at a time
+      setOcrOffer(null) // a new file replaces any offer still open for an earlier one
       setError(null)
       setImporting({ fraction: 0 })
+      const controller = new AbortController()
+      abortRef.current = controller
       try {
         const book = await importLocalFile(file, {
+          ocr,
+          signal: controller.signal,
           onProgress: (fraction, message) => setImporting({ fraction, message }),
         })
         void requestPersistence()
+        if (!aliveRef.current) return
         await refresh()
         navigate(`/reader/${book.id}`)
       } catch (err) {
-        setError(err instanceof ExtractionError ? err.message : 'Could not add that file.')
+        if (!aliveRef.current) return
+        if (err instanceof NoTextLayerError && !ocr) setOcrOffer(file)
+        else if (err instanceof DOMException && err.name === 'AbortError') setError(null)
+        else setError(err instanceof ExtractionError ? err.message : 'Could not add that file.')
       } finally {
-        setImporting(null)
+        if (abortRef.current === controller) abortRef.current = null
+        if (aliveRef.current) setImporting(null)
       }
     },
     [navigate, refresh],
@@ -132,6 +161,7 @@ export function LibraryScreen() {
           <Button
             onClick={() => fileInputRef.current?.click()}
             variant="primary"
+            disabled={importing !== null}
           >
             Add book
           </Button>
@@ -155,7 +185,10 @@ export function LibraryScreen() {
       {importing && (
         <div className="text-sm text-[var(--color-text-dim)]" role="status">
           Adding book{importing.message ? `: ${importing.message}` : '…'} (
-          {Math.round(importing.fraction * 100)}%)
+          {Math.round(importing.fraction * 100)}%){' '}
+          <Button onClick={() => abortRef.current?.abort()} variant="link" small>
+            Cancel
+          </Button>
         </div>
       )}
 
@@ -187,7 +220,17 @@ export function LibraryScreen() {
                 className="cursor-pointer border-t border-[var(--color-border)] hover:bg-[var(--color-bg-hover)]"
                 data-testid="book-row"
               >
-                <td className="py-2">{book.title}</td>
+                <td className="py-2">
+                  {book.title}
+                  {book.ocr && (
+                    <span
+                      className="ml-2 rounded border border-[var(--color-border)] px-1 text-xs text-[var(--color-text-dim)]"
+                      title="The text was recognised from page images, so expect the odd mistake"
+                    >
+                      OCR
+                    </span>
+                  )}
+                </td>
                 <td className="py-2" data-testid="book-progress">
                   <BookProgress book={book} />
                 </td>
@@ -212,6 +255,18 @@ export function LibraryScreen() {
             ))}
           </tbody>
         </table>
+      )}
+
+      {ocrOffer && (
+        <OcrDialog
+          fileName={ocrOffer.name}
+          onStart={(language) => {
+            const file = ocrOffer
+            setOcrOffer(null)
+            void addFile(file, { language })
+          }}
+          onCancel={() => setOcrOffer(null)}
+        />
       )}
 
       {pendingResume && (

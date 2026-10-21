@@ -48,6 +48,11 @@ the old one and exactly what's unverified.
 - **Android** — an APK attached to each release, same sideloading caveats
   as before (not on the Play Store; Android will ask you to allow installs
   from the source). Declares no permissions at all, like the old Kotlin app.
+- **Browser/webview floor** — PDFs need a WebView or browser from 2021 or later
+  (Chrome and Android WebView 95, Safari 15.2, Firefox 100): MuPDF's
+  WebAssembly uses exception handling older engines cannot compile. The APK
+  refuses to install on an older WebView; a PWA in an older browser says so
+  when you add a PDF. Text and EPUB files work everywhere.
 - **iPhone** — the PWA is the only option, same as before: Apple doesn't
   allow sideloading, and native iOS needs a Mac, Xcode, and a $99/year
   developer account just to try.
@@ -172,13 +177,16 @@ merged.
 
 **GNU General Public License v3.0 or later** — see [LICENSE](LICENSE).
 
-The previous version's GPL/AGPL requirement came from PyQt6 and PyMuPDF,
-which this stack no longer uses — the new code's dependencies are all
-permissively licensed (see `THIRD_PARTY.md` for the full audit: MIT,
-Apache-2.0, and a handful of other permissive licenses, nothing copyleft).
-Relicensing to something permissive was a real, available option at that
-point; the project stayed GPL-3.0-or-later anyway, as a deliberate choice
-rather than a dependency forcing it — see `DECISIONS.md`'s Phase 9 log.
+PDFs are read by MuPDF (the engine PyMuPDF wrapped), which is
+AGPL-3.0-or-later. The two licences are compatible, so the app is distributed
+under GPL-3.0-or-later, with MuPDF's AGPL terms applying to the combination
+as GPLv3 section 13 says. In practice: every build you distribute (the
+installers, the APK, a hosted PWA) conveys MuPDF, so its source must be
+available to whoever receives it — this repository, and MuPDF's own, are that
+source. This project's *own* code could still be licensed more permissively;
+the *distributed app* could not be without Artifex's commercial MuPDF licence
+or a different PDF engine. Every other dependency is permissive — see
+`THIRD_PARTY.md` for the audit and `DECISIONS.md` for how this came about.
 
 You may use, study, share and modify this program freely. If you distribute
 a modified version, you must release your source under the same licence, so

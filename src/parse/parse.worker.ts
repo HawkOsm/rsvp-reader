@@ -1,8 +1,11 @@
+import type { PdfErrorKind } from '../pdf/protocol'
 import { parseFile } from './index'
 import type { ParseProgress, ParseResult } from './types'
+import { describeError } from './worker-errors'
 
 /**
- * The parsing worker's message protocol. One worker handles exactly one
+ * The parsing worker's message protocol (text and EPUB; PDFs go to the PDF
+ * worker, see pdf/client.ts). One worker handles exactly one
  * file — the client (client.ts) spins up a fresh worker per parse and
  * terminates it afterwards, so there's no job-id multiplexing to get
  * wrong here.
@@ -12,7 +15,7 @@ export type WorkerRequest = { type: 'parse'; file: File } | { type: 'cancel' }
 export type WorkerResponse =
   | { type: 'progress'; progress: ParseProgress }
   | { type: 'result'; result: ParseResult }
-  | { type: 'error'; message: string }
+  | { type: 'error'; kind: PdfErrorKind; message: string }
 
 const controller = new AbortController()
 
@@ -35,10 +38,7 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
       self.postMessage(response)
     })
     .catch((error: unknown) => {
-      const response: WorkerResponse = {
-        type: 'error',
-        message: error instanceof Error ? error.message : String(error),
-      }
+      const response: WorkerResponse = { type: 'error', ...describeError(error) }
       self.postMessage(response)
     })
 }

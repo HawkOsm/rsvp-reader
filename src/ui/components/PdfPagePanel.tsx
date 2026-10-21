@@ -31,6 +31,8 @@ export interface PdfPagePanelProps {
    * header, click a word to jump there, and it scrolls to keep the current
    * word in view. The full-width book view has its own controls instead. */
   peek?: boolean
+  /** The book's boxes are in raw PDF user space (imported before MuPDF). */
+  legacyBoxes?: boolean
 }
 
 /**
@@ -45,6 +47,7 @@ export function PdfPagePanel({
   scale,
   onFits,
   peek = false,
+  legacyBoxes = false,
 }: PdfPagePanelProps) {
   const engine = useEngine()
   const index = useEngineIndex()
@@ -59,7 +62,7 @@ export function PdfPagePanel({
   const token = engine.tokens[index]
   const tokenPage = pageOfToken(token)
   const start = spreadStart(tokenPage, layout)
-  const count = doc?.numPages ?? 0
+  const count = doc?.pageCount ?? 0
   const pages = useMemo(() => {
     const list: number[] = []
     for (let p = start; p < Math.min(start + perSpread(layout), count); p++) list.push(p)
@@ -71,11 +74,13 @@ export function PdfPagePanel({
   useEffect(() => {
     if (!doc || !box || !onFits || pages.length === 0) return
     let cancelled = false
-    void Promise.all(pages.map(async (p) => (await doc.getPage(p + 1)).getViewport({ scale: 1 }))).then(
-      (sizes) => {
+    Promise.all(pages.map((p) => doc.pageSize(p)))
+      .then((sizes) => {
         if (!cancelled) onFits(fitScales(sizes, box))
-      },
-    )
+      })
+      .catch(() => {
+        // The book was closed or the engine restarted; the reopened one reports again.
+      })
     return () => {
       cancelled = true
     }
@@ -137,6 +142,7 @@ export function PdfPagePanel({
                 scale={scale}
                 highlight={pageIndex === tokenPage ? (token?.bbox ?? null) : null}
                 peek={peek}
+                legacyBoxes={legacyBoxes}
                 onReady={() => setReady((n) => n + 1)}
               />
             ))}

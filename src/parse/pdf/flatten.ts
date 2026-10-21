@@ -6,7 +6,7 @@ const HYPHEN_RE = /[-‐‑]$/
 /**
  * Rejoin words split across a line break by a hyphen, and mark paragraph
  * ends — the same two jobs `text_extract.py`'s `tokenize_pdf()` does, ported
- * to lines built from pdf.js instead of PyMuPDF's word-level extraction.
+ * to lines built from MuPDF's structured text.
  *
  * A line-final word ending in a hyphen becomes a pending fragment; the next
  * word either continues it (lowercase start: the hyphen only broke the
@@ -34,10 +34,16 @@ export function flattenPdfWords(lines: RawLine[], lineEndsParagraph: boolean[]):
         const stemParaEnd = pendingParaEnd
         pending = null
         pendingParaEnd = false
-        const joinsLower = /^[a-z]/.test(word.text)
+        const joinsLower = /^\p{Ll}/u.test(word.text)
         const text = joinsLower ? stem.text + word.text : `${stem.text}-${word.text}`
+        // The tail can itself end the paragraph (a lone "mation." as the last
+        // line), so the pause belongs to it as well as to the stem.
         out.push(
-          makeToken(text, { page: stem.page, bbox: stem.bbox, paraEnd: stemParaEnd }),
+          makeToken(text, {
+            page: stem.page,
+            bbox: stem.bbox,
+            paraEnd: stemParaEnd || (isLastWordOfLine && isParaEndLine),
+          }),
         )
         continue
       }

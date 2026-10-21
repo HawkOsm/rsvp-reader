@@ -21,6 +21,17 @@ export const PagePanel = memo(function PagePanel({ bookId, layout, variant = 'si
   const setBookFits = useAppStore((s) => s.setBookFits)
 
   if (layout.kind === 'reflow') return <TextReflowPanel />
-  if (variant === 'book') return <PdfPagePanel bookId={bookId} layout={bookLayout} scale={scale} onFits={setBookFits} />
-  return <PdfPagePanel bookId={bookId} layout="single" peek />
+  const legacyBoxes = layout.boxSpace !== 'displayed'
+  if (variant === 'book') {
+    return (
+      <PdfPagePanel
+        bookId={bookId}
+        layout={bookLayout}
+        scale={scale}
+        onFits={setBookFits}
+        legacyBoxes={legacyBoxes}
+      />
+    )
+  }
+  return <PdfPagePanel bookId={bookId} layout="single" peek legacyBoxes={legacyBoxes} />
 })
