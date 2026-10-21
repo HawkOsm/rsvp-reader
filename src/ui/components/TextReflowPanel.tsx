@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useEngine, useEngineIndex } from '../engine-context'
 
 /** How many tokens on either side of the current word to actually render
@@ -18,6 +18,12 @@ export function TextReflowPanel() {
   useEffect(() => {
     setWindowCenter((center) => (Math.abs(index - center) > RECENTER_THRESHOLD ? index : center))
   }, [index])
+
+  // Keep the word being read in view, as the page panel does for a PDF.
+  const currentRef = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    currentRef.current?.scrollIntoView({ block: 'center' })
+  }, [index, windowCenter])
 
   const start = Math.max(0, windowCenter - WINDOW_RADIUS)
   const end = Math.min(engine.count, windowCenter + WINDOW_RADIUS)
@@ -41,7 +47,7 @@ export function TextReflowPanel() {
 
   return (
     <div
-      className="h-full overflow-y-auto p-6 text-[var(--color-text)]"
+      className="h-full overflow-y-auto p-4 text-[var(--color-text)]"
       style={{ columnWidth: '32rem', columnGap: '3rem' }}
     >
       {paragraphs.map((paragraph) => (
@@ -49,6 +55,7 @@ export function TextReflowPanel() {
           {paragraph.words.map((word, i) => (
             <span key={word.index}>
               <span
+                ref={word.index === index ? currentRef : undefined}
                 onClick={() => engine.seek(word.index)}
                 className={
                   word.index === index

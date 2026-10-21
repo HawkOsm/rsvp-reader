@@ -81,7 +81,8 @@ function ReaderBody({ book }: { book: BookRecord }) {
   const panelOpen = useAppStore((s) => s.panelOpen)
   const setPanelOpen = useAppStore((s) => s.setPanelOpen)
   const areaRef = useRef<HTMLDivElement>(null)
-  const overlay = usePageOverlay(areaRef)
+  const placement = usePageOverlay(areaRef)
+  const overlay = placement?.box ?? null
 
   useReaderKeyboardShortcuts(layout)
   useAutosaveProgress(bookId, mode)
@@ -124,7 +125,11 @@ function ReaderBody({ book }: { book: BookRecord }) {
 
       <div ref={areaRef} className="relative flex min-h-0 flex-1">
         {mode === 'rsvp' && (
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col" onClick={onTap}>
+          <div
+            className="flex min-h-0 min-w-0 flex-1 flex-col"
+            style={{ paddingRight: panelOpen && placement ? placement.insetRight : 0 }}
+            onClick={onTap}
+          >
             <RsvpCanvas />
           </div>
         )}
