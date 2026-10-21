@@ -936,8 +936,8 @@ most words unreadable. The page is now an overlay (`ui/page-overlay.ts`) over
 the reading area, with one rule: it never covers the word. The word sits on a
 full-width band across the middle (long words are shrunk to the width, never
 made taller), and the overlay takes the taller strip above or below that band
-plus breathing space (20-48 px, scaled to the text size), preferring below, at
-most 560 px wide. The band comes from `ui/rsvp-geometry.ts`, which the canvas
+plus breathing space (20-48 px, scaled to the text size), preferring above, in
+the top-right corner, at most 560 px wide. The band comes from `ui/rsvp-geometry.ts`, which the canvas
 also draws from, so the two cannot drift. A property sweep over screen and text
 sizes (`tests/ui/page-overlay.test.ts`) checks the overlay never touches the
 band. If there is no room (a phone on its side, or very large text) there is no

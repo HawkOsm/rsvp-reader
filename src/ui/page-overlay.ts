@@ -38,7 +38,7 @@ export const MAX_OVERLAY_WIDTH = 560
  * The word sits on a full-width band across the middle of the area (a long
  * word is shrunk to fit the width, so it can never leave the band). The
  * overlay takes whichever of the strips above and below the band, plus
- * breathing space, is taller, preferring below.
+ * breathing space, is taller, preferring above, in the top-right corner.
  */
 export function pageOverlayBox(area: Size, fontSizePx: number): OverlayBox | null {
   const centre = wordCenterY(area.height)
@@ -49,7 +49,7 @@ export function pageOverlayBox(area: Size, fontSizePx: number): OverlayBox | nul
   const belowTop = centre + half + gap
   const belowHeight = area.height - belowTop - EDGE
 
-  const below = belowHeight >= aboveHeight
+  const below = belowHeight > aboveHeight // above unless below is clearly taller
   const height = Math.floor(below ? belowHeight : aboveHeight)
   if (height < MIN_OVERLAY_HEIGHT) return null
 
@@ -57,7 +57,7 @@ export function pageOverlayBox(area: Size, fontSizePx: number): OverlayBox | nul
   if (width <= 0) return null
   return {
     top: below ? Math.ceil(belowTop) : EDGE,
-    left: Math.floor((area.width - width) / 2),
+    left: area.width - width - EDGE, // the right-hand corner
     width,
     height,
   }

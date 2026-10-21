@@ -43,21 +43,21 @@ describe('pageOverlayBox on a phone held upright', () => {
   const phone = { width: 375, height: 640 }
   const box = pageOverlayBox(phone, 56) as OverlayBox
 
-  it('fits, below the word', () => {
+  it('fits, above the word', () => {
     expect(box).not.toBeNull()
-    expect(box.top).toBeGreaterThan(phone.height / 2)
+    expect(box.top + box.height).toBeLessThan(phone.height / 2)
   })
 
   it('keeps off the word with room to spare', () => {
     expect(clearOfWord(box, phone, 56)).toBe(true)
     const z = zone(phone.height, 56)
-    expect(box.top - z.bottom).toBeGreaterThanOrEqual(breathingSpace(56))
+    expect(z.top - (box.top + box.height)).toBeGreaterThanOrEqual(breathingSpace(56))
   })
 
   it('stays inside the area, a little in from the edges', () => {
     expect(box.left).toBeGreaterThan(0)
     expect(box.left + box.width).toBeLessThan(phone.width)
-    expect(box.top + box.height).toBeLessThan(phone.height)
+    expect(box.top).toBeGreaterThan(0)
   })
 
   it('uses nearly the whole width', () => {
@@ -73,8 +73,9 @@ describe('pageOverlayBox on a computer screen', () => {
     expect(box.width).toBe(MAX_OVERLAY_WIDTH)
   })
 
-  it('centres it, clear of the word', () => {
-    expect(box.left).toBe((desktop.width - MAX_OVERLAY_WIDTH) / 2)
+  it('puts it in the top-right corner, clear of the word', () => {
+    expect(box.left + box.width).toBe(desktop.width - 8)
+    expect(box.top).toBe(8)
     expect(clearOfWord(box, desktop, 56)).toBe(true)
   })
 })
@@ -132,10 +133,10 @@ describe('pageOverlayBox: it never covers the word, whatever the screen and text
     expect(none).toBeGreaterThan(100) // ...and really did refuse some
   })
 
-  it('prefers below, but takes above when that is the taller strip', () => {
-    // Taller than the canvas minimum: both strips are the same, so below wins.
+  it('prefers above, in the corner, when both strips are the same', () => {
     const even = pageOverlayBox({ width: 400, height: 700 }, 56) as OverlayBox
-    expect(even.top).toBeGreaterThan(700 / 2)
+    expect(even.top).toBe(8)
+    expect(even.left + even.width).toBe(400 - 8)
   })
 })
 
