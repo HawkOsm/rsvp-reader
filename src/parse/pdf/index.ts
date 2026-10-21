@@ -76,7 +76,8 @@ export async function parsePdf(file: File, options: ParsePdfOptions = {}): Promi
     return {
       title: await pdfTitle(doc, file.name),
       tokens,
-      pages: pageCount,
+      formatId: 'pdf',
+      layout: { kind: 'paged', pages: pageCount },
     }
   } finally {
     await doc.destroy()

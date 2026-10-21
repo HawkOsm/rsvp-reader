@@ -1,4 +1,4 @@
-import type { Token } from '../core/types'
+import type { ContentLayout, FormatId, Token } from '../core/types'
 
 export interface ParsedChapter {
   title: string
@@ -11,8 +11,8 @@ export interface ParseResult {
   title: string
   author?: string
   tokens: Token[]
-  /** PDFs only. */
-  pages?: number
+  formatId: FormatId
+  layout: ContentLayout
   /** EPUBs only — lets the UI offer a chapter jump. */
   chapters?: ParsedChapter[]
 }

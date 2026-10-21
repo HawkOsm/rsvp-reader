@@ -1,5 +1,12 @@
 import { arrayBufferToBase64, base64ToArrayBuffer } from './base64'
-import type { BookRecord, ProgressRecord, RsvpDatabase, SettingRecord } from './schema'
+import {
+  normalizeBookRecord,
+  type BookRecord,
+  type ProgressRecord,
+  type RsvpDatabase,
+  type SettingRecord,
+  type StoredBookRecord,
+} from './schema'
 
 // One JSON file with books metadata and progress — this is also the
 // cross-device sync until cloud sync exists. Tokens are deliberately left
@@ -19,7 +26,9 @@ interface BackupFile {
 export interface Backup {
   formatVersion: typeof BACKUP_FORMAT_VERSION
   exportedAt: number
-  books: BookRecord[]
+  /** Backups written before `formatId`/`layout` hold `StoredBookRecord`s;
+   * `importBackup` brings them up to date. */
+  books: (BookRecord | StoredBookRecord)[]
   progress: ProgressRecord[]
   settings: SettingRecord[]
   files?: Record<number, BackupFile>
@@ -77,7 +86,7 @@ export async function importBackup(db: RsvpDatabase, backup: Backup): Promise<vo
     db.settings,
     db.files,
     async () => {
-      for (const book of backup.books) await db.books.put(book)
+      for (const book of backup.books) await db.books.put(normalizeBookRecord(book))
       for (const p of backup.progress) await db.progress.put(p)
       for (const s of backup.settings) await db.settings.put(s)
       if (backup.files) {

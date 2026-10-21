@@ -1,6 +1,6 @@
 import Dexie, { type Table, type Transaction } from 'dexie'
 import { DEFAULT_WPM } from '../core/pacing'
-import type { Token } from '../core/types'
+import type { ContentLayout, FormatId, Token } from '../core/types'
 
 /** Bumped whenever the packed token format changes, so caches written by an
  * older version stop matching and get rebuilt on next open. Mirrors
@@ -19,15 +19,42 @@ export interface BookRecord {
   sourceId?: string
   author?: string
   totalWords: number
-  /** PDFs only — drives the page panel's PDF-vs-reflow choice and the
-   * transport bar's "page N / M". */
-  pages?: number
+  /** Which parser produced this book. Chosen at import, never re-derived
+   * from a file name later. */
+  formatId: FormatId
+  /** Drives the page panel's PDF-vs-reflow choice and the transport bar's
+   * "page N / M". */
+  layout: ContentLayout
   /** `v<CACHE_VERSION>:<size>:<lastModified>` — no file path exists on
    * web, so this (not a path) is what decides whether cached tokens are
    * still good. */
   fingerprint: string
   addedAt: number
   lastOpenedAt: number | null
+}
+
+/** A book row as an older version wrote it: `pages` instead of `layout`, and
+ * no `formatId`. Only ever read by `normalizeBookRecord`. */
+export type StoredBookRecord = Omit<BookRecord, 'formatId' | 'layout'> &
+  Partial<Pick<BookRecord, 'formatId' | 'layout'>> & { pages?: number }
+
+/** Bring a book row from any earlier version up to the current shape.
+ * Shared by the Dexie upgrade and by backup import, so an old backup file
+ * restores the same way an old database upgrades.
+ *
+ * Rows from before `formatId` existed had a page count only if they were
+ * PDFs, so that is the one thing format is inferred from. An EPUB saved by
+ * an older version comes out as `'text'`: it reads identically (both
+ * reflow), and nothing stored says otherwise. */
+export function normalizeBookRecord(raw: StoredBookRecord): BookRecord {
+  const { pages, formatId, layout, ...rest } = raw
+  const resolvedLayout: ContentLayout =
+    layout ?? (pages !== undefined ? { kind: 'paged', pages } : { kind: 'reflow' })
+  return {
+    ...rest,
+    formatId: formatId ?? (resolvedLayout.kind === 'paged' ? 'pdf' : 'text'),
+    layout: resolvedLayout,
+  }
 }
 
 export interface TokenRecord {
@@ -115,6 +142,22 @@ export class RsvpDatabase extends Dexie {
         files: 'bookId',
       })
       .upgrade((tx) => migrateFromLegacyWebApp(tx))
+
+    // Same tables; only the shape of a book row changes (`pages` ->
+    // `formatId` + `layout`).
+    this.version(3)
+      .stores({})
+      .upgrade((tx) =>
+        tx
+          .table<StoredBookRecord, number>('books')
+          .toCollection()
+          .modify((book) => {
+            const next = normalizeBookRecord(book)
+            delete book.pages
+            book.formatId = next.formatId
+            book.layout = next.layout
+          }),
+      )
   }
 }
 
@@ -134,7 +177,7 @@ async function migrateFromLegacyWebApp(tx: Transaction): Promise<void> {
       if (maxPage >= 0) pages = maxPage + 1
     }
 
-    const migrated: BookRecord = {
+    const migrated: StoredBookRecord = {
       id: legacy.id,
       title: legacy.title,
       source: 'local',

@@ -3,6 +3,7 @@ import { addBook, saveProgress } from '../../src/storage/library'
 import { setSetting } from '../../src/storage/settings'
 import { exportBackup, importBackup } from '../../src/storage/backup'
 import { getDb, type RsvpDatabase } from '../../src/storage/schema'
+import { TEXT_BOOK } from './fixtures'
 
 let db: RsvpDatabase
 
@@ -12,7 +13,7 @@ beforeEach(() => {
 
 describe('backup', () => {
   it('exports books, progress and settings, and files only when asked', async () => {
-    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'f1' })
+    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'f1', ...TEXT_BOOK })
     await saveProgress(db, book.id as number, { wordIndex: 5, wpm: 300, mode: 'rsvp' })
     await setSetting(db, 'theme', 'dark')
     await db.files.put({
@@ -35,7 +36,7 @@ describe('backup', () => {
 
   it('restores into an empty database, files included', async () => {
     const source = getDb(`test-src-${Math.random().toString(36).slice(2)}`)
-    const book = await addBook(source, { title: 'Restored', source: 'local', fingerprint: 'f2' })
+    const book = await addBook(source, { title: 'Restored', source: 'local', fingerprint: 'f2', ...TEXT_BOOK })
     await saveProgress(source, book.id as number, { wordIndex: 12, wpm: 500, mode: 'book' })
     await setSetting(source, 'wpm', 500)
     await source.files.put({

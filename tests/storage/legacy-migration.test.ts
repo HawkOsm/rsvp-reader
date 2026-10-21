@@ -66,7 +66,9 @@ describe('migrating a real legacy web-app database', () => {
       lastOpenedAt: 1_700_000_000_000,
       addedAt: 1_699_000_000_000,
     })
-    expect(book?.pages).toBeUndefined() // txt, not pdf
+    expect(book?.formatId).toBe('text') // txt, not pdf
+    expect(book?.layout).toEqual({ kind: 'reflow' })
+    expect(book).not.toHaveProperty('pages')
     expect(book?.fingerprint).toBeTruthy()
 
     expect(await getTokens(db, 1)).toEqual(tokens)
@@ -76,7 +78,7 @@ describe('migrating a real legacy web-app database', () => {
     expect(progress?.mode).toBe('rsvp')
   })
 
-  it('computes `pages` for a PDF book from its tokens, and migrates the stored file bytes', async () => {
+  it('computes a paged layout for a PDF book from its tokens, and migrates the stored file bytes', async () => {
     const legacy = await createLegacyDatabase(dbName)
     const tokens = [
       makeToken('Page', { page: 0 }),
@@ -104,7 +106,9 @@ describe('migrating a real legacy web-app database', () => {
 
     const db = getDb(dbName)
     const book = await db.books.get(7)
-    expect(book?.pages).toBe(3) // pages 0, 1, 2 seen -> 3 pages
+    expect(book?.formatId).toBe('pdf')
+    expect(book?.layout).toEqual({ kind: 'paged', pages: 3 }) // pages 0, 1, 2 seen -> 3 pages
+    expect(book).not.toHaveProperty('pages')
     expect(book?.lastOpenedAt).toBeNull()
 
     // lastIndex was 0 (never actually started reading) — no progress row.

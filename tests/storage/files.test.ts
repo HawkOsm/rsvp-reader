@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { addBook } from '../../src/storage/library'
 import { loadFile, removeFile, saveFile } from '../../src/storage/files'
 import { getDb, type RsvpDatabase } from '../../src/storage/schema'
+import { TEXT_BOOK } from './fixtures'
 
 let db: RsvpDatabase
 
@@ -11,7 +12,7 @@ beforeEach(() => {
 
 describe('files', () => {
   it('saves and loads the original bytes', async () => {
-    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'f' })
+    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'f', ...TEXT_BOOK })
     const file = new File(['%PDF-1.4 fake pdf bytes'], 'book.pdf', {
       type: 'application/pdf',
     })
@@ -25,7 +26,7 @@ describe('files', () => {
   })
 
   it('"remove file, keep progress": removeFile only touches the files table', async () => {
-    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'f' })
+    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'f', ...TEXT_BOOK })
     const bookId = book.id as number
     await saveFile(db, bookId, new File(['x'], 'x.pdf', { type: 'application/pdf' }))
 

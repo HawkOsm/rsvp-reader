@@ -25,7 +25,8 @@ describe('parseFile', () => {
       { type: 'application/pdf' },
     )
     const result = await parseFile(file)
-    expect(result.pages).toBe(1)
+    expect(result.layout).toEqual({ kind: 'paged', pages: 1 })
+    expect(result.formatId).toBe('pdf')
     expect(result.tokens.length).toBeGreaterThan(0)
   })
 
@@ -37,11 +38,14 @@ describe('parseFile', () => {
     )
     const result = await parseFile(file)
     expect(result.title).toBe('Pride and Prejudice')
+    expect(result.formatId).toBe('epub')
+    expect(result.layout).toEqual({ kind: 'reflow' })
   })
 
   it('treats an unknown extension as text rather than refusing outright', async () => {
     const result = await parseFile(textFile('Some words here.', 'notes.xyz'))
     expect(result.tokens.map((t) => t.text)).toEqual(['Some', 'words', 'here.'])
+    expect(result.formatId).toBe('text')
   })
 
   it('is case-insensitive on the extension', async () => {

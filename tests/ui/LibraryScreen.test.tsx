@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { addBook, getProgress, saveProgress } from '../../src/storage/library'
 import { getDb } from '../../src/storage/schema'
 import { LibraryScreen } from '../../src/ui/screens/LibraryScreen'
+import { TEXT_BOOK } from '../storage/fixtures'
 
 async function clearDb() {
   const db = getDb()
@@ -41,7 +42,7 @@ describe('LibraryScreen', () => {
 
   it('lists a book with its title and progress', async () => {
     const db = getDb()
-    const book = await addBook(db, { title: 'Dr Jekyll and Mr Hyde', source: 'local', fingerprint: 'f1' })
+    const book = await addBook(db, { title: 'Dr Jekyll and Mr Hyde', source: 'local', fingerprint: 'f1', ...TEXT_BOOK })
     await getDb().books.update(book.id as number, { totalWords: 100 })
     await saveProgress(db, book.id as number, { wordIndex: 25, wpm: 300, mode: 'rsvp' })
 
@@ -53,7 +54,7 @@ describe('LibraryScreen', () => {
 
   it('navigates straight to the reader for a book with no progress', async () => {
     const db = getDb()
-    await addBook(db, { title: 'Fresh Book', source: 'local', fingerprint: 'f2' })
+    await addBook(db, { title: 'Fresh Book', source: 'local', fingerprint: 'f2', ...TEXT_BOOK })
 
     const user = userEvent.setup()
     renderLibrary()
@@ -64,7 +65,7 @@ describe('LibraryScreen', () => {
 
   it('shows a resume dialog for a book already in progress, and "Start over" resets it', async () => {
     const db = getDb()
-    const book = await addBook(db, { title: 'Partly Read', source: 'local', fingerprint: 'f3' })
+    const book = await addBook(db, { title: 'Partly Read', source: 'local', fingerprint: 'f3', ...TEXT_BOOK })
     await db.books.update(book.id as number, { totalWords: 100 })
     await saveProgress(db, book.id as number, { wordIndex: 40, wpm: 300, mode: 'rsvp' })
 
@@ -84,7 +85,7 @@ describe('LibraryScreen', () => {
 
   it('cancelling the resume dialog stays on the library', async () => {
     const db = getDb()
-    const book = await addBook(db, { title: 'Partly Read 2', source: 'local', fingerprint: 'f4' })
+    const book = await addBook(db, { title: 'Partly Read 2', source: 'local', fingerprint: 'f4', ...TEXT_BOOK })
     await db.books.update(book.id as number, { totalWords: 100 })
     await saveProgress(db, book.id as number, { wordIndex: 10, wpm: 300, mode: 'rsvp' })
 
@@ -100,7 +101,7 @@ describe('LibraryScreen', () => {
 
   it('the Reset button zeroes progress without opening the book', async () => {
     const db = getDb()
-    const book = await addBook(db, { title: 'To Reset', source: 'local', fingerprint: 'f5' })
+    const book = await addBook(db, { title: 'To Reset', source: 'local', fingerprint: 'f5', ...TEXT_BOOK })
     await db.books.update(book.id as number, { totalWords: 100 })
     await saveProgress(db, book.id as number, { wordIndex: 60, wpm: 300, mode: 'rsvp' })
 
@@ -118,7 +119,7 @@ describe('LibraryScreen', () => {
 
   it('the Remove button deletes the book from the library', async () => {
     const db = getDb()
-    await addBook(db, { title: 'To Remove', source: 'local', fingerprint: 'f6' })
+    await addBook(db, { title: 'To Remove', source: 'local', fingerprint: 'f6', ...TEXT_BOOK })
 
     const user = userEvent.setup()
     renderLibrary()

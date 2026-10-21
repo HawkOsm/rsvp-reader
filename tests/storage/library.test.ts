@@ -14,6 +14,7 @@ import {
 } from '../../src/storage/library'
 import { getDb, type RsvpDatabase } from '../../src/storage/schema'
 import { makeToken } from '../../src/core/types'
+import { TEXT_BOOK } from './fixtures'
 
 function makeFile(bytes: number, name = 'book.txt', lastModified = 1_700_000_000_000): File {
   return new File([new Uint8Array(bytes)], name, { lastModified, type: 'text/plain' })
@@ -33,6 +34,7 @@ describe('addBook', () => {
       title: 'Dr Jekyll and Mr Hyde',
       source: 'local',
       fingerprint: 'v1:163495:1700000000000',
+      ...TEXT_BOOK,
     })
     expect(book.id).toBeTypeOf('number')
     expect(book.totalWords).toBe(0)
@@ -44,6 +46,7 @@ describe('addBook', () => {
       title: 'Moby-Dick',
       source: 'local' as const,
       fingerprint: 'v1:1276267:1700000000000',
+      ...TEXT_BOOK,
     }
     const first = await addBook(db, input)
     const second = await addBook(db, input)
@@ -54,9 +57,9 @@ describe('addBook', () => {
 
 describe('listBooks', () => {
   it('orders by last opened, falling back to added, most recent first', async () => {
-    const a = await addBook(db, { title: 'A', source: 'local', fingerprint: 'fa' })
-    const b = await addBook(db, { title: 'B', source: 'local', fingerprint: 'fb' })
-    await addBook(db, { title: 'C', source: 'local', fingerprint: 'fc' })
+    const a = await addBook(db, { title: 'A', source: 'local', fingerprint: 'fa', ...TEXT_BOOK })
+    const b = await addBook(db, { title: 'B', source: 'local', fingerprint: 'fb', ...TEXT_BOOK })
+    await addBook(db, { title: 'C', source: 'local', fingerprint: 'fc', ...TEXT_BOOK })
 
     await db.books.update(a.id as number, { lastOpenedAt: 100 })
     await db.books.update(b.id as number, { lastOpenedAt: 300 })
@@ -70,7 +73,7 @@ describe('listBooks', () => {
 
 describe('tokens', () => {
   it('round-trips through saveTokens/getTokens and updates totalWords', async () => {
-    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'f1' })
+    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'f1', ...TEXT_BOOK })
     const tokens = [makeToken('Hello'), makeToken('world.', { paraEnd: true })]
     await saveTokens(db, book.id as number, tokens, 'f1')
 
@@ -79,7 +82,7 @@ describe('tokens', () => {
   })
 
   it('tokensAreFresh is false until the fingerprint and count both match', async () => {
-    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'stale' })
+    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'stale', ...TEXT_BOOK })
     const file = makeFile(163495)
 
     expect(await tokensAreFresh(db, book, file)).toBe(false) // no tokens yet
@@ -97,7 +100,7 @@ describe('tokens', () => {
 
 describe('progress', () => {
   it('round-trips through saveProgress/getProgress', async () => {
-    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'f2' })
+    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'f2', ...TEXT_BOOK })
     await saveProgress(db, book.id as number, { wordIndex: 42, wpm: 450, mode: 'rsvp' })
 
     const progress = await getProgress(db, book.id as number)
@@ -107,7 +110,7 @@ describe('progress', () => {
   })
 
   it('resetProgress zeroes the index but keeps the WPM and mode', async () => {
-    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'f3' })
+    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'f3', ...TEXT_BOOK })
     await saveProgress(db, book.id as number, { wordIndex: 900, wpm: 600, mode: 'book' })
     await resetProgress(db, book.id as number)
 
@@ -120,7 +123,7 @@ describe('progress', () => {
 
 describe('touchOpened', () => {
   it('sets lastOpenedAt', async () => {
-    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'f4' })
+    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'f4', ...TEXT_BOOK })
     expect(book.lastOpenedAt).toBeNull()
     await touchOpened(db, book.id as number)
     expect((await getBook(db, book.id as number))?.lastOpenedAt).toBeTypeOf('number')
@@ -129,7 +132,7 @@ describe('touchOpened', () => {
 
 describe('removeBook', () => {
   it('cascades to tokens, progress and files', async () => {
-    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'f5' })
+    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'f5', ...TEXT_BOOK })
     const bookId = book.id as number
     await saveTokens(db, bookId, [makeToken('x')], 'f5')
     await saveProgress(db, bookId, { wordIndex: 1, wpm: 300, mode: 'rsvp' })

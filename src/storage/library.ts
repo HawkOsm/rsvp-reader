@@ -1,5 +1,5 @@
 import { DEFAULT_WPM } from '../core/pacing'
-import type { Token } from '../core/types'
+import type { ContentLayout, FormatId, Token } from '../core/types'
 import { fingerprintOf } from './fingerprint'
 import type {
   BookRecord,
@@ -17,6 +17,8 @@ export interface AddBookInput {
   title: string
   source: BookSource
   fingerprint: string
+  formatId: FormatId
+  layout: ContentLayout
 }
 
 /** Add a book, or return the existing row if it's already in the library. */
@@ -29,6 +31,8 @@ export async function addBook(db: RsvpDatabase, input: AddBookInput): Promise<Bo
     source: input.source,
     totalWords: 0,
     fingerprint: input.fingerprint,
+    formatId: input.formatId,
+    layout: input.layout,
     addedAt: Date.now(),
     lastOpenedAt: null,
   })
@@ -81,11 +85,10 @@ export async function saveTokens(
   bookId: number,
   tokens: Token[],
   fingerprint: string,
-  pages?: number,
 ): Promise<void> {
   await db.transaction('rw', db.tokens, db.books, async () => {
     await db.tokens.put({ bookId, tokens })
-    await db.books.update(bookId, { totalWords: tokens.length, fingerprint, pages })
+    await db.books.update(bookId, { totalWords: tokens.length, fingerprint })
   })
 }
 

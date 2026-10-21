@@ -21,10 +21,16 @@ export async function importLocalFile(
   const fingerprint = fingerprintOf(file)
   const result = await parseFileInWorker(file, options)
 
-  const book = await addBook(db, { title: result.title, source: 'local', fingerprint })
+  const book = await addBook(db, {
+    title: result.title,
+    source: 'local',
+    fingerprint,
+    formatId: result.formatId,
+    layout: result.layout,
+  })
   const bookId = book.id as number
-  await saveTokens(db, bookId, result.tokens, fingerprint, result.pages)
-  if (file.name.toLowerCase().endsWith('.pdf')) {
+  await saveTokens(db, bookId, result.tokens, fingerprint)
+  if (result.layout.kind === 'paged') {
     await saveFile(db, bookId, file)
   }
 

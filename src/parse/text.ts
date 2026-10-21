@@ -37,5 +37,10 @@ export async function parseTextFile(file: File): Promise<ParseResult> {
     throw new ExtractionError('The document contains no readable words.')
   }
 
-  return { title: titleFromFileName(file.name), tokens }
+  return {
+    title: titleFromFileName(file.name),
+    tokens,
+    formatId: 'text',
+    layout: { kind: 'reflow' },
+  }
 }

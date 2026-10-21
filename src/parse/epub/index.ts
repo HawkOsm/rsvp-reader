@@ -73,6 +73,8 @@ export async function parseEpub(file: File, options: ParseEpubOptions = {}): Pro
     title: opf.title === 'Untitled' ? titleFromFileName(file.name) : opf.title,
     author: opf.author,
     tokens,
+    formatId: 'epub',
+    layout: { kind: 'reflow' },
     chapters,
   }
 }

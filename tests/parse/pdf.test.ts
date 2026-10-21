@@ -14,7 +14,7 @@ describe('parsePdf', () => {
     const result = await parsePdf(fileFrom(`${FIXTURES}/hyphenated-line-breaks.pdf`, 'h.pdf'))
 
     expect(result.title).toBe('Hyphenated Line Breaks')
-    expect(result.pages).toBe(1)
+    expect(result.layout).toEqual({ kind: 'paged', pages: 1 })
     // "self-\nsame" and "half-\nremembered" both rejoin without a hyphen —
     // the next word starts lowercase, so the heuristic (shared with
     // rsvp_engine.py's tokenize_pdf) reads them as line-break artifacts,

@@ -114,7 +114,7 @@ function ReaderContent({ loaded }: { loaded: LoadedBook }) {
 
 function ReaderBody({ book }: { book: BookRecord }) {
   const bookId = book.id as number
-  const pages = book.pages
+  const pages = book.layout.kind === 'paged' ? book.layout.pages : undefined
   const navigate = useNavigate()
   const engine = useEngine()
   const playing = useEnginePlaying()
