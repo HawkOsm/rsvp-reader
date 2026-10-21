@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import type { ContentLayout } from '../../core/types'
 import { SCALE_STEP, goToPage, scrollOrTurn, turn } from '../book-nav'
 import { useEngine } from '../engine-context'
 import { useAppStore } from '../store'
@@ -37,7 +38,7 @@ function bind(names: string[], handler: Keys[string]): Keys {
 /** Reader-only shortcuts, from the README's tables: one key map per reading
  * mode, plus P (panel), B (mode) and Esc (library), which need the
  * reading-mode state that only exists here. */
-export function useReaderKeyboardShortcuts(pageCount?: number): void {
+export function useReaderKeyboardShortcuts(layout: ContentLayout): void {
   const engine = useEngine()
   const navigate = useNavigate()
   const {
@@ -68,8 +69,9 @@ export function useReaderKeyboardShortcuts(pageCount?: number): void {
         End: () => engine.seek(last),
         p: () => setPanelOpen(!panelOpen),
       }
-    } else if (pageCount !== undefined) {
-      // Book mode over a PDF: turn pages, scrolling a tall page first.
+    } else if (layout.kind === 'paged') {
+      const pageCount = layout.pages
+      // Book mode over a paged book: turn pages, scrolling a tall page first.
       modeKeys = {
         ...bind(['+', '='], () => stepBookScale(SCALE_STEP)),
         '-': () => stepBookScale(-SCALE_STEP),
@@ -116,7 +118,7 @@ export function useReaderKeyboardShortcuts(pageCount?: number): void {
     setMode,
     panelOpen,
     setPanelOpen,
-    pageCount,
+    layout,
     bookLayout,
     setBookLayout,
     stepBookScale,

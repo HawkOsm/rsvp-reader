@@ -10,7 +10,7 @@ import {
   pageOfToken,
   perSpread,
   spreadStart,
-  type BookLayout,
+  type PageSpread,
   type FitScales,
 } from '../book-nav'
 import { useEngine, useEngineIndex } from '../engine-context'
@@ -21,7 +21,7 @@ import { PdfPageView } from './PdfPageView'
 export interface PdfPagePanelProps {
   bookId: number
   /** One page, or an open two-page spread. */
-  layout?: BookLayout
+  layout?: PageSpread
   /** Page size as a PDF scale (1 = 100%): a number to draw at, `null` to
    * wait until one is known, or left out to fit the panel's width. */
   scale?: number | null

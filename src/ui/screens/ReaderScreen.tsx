@@ -114,7 +114,7 @@ function ReaderContent({ loaded }: { loaded: LoadedBook }) {
 
 function ReaderBody({ book }: { book: BookRecord }) {
   const bookId = book.id as number
-  const pages = book.layout.kind === 'paged' ? book.layout.pages : undefined
+  const layout = book.layout
   const navigate = useNavigate()
   const engine = useEngine()
   const playing = useEnginePlaying()
@@ -124,7 +124,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
   const panelOpen = useAppStore((s) => s.panelOpen)
   const setPanelOpen = useAppStore((s) => s.setPanelOpen)
 
-  useReaderKeyboardShortcuts(pages)
+  useReaderKeyboardShortcuts(layout)
   useAutosaveProgress(bookId, mode)
   useWakeLock(playing)
 
@@ -170,18 +170,18 @@ function ReaderBody({ book }: { book: BookRecord }) {
             }
           >
             <div className="absolute inset-0">
-              <PagePanel bookId={bookId} pages={pages} variant={mode === 'book' ? 'book' : 'side'} />
+              <PagePanel bookId={bookId} layout={layout} variant={mode === 'book' ? 'book' : 'side'} />
             </div>
           </div>
         )}
       </div>
 
-      {mode === 'book' && pages !== undefined ? (
-        <BookControls pageCount={pages} />
+      {mode === 'book' && layout.kind === 'paged' ? (
+        <BookControls pageCount={layout.pages} />
       ) : (
-        <TransportBar totalPages={pages} />
+        <TransportBar layout={layout} />
       )}
-      <ReaderHints mode={mode} paged={pages !== undefined} />
+      <ReaderHints mode={mode} layout={layout} />
     </div>
   )
 }

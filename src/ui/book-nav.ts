@@ -5,7 +5,9 @@ import type { Token } from '../core/types'
 // indices, so the RSVP position and the book position are the same number
 // and switching modes keeps the reader's place.
 
-export type BookLayout = 'spread' | 'single'
+/** How many pages book mode shows at once. Not to be confused with a book's
+ * `ContentLayout` (paged or reflow), which is a fact about the book itself. */
+export type PageSpread = 'spread' | 'single'
 
 /** Fraction of the viewport a scroll step covers, so no lines are skipped. */
 const SCROLL_STEP = 0.85
@@ -47,12 +49,12 @@ export function fitScales(
 /** id of the element that scrolls the page(s), so keyboard paging can find it. */
 export const BOOK_SCROLL_ID = 'book-scroll'
 
-export function perSpread(layout: BookLayout): number {
+export function perSpread(layout: PageSpread): number {
   return layout === 'spread' ? 2 : 1
 }
 
 /** The left-hand page of the spread that `page` belongs to. */
-export function spreadStart(page: number, layout: BookLayout): number {
+export function spreadStart(page: number, layout: PageSpread): number {
   const per = perSpread(layout)
   return Math.floor(page / per) * per
 }
@@ -84,7 +86,7 @@ function pageIndexOf(tokens: Token[]): PageIndex {
 }
 
 /** First word on this spread, falling back to the nearest page that has text. */
-export function firstIndexAt(tokens: Token[], page: number, layout: BookLayout): number {
+export function firstIndexAt(tokens: Token[], page: number, layout: PageSpread): number {
   const { first, pages } = pageIndexOf(tokens)
   for (let candidate = page; candidate < page + perSpread(layout); candidate++) {
     const found = first.get(candidate)
@@ -134,7 +136,7 @@ export function wordAt(tokens: Token[], page: number, x: number, y: number): num
 export function goToPage(
   engine: Engine,
   pageCount: number,
-  layout: BookLayout,
+  layout: PageSpread,
   page: number,
 ): void {
   if (pageCount <= 0) return
@@ -145,7 +147,7 @@ export function goToPage(
 }
 
 /** Flip to the next or previous spread. */
-export function turn(engine: Engine, pageCount: number, layout: BookLayout, delta: number): void {
+export function turn(engine: Engine, pageCount: number, layout: PageSpread, delta: number): void {
   const current = spreadStart(pageOfToken(engine.tokens[engine.index]), layout)
   goToPage(engine, pageCount, layout, current + delta * perSpread(layout))
 }
@@ -166,7 +168,7 @@ export function consumeArriveAtBottom(): boolean {
 export function scrollOrTurn(
   engine: Engine,
   pageCount: number,
-  layout: BookLayout,
+  layout: PageSpread,
   delta: number,
 ): boolean {
   const el = document.getElementById(BOOK_SCROLL_ID)
@@ -185,7 +187,7 @@ export function scrollOrTurn(
 }
 
 /** "pages 3–4 / 340", or "page 3 / 340" for a single page. */
-export function pageLabel(current: number, pageCount: number, layout: BookLayout): string {
+export function pageLabel(current: number, pageCount: number, layout: PageSpread): string {
   if (pageCount <= 0) return '—'
   const first = spreadStart(current, layout) + 1
   const last = Math.min(first + perSpread(layout) - 1, pageCount)

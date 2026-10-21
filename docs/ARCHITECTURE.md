@@ -151,11 +151,16 @@ when a second profile is wanted. Deferred.
 
 ## 9. Order of work
 
-1. Book record: `formatId` + `layout` union, with migration and tests. **Done** (uncommitted).
+1. Book record: `formatId` + `layout` union, with migration and tests. **Done.**
    `FormatId` and `ContentLayout` live in `core/types.ts`; `normalizeBookRecord` in
    `storage/schema.ts` serves both the Dexie v3 upgrade and old-backup import.
-2. Parser registry replaces the if-chain.
-3. UI checks capabilities / the union instead of `pages`.
+2. Parser registry replaces the if-chain. **Done.** Split in two so the UI can import the
+   extension table without pulling parser code into the main bundle: `parse/formats.ts` (pure
+   data) and `parse/registry.ts` (loaders), both keyed by `FormatId`.
+3. UI checks capabilities / the union instead of `pages`. **Done.** The `layout` union alone was
+   enough; the separate capabilities descriptor from section 4 is not needed yet (add it when a
+   format needs something `paged`/`reflow` cannot express, e.g. chapters). The view registry is
+   deferred too: until the MuPDF work, `paged` means the PDF renderer (`PagePanel`).
 4. MuPDF wrapper + `PdfExtractor` seam; compare against `pdfjs` and the Python reference.
 5. MuPDF render worker, text layer and viewport maths; then delete pdf.js.
 6. OCR extractor and its opt-in UI.

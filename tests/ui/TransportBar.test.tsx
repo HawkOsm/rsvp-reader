@@ -11,7 +11,7 @@ function renderWithEngine(words: string[], wpm = 300) {
   const engine = createEngine(tokens, { wpm })
   render(
     <EngineProvider value={engine}>
-      <TransportBar />
+      <TransportBar layout={{ kind: 'reflow' }} />
     </EngineProvider>,
   )
   return engine
@@ -29,15 +29,35 @@ describe('TransportBar', () => {
     expect(screen.getByTestId('word-counter')).toHaveTextContent('word 3 / 4 · 50.0%')
   })
 
-  it('includes the page segment only when totalPages is given', () => {
+  it('shows the page segment for a paged book', () => {
     const tokens = [makeToken('a', { page: 0 }), makeToken('b', { page: 1 })]
     const engine = createEngine(tokens)
     render(
       <EngineProvider value={engine}>
-        <TransportBar totalPages={5} />
+        <TransportBar layout={{ kind: 'paged', pages: 5 }} />
       </EngineProvider>,
     )
     expect(screen.getByTestId('word-counter')).toHaveTextContent('page 1 / 5')
+  })
+
+  it('leaves the page segment out when the current word has no page', () => {
+    const engine = createEngine([makeToken('a')]) // page -1
+    render(
+      <EngineProvider value={engine}>
+        <TransportBar layout={{ kind: 'paged', pages: 5 }} />
+      </EngineProvider>,
+    )
+    expect(screen.getByTestId('word-counter')).not.toHaveTextContent('page')
+  })
+
+  it('leaves the page segment out for a reflow book, even if its tokens have pages', () => {
+    const engine = createEngine([makeToken('a', { page: 0 })])
+    render(
+      <EngineProvider value={engine}>
+        <TransportBar layout={{ kind: 'reflow' }} />
+      </EngineProvider>,
+    )
+    expect(screen.getByTestId('word-counter')).not.toHaveTextContent('page')
   })
 
   it('toggles the Play/Pause label and calls engine.toggle()', async () => {

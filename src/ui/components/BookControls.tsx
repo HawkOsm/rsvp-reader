@@ -14,7 +14,7 @@ import { Button } from './Button'
 import { ScrubBar } from './ScrubBar'
 
 export interface BookControlsProps {
-  /** Total PDF pages. */
+  /** Total pages in the book. */
   pageCount: number
 }
 

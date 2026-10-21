@@ -1,3 +1,4 @@
+import type { ContentLayout } from '../../core/types'
 import type { ReadingMode } from '../store'
 
 /** [keys, what they do] — each key is drawn as its own keycap. */
@@ -13,7 +14,7 @@ const RSVP: Hint[] = [
   [['esc'], 'library'],
 ]
 
-const BOOK_PDF: Hint[] = [
+const BOOK_PAGED: Hint[] = [
   [['space', '→'], 'next'],
   [['←'], 'back'],
   [['pgup', 'pgdn'], 'turn the page'],
@@ -34,14 +35,13 @@ const BOOK_TEXT: Hint[] = [
 
 export interface ReaderHintsProps {
   mode: ReadingMode
-  /** The book has real pages (a PDF). */
-  paged: boolean
+  layout: ContentLayout
 }
 
 /** The keyboard cheat-sheet under the controls. Hidden on touch screens,
  * where none of these keys exist. */
-export function ReaderHints({ mode, paged }: ReaderHintsProps) {
-  const hints = mode === 'rsvp' ? RSVP : paged ? BOOK_PDF : BOOK_TEXT
+export function ReaderHints({ mode, layout }: ReaderHintsProps) {
+  const hints = mode === 'rsvp' ? RSVP : layout.kind === 'paged' ? BOOK_PAGED : BOOK_TEXT
   return (
     <ul className="hidden flex-wrap justify-center gap-x-5 gap-y-1.5 px-4 pb-3 text-xs text-[var(--color-text-dim)] md:flex">
       {hints.map(([keys, label]) => (

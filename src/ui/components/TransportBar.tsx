@@ -1,18 +1,18 @@
 import { memo } from 'react'
 import { MAX_WPM, MIN_WPM } from '../../core/pacing'
+import type { ContentLayout } from '../../core/types'
 import { useEngine, useEngineIndex, useEnginePlaying, useEngineWpm } from '../engine-context'
 import { Button } from './Button'
 import { ScrubBar } from './ScrubBar'
 import { WpmInput } from './WpmInput'
 
 export interface TransportBarProps {
-  /** Total page count, for the "page N / M" segment of the counter — PDFs
-   * only. */
-  totalPages?: number
+  /** A paged book gets a "page N / M" segment in the counter. */
+  layout: ContentLayout
 }
 
 /** Play/pause, scrub bar, word counter and WPM control. */
-export const TransportBar = memo(function TransportBar({ totalPages }: TransportBarProps) {
+export const TransportBar = memo(function TransportBar({ layout }: TransportBarProps) {
   const engine = useEngine()
   const index = useEngineIndex()
   const playing = useEnginePlaying()
@@ -26,8 +26,8 @@ export const TransportBar = memo(function TransportBar({ totalPages }: Transport
     `word ${(index + 1).toLocaleString()} / ${total.toLocaleString()}`,
     `${(fraction * 100).toFixed(1)}%`,
   ]
-  if (totalPages !== undefined && currentPage !== undefined && currentPage >= 0) {
-    counterParts.push(`page ${currentPage + 1} / ${totalPages}`)
+  if (layout.kind === 'paged' && currentPage !== undefined && currentPage >= 0) {
+    counterParts.push(`page ${currentPage + 1} / ${layout.pages}`)
   }
 
   return (

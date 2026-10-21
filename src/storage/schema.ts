@@ -22,8 +22,8 @@ export interface BookRecord {
   /** Which parser produced this book. Chosen at import, never re-derived
    * from a file name later. */
   formatId: FormatId
-  /** Drives the page panel's PDF-vs-reflow choice and the transport bar's
-   * "page N / M". */
+  /** Paged or reflowed. Every reader-UI branch on page-ness keys on this,
+   * as does saving the original file at import. */
   layout: ContentLayout
   /** `v<CACHE_VERSION>:<size>:<lastModified>` — no file path exists on
    * web, so this (not a path) is what decides whether cached tokens are

@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { DEFAULT_WPM } from '../core/pacing'
 import { getDb } from '../storage/schema'
 import { getSetting, setSetting } from '../storage/settings'
-import { clampScale, type BookLayout, type FitScales } from './book-nav'
+import { clampScale, type PageSpread, type FitScales } from './book-nav'
 import { applyTheme, type ThemeMode } from './theme'
 
 export type ReadingMode = 'rsvp' | 'book'
@@ -17,7 +17,7 @@ export interface Settings {
   orpColor: string | null
   panelOpen: boolean
   /** Book mode: an open two-page spread, or one page at a time. */
-  bookLayout: BookLayout
+  bookLayout: PageSpread
   /** Book mode page size — the PDF scale, 1 = 100%. `null` until first fitted. */
   bookScale: number | null
 }
@@ -48,7 +48,7 @@ interface AppState extends Settings {
   setFontSize: (fontSize: number) => void
   setOrpColor: (color: string | null) => void
   setPanelOpen: (open: boolean) => void
-  setBookLayout: (layout: BookLayout) => void
+  setBookLayout: (layout: PageSpread) => void
   setBookScale: (scale: number) => void
   stepBookScale: (delta: number) => void
   setBookFits: (fits: FitScales) => void
@@ -57,7 +57,7 @@ interface AppState extends Settings {
 }
 
 // A spread is meant to be seen whole; a single page usually wants the width.
-const fitFor = (layout: BookLayout): keyof FitScales => (layout === 'spread' ? 'page' : 'width')
+const fitFor = (layout: PageSpread): keyof FitScales => (layout === 'spread' ? 'page' : 'width')
 
 export const useAppStore = create<AppState>((set, get) => {
   /** A setter that saves the value and updates the store. */

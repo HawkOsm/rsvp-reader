@@ -1,7 +1,7 @@
 /** Which parser produced a book. The one format-specific fact `core/` knows. */
 export type FormatId = 'pdf' | 'epub' | 'text'
 
-/** How a book is shown in book mode: real pages that render the original
+/** What kind of content a book has: real pages that render the original
  * (PDF), or text the app lays out itself. */
 export type ContentLayout = { kind: 'paged'; pages: number } | { kind: 'reflow' }
 
