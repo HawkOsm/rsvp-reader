@@ -2,6 +2,7 @@ import { memo, useEffect, useRef } from 'react'
 import { orpIndex } from '../../core/orp'
 import { codePoints } from '../../core/unicode'
 import { useEngine, useEngineIndex } from '../engine-context'
+import { GUIDE_LENGTH, GUIDE_START, RSVP_MIN_HEIGHT, wordCenterY } from '../rsvp-geometry'
 import { useAppStore } from '../store'
 import { resolvePalette, type Palette } from '../theme'
 
@@ -40,7 +41,7 @@ export const RsvpCanvas = memo(function RsvpCanvas() {
       if (!canvas || !container) return
       const dpr = window.devicePixelRatio || 1
       const width = container.clientWidth
-      const height = Math.max(200, container.clientHeight)
+      const height = Math.max(RSVP_MIN_HEIGHT, container.clientHeight)
       canvas.width = Math.round(width * dpr)
       canvas.height = Math.round(height * dpr)
       canvas.style.width = `${width}px`
@@ -54,7 +55,7 @@ export const RsvpCanvas = memo(function RsvpCanvas() {
       ctx.fillRect(0, 0, width, height)
 
       const focusX = width * FOCUS_X_RATIO
-      const centerY = height / 2
+      const centerY = wordCenterY(container.clientHeight)
 
       drawGuides(ctx, focusX, centerY, palette, fontSizePx)
       if (!word) return
@@ -97,12 +98,12 @@ function drawGuides(
 ): void {
   ctx.strokeStyle = palette.guide
   ctx.lineWidth = 2
-  const half = fontSizePx * 0.75
+  const half = fontSizePx * GUIDE_START
   ctx.beginPath()
-  ctx.moveTo(focusX, centerY - half - 14)
+  ctx.moveTo(focusX, centerY - half - GUIDE_LENGTH)
   ctx.lineTo(focusX, centerY - half)
   ctx.moveTo(focusX, centerY + half)
-  ctx.lineTo(focusX, centerY + half + 14)
+  ctx.lineTo(focusX, centerY + half + GUIDE_LENGTH)
   ctx.stroke()
 }
 

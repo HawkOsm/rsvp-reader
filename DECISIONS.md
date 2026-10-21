@@ -928,3 +928,17 @@ MuPDF (WebAssembly, `mupdf` on npm) and Tesseract (`tesseract.js`). Design in
   the paragraph pause one word early (as in the Python reader); the parse
   worker's bundle still contains an unused copy of the MuPDF loader (~88 KB);
   the OCR'd flag is shown as a small "OCR" tag in the library and nowhere else.
+
+## Page view is an overlay, not a split
+
+Opening the page beside the RSVP word squeezed the word, which on a phone made
+most words unreadable. The page is now an overlay (`ui/page-overlay.ts`) over
+the reading area, with one rule: it never covers the word. The word sits on a
+full-width band across the middle (long words are shrunk to the width, never
+made taller), and the overlay takes the taller strip above or below that band
+plus breathing space (20-48 px, scaled to the text size), preferring below, at
+most 560 px wide. The band comes from `ui/rsvp-geometry.ts`, which the canvas
+also draws from, so the two cannot drift. A property sweep over screen and text
+sizes (`tests/ui/page-overlay.test.ts`) checks the overlay never touches the
+band. If there is no room (a phone on its side, or very large text) there is no
+overlay: the Page button is disabled with the reason, rather than cover the word.

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createEngine } from '../../core/engine'
 import type { BookRecord } from '../../storage/schema'
 import { BookControls } from '../components/BookControls'
 import { Button } from '../components/Button'
+import { PageOverlay } from '../components/PageOverlay'
 import { PagePanel } from '../components/PagePanel'
 import { ReaderHints } from '../components/ReaderHints'
 import { RsvpCanvas } from '../components/RsvpCanvas'
@@ -11,6 +12,7 @@ import { TransportBar } from '../components/TransportBar'
 import { EngineProvider, useEngine, useEnginePlaying } from '../engine-context'
 import { useAutosaveProgress } from '../hooks/useAutosaveProgress'
 import { useLoadedBook, type LoadedBook } from '../hooks/useLoadedBook'
+import { usePageOverlay } from '../hooks/usePageOverlay'
 import { useReaderKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useTouchControls } from '../hooks/useTouchControls'
 import { useWakeLock } from '../hooks/useWakeLock'
@@ -78,6 +80,8 @@ function ReaderBody({ book }: { book: BookRecord }) {
   const setMode = useAppStore((s) => s.setMode)
   const panelOpen = useAppStore((s) => s.panelOpen)
   const setPanelOpen = useAppStore((s) => s.setPanelOpen)
+  const areaRef = useRef<HTMLDivElement>(null)
+  const overlay = usePageOverlay(areaRef)
 
   useReaderKeyboardShortcuts(layout)
   useAutosaveProgress(bookId, mode)
@@ -103,31 +107,39 @@ function ReaderBody({ book }: { book: BookRecord }) {
             {mode === 'book' ? 'RSVP' : 'Book'}
           </Button>
           {mode === 'rsvp' && (
-            <Button onClick={() => setPanelOpen(!panelOpen)} title="Show the page you are on  (P)">
-              {panelOpen ? 'Page ‹' : 'Page ›'}
+            <Button
+              onClick={() => setPanelOpen(!panelOpen)}
+              disabled={overlay === null}
+              title={
+                overlay === null
+                  ? 'No room for the page without covering the word: use a smaller text size, or turn the screen upright'
+                  : 'Show the page you are on  (P)'
+              }
+            >
+              {panelOpen && overlay ? 'Page ‹' : 'Page ›'}
             </Button>
           )}
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
+      <div ref={areaRef} className="relative flex min-h-0 flex-1">
         {mode === 'rsvp' && (
           <div className="flex min-h-0 min-w-0 flex-1 flex-col" onClick={onTap}>
             <RsvpCanvas />
           </div>
         )}
-        {(mode === 'book' || panelOpen) && (
-          <div
-            className={
-              mode === 'book'
-                ? 'relative min-h-0 flex-1'
-                : 'relative min-h-0 w-[min(380px,45%)] shrink-0 border-l border-[var(--color-border)]'
-            }
-          >
+        {mode === 'book' && (
+          <div className="relative min-h-0 flex-1">
             <div className="absolute inset-0">
-              <PagePanel bookId={bookId} layout={layout} variant={mode === 'book' ? 'book' : 'side'} />
+              <PagePanel bookId={bookId} layout={layout} variant="book" />
             </div>
           </div>
+        )}
+        {/* Over the reading area, never beside the word: see page-overlay.ts. */}
+        {mode === 'rsvp' && panelOpen && overlay && (
+          <PageOverlay box={overlay}>
+            <PagePanel bookId={bookId} layout={layout} variant="side" />
+          </PageOverlay>
         )}
       </div>
 
