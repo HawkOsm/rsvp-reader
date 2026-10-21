@@ -9,9 +9,6 @@ import type { Token } from '../core/types'
  * `ContentLayout` (paged or reflow), which is a fact about the book itself. */
 export type PageSpread = 'spread' | 'single'
 
-/** Fraction of the viewport a scroll step covers, so no lines are skipped. */
-const SCROLL_STEP = 0.85
-
 /** Book-mode page size is one number: the PDF scale, where 1 is 100% — the
  * page's real size. The slider, +/− and the fit button all just set it. */
 export const MIN_SCALE = 0.25
@@ -46,16 +43,13 @@ export function fitScales(
   return { page: down(page), width: down(width) }
 }
 
-/** id of the element that scrolls the page(s), so keyboard paging can find it. */
-export const BOOK_SCROLL_ID = 'book-scroll'
-
-export function perSpread(layout: PageSpread): number {
-  return layout === 'spread' ? 2 : 1
+export function perSpread(spread: PageSpread): number {
+  return spread === 'spread' ? 2 : 1
 }
 
 /** The left-hand page of the spread that `page` belongs to. */
-export function spreadStart(page: number, layout: PageSpread): number {
-  const per = perSpread(layout)
+export function spreadStart(page: number, spread: PageSpread): number {
+  const per = perSpread(spread)
   return Math.floor(page / per) * per
 }
 
@@ -86,9 +80,9 @@ function pageIndexOf(tokens: Token[]): PageIndex {
 }
 
 /** First word on this spread, falling back to the nearest page that has text. */
-export function firstIndexAt(tokens: Token[], page: number, layout: PageSpread): number {
+export function firstIndexAt(tokens: Token[], page: number, spread: PageSpread): number {
   const { first, pages } = pageIndexOf(tokens)
-  for (let candidate = page; candidate < page + perSpread(layout); candidate++) {
+  for (let candidate = page; candidate < page + perSpread(spread); candidate++) {
     const found = first.get(candidate)
     if (found !== undefined) return found
   }
@@ -136,60 +130,26 @@ export function wordAt(tokens: Token[], page: number, x: number, y: number): num
 export function goToPage(
   engine: Engine,
   pageCount: number,
-  layout: PageSpread,
+  spread: PageSpread,
   page: number,
 ): void {
   if (pageCount <= 0) return
-  const target = spreadStart(Math.max(0, Math.min(page, pageCount - 1)), layout)
-  const current = spreadStart(pageOfToken(engine.tokens[engine.index]), layout)
+  const target = spreadStart(Math.max(0, Math.min(page, pageCount - 1)), spread)
+  const current = spreadStart(pageOfToken(engine.tokens[engine.index]), spread)
   if (target === current) return
-  engine.seek(firstIndexAt(engine.tokens, target, layout))
+  engine.seek(firstIndexAt(engine.tokens, target, spread))
 }
 
 /** Flip to the next or previous spread. */
-export function turn(engine: Engine, pageCount: number, layout: PageSpread, delta: number): void {
-  const current = spreadStart(pageOfToken(engine.tokens[engine.index]), layout)
-  goToPage(engine, pageCount, layout, current + delta * perSpread(layout))
-}
-
-/** Set when a backwards turn should land at the bottom of the previous
- * spread; the page view consumes it once the new pages have laid out. */
-let arriveAtBottom = false
-export function consumeArriveAtBottom(): boolean {
-  const value = arriveAtBottom
-  arriveAtBottom = false
-  return value
-}
-
-/**
- * Scroll down a tall spread first, and only then turn it.
- * Returns true if it scrolled, false if the page was turned.
- */
-export function scrollOrTurn(
-  engine: Engine,
-  pageCount: number,
-  layout: PageSpread,
-  delta: number,
-): boolean {
-  const el = document.getElementById(BOOK_SCROLL_ID)
-  if (el) {
-    const max = el.scrollHeight - el.clientHeight
-    const roomLeft = delta > 0 ? el.scrollTop < max - 1 : el.scrollTop > 0
-    if (max > 1 && roomLeft) {
-      el.scrollBy({ top: Math.sign(delta) * Math.floor(el.clientHeight * SCROLL_STEP) })
-      return true
-    }
-  }
-  const before = engine.index
-  turn(engine, pageCount, layout, delta)
-  arriveAtBottom = delta < 0 && engine.index !== before
-  return false
+export function turn(engine: Engine, pageCount: number, spread: PageSpread, delta: number): void {
+  const current = spreadStart(pageOfToken(engine.tokens[engine.index]), spread)
+  goToPage(engine, pageCount, spread, current + delta * perSpread(spread))
 }
 
 /** "pages 3–4 / 340", or "page 3 / 340" for a single page. */
-export function pageLabel(current: number, pageCount: number, layout: PageSpread): string {
+export function pageLabel(current: number, pageCount: number, spread: PageSpread): string {
   if (pageCount <= 0) return '—'
-  const first = spreadStart(current, layout) + 1
-  const last = Math.min(first + perSpread(layout) - 1, pageCount)
+  const first = spreadStart(current, spread) + 1
+  const last = Math.min(first + perSpread(spread) - 1, pageCount)
   return last > first ? `pages ${first}–${last} / ${pageCount}` : `page ${first} / ${pageCount}`
 }

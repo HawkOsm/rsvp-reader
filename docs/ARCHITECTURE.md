@@ -25,7 +25,8 @@ pluggable, PDF extraction moves to MuPDF (WASM), and the sync design in
 - `ParseResult` carries "PDFs only" and "EPUBs only" optional fields.
 - UI code reaches into parser internals (`usePdfDocument` imports `parse/pdf/worker-src`).
 - The stored `kind: 'pdf' | 'txt'` predates EPUB.
-- `book-nav.ts` mixes pure paging maths with DOM scrolling and a module-level mutable flag.
+- ~~`book-nav.ts` mixes pure paging maths with DOM scrolling and a module-level mutable flag.~~
+  Fixed: DOM scrolling is in `ui/book-scroll.ts`, the flag is in the store.
 
 ## 3. Layers
 
@@ -164,7 +165,8 @@ when a second profile is wanted. Deferred.
 4. MuPDF wrapper + `PdfExtractor` seam; compare against `pdfjs` and the Python reference.
 5. MuPDF render worker, text layer and viewport maths; then delete pdf.js.
 6. OCR extractor and its opt-in UI.
-7. Bundled cleanups (section 7).
+7. Bundled cleanups (section 7). **Done** for `book-nav`/`book-scroll`, the `arriveAtBottom` flag
+   and `useLoadedBook`; the legacy `kind` field is still in the v2 migration types on purpose.
 8. Later, separately: injectable pacing, extractor setting / hybrid, sync.
 
 ## 10. Decisions

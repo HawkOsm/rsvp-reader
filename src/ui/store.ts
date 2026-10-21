@@ -40,6 +40,11 @@ interface AppState extends Settings {
   bookFits: FitScales | null
   /** A fit to apply as soon as the page sizes are known. */
   pendingFit: keyof FitScales | null
+  /** Set when a backwards page turn should land at the bottom of the
+   * previous spread. The page view reads it once, with
+   * `consumeArriveAtBottom`, when the spread changes, and applies it after
+   * the new pages have laid out. */
+  arriveAtBottom: boolean
 
   loadSettings: () => Promise<void>
   setTheme: (theme: ThemeMode) => void
@@ -54,6 +59,8 @@ interface AppState extends Settings {
   setBookFits: (fits: FitScales) => void
   fitBook: () => void
   setMode: (mode: ReadingMode) => void
+  setArriveAtBottom: (value: boolean) => void
+  consumeArriveAtBottom: () => boolean
 }
 
 // A spread is meant to be seen whole; a single page usually wants the width.
@@ -74,6 +81,7 @@ export const useAppStore = create<AppState>((set, get) => {
     mode: 'rsvp',
     bookFits: null,
     pendingFit: fitFor(DEFAULT_SETTINGS.bookLayout),
+    arriveAtBottom: false,
 
     loadSettings: async () => {
       const db = getDb()
@@ -126,5 +134,15 @@ export const useAppStore = create<AppState>((set, get) => {
     },
 
     setMode: (mode) => set({ mode }),
+    // Both skip the write when nothing changes: every store write re-renders
+    // whoever subscribes without a selector, and page turns are frequent.
+    setArriveAtBottom: (arriveAtBottom) => {
+      if (get().arriveAtBottom !== arriveAtBottom) set({ arriveAtBottom })
+    },
+    consumeArriveAtBottom: () => {
+      const { arriveAtBottom, setArriveAtBottom } = get()
+      setArriveAtBottom(false)
+      return arriveAtBottom
+    },
   }
 })

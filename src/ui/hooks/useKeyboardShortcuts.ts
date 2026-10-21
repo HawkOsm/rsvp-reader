@@ -1,7 +1,9 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useShallow } from 'zustand/react/shallow'
 import type { ContentLayout } from '../../core/types'
-import { SCALE_STEP, goToPage, scrollOrTurn, turn } from '../book-nav'
+import { SCALE_STEP, goToPage, turn } from '../book-nav'
+import { scrollOrTurn } from '../book-scroll'
 import { useEngine } from '../engine-context'
 import { useAppStore } from '../store'
 
@@ -50,7 +52,18 @@ export function useReaderKeyboardShortcuts(layout: ContentLayout): void {
     setBookLayout,
     stepBookScale,
     fitBook,
-  } = useAppStore()
+  } = useAppStore(
+    useShallow((s) => ({
+      mode: s.mode,
+      setMode: s.setMode,
+      panelOpen: s.panelOpen,
+      setPanelOpen: s.setPanelOpen,
+      bookLayout: s.bookLayout,
+      setBookLayout: s.setBookLayout,
+      stepBookScale: s.stepBookScale,
+      fitBook: s.fitBook,
+    })),
+  )
 
   useEffect(() => {
     const last = engine.count - 1

@@ -1,10 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { DEFAULT_WPM } from '../../core/pacing'
 import { createEngine } from '../../core/engine'
-import type { Token } from '../../core/types'
-import { getProgress, getTokens, touchOpened } from '../../storage/library'
-import { getDb, type BookRecord } from '../../storage/schema'
+import type { BookRecord } from '../../storage/schema'
 import { BookControls } from '../components/BookControls'
 import { Button } from '../components/Button'
 import { PagePanel } from '../components/PagePanel'
@@ -13,17 +10,11 @@ import { RsvpCanvas } from '../components/RsvpCanvas'
 import { TransportBar } from '../components/TransportBar'
 import { EngineProvider, useEngine, useEnginePlaying } from '../engine-context'
 import { useAutosaveProgress } from '../hooks/useAutosaveProgress'
+import { useLoadedBook, type LoadedBook } from '../hooks/useLoadedBook'
 import { useReaderKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useTouchControls } from '../hooks/useTouchControls'
 import { useWakeLock } from '../hooks/useWakeLock'
 import { useAppStore } from '../store'
-
-interface LoadedBook {
-  book: BookRecord
-  tokens: Token[]
-  startIndex: number
-  startWpm: number
-}
 
 function Centered({ children, dim }: { children: ReactNode; dim?: boolean }) {
   const color = dim ? 'text-[var(--color-text-dim)]' : 'text-[var(--color-text)]'
@@ -37,48 +28,12 @@ function Centered({ children, dim }: { children: ReactNode; dim?: boolean }) {
 export function ReaderScreen() {
   const { bookId } = useParams<{ bookId: string }>()
   const navigate = useNavigate()
-  const setMode = useAppStore((s) => s.setMode)
-  const [loaded, setLoaded] = useState<LoadedBook | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const state = useLoadedBook(bookId)
 
-  useEffect(() => {
-    const id = Number(bookId)
-    if (!Number.isFinite(id)) {
-      setLoadError('Invalid book.')
-      return
-    }
-    let cancelled = false
-    void (async () => {
-      const db = getDb()
-      const [book, tokens, progress] = await Promise.all([
-        db.books.get(id),
-        getTokens(db, id),
-        getProgress(db, id),
-      ])
-      if (cancelled) return
-      if (!book || !tokens) {
-        setLoadError('This book could not be found. It may have been removed.')
-        return
-      }
-      void touchOpened(db, id)
-      setMode(progress?.mode ?? 'rsvp')
-      setLoaded({
-        book,
-        tokens,
-        startIndex: progress?.wordIndex ?? 0,
-        startWpm: progress?.wpm ?? DEFAULT_WPM,
-      })
-    })()
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per bookId, not on setMode identity
-  }, [bookId])
-
-  if (loadError) {
+  if (state.status === 'error') {
     return (
       <Centered>
-        <p>{loadError}</p>
+        <p>{state.message}</p>
         <Button
           onClick={() => navigate('/')}
           variant="primary"
@@ -88,9 +43,9 @@ export function ReaderScreen() {
       </Centered>
     )
   }
-  if (!loaded) return <Centered dim>Loading…</Centered>
+  if (state.status === 'loading') return <Centered dim>Loading…</Centered>
 
-  return <ReaderContent loaded={loaded} />
+  return <ReaderContent loaded={state.loaded} />
 }
 
 function ReaderContent({ loaded }: { loaded: LoadedBook }) {

@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  BOOK_SCROLL_ID,
   GUTTER,
   MARGIN,
-  consumeArriveAtBottom,
   fitScales,
   goToPage,
   pageLabel,
@@ -13,7 +11,9 @@ import {
   type PageSpread,
   type FitScales,
 } from '../book-nav'
+import { BOOK_SCROLL_ID } from '../book-scroll'
 import { useEngine, useEngineIndex } from '../engine-context'
+import { useAppStore } from '../store'
 import { useElementSize, usePdfDocument } from '../hooks/usePdfDocument'
 import { Button } from './Button'
 import { PdfPageView } from './PdfPageView'
@@ -85,7 +85,7 @@ export function PdfPagePanel({
   // the bottom once its pages have reported their size.
   useEffect(() => {
     setReady(0)
-    pendingBottom.current = consumeArriveAtBottom()
+    pendingBottom.current = useAppStore.getState().consumeArriveAtBottom()
     if (scrollRef.current) scrollRef.current.scrollTop = 0
   }, [start, layout])
   useEffect(() => {
