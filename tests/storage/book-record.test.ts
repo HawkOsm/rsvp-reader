@@ -1,3 +1,4 @@
+import { DEFAULT_PAGE } from '../../src/core/page-spec'
 import Dexie from 'dexie'
 import { describe, expect, it } from 'vitest'
 import { exportBackup, importBackup, type Backup } from '../../src/storage/backup'
@@ -35,6 +36,7 @@ describe('normalizeBookRecord', () => {
       title: 'E',
       formatId: 'epub' as const,
       layout: { kind: 'reflow' as const },
+      page: DEFAULT_PAGE,
     }
     expect(normalizeBookRecord(current)).toEqual(current)
   })

@@ -1,3 +1,4 @@
+import { DEFAULT_PAGE, makePageSpec } from '../core/page-spec'
 import { wordToTokenBox } from '../pdf/geometry'
 import type { PageLine, PageSize, RenderedPage } from '../pdf/document'
 import { ExtractionError } from '../parse/errors'
@@ -48,6 +49,7 @@ export async function extractByOcr(
   options: ParseOptions = {},
 ): Promise<ParseResult> {
   const linesByPage: RawLine[][] = []
+  let first: { width: number; height: number } | undefined
 
   for (let page = 0; page < pdf.pageCount; page++) {
     if (options.signal?.aborted) throw new DOMException('Parsing cancelled', 'AbortError')
@@ -56,10 +58,12 @@ export async function extractByOcr(
       message: `Recognising page ${page + 1} of ${pdf.pageCount}`,
     })
 
-    const [{ height }, image] = await Promise.all([
+    const [size, image] = await Promise.all([
       pdf.pageSize(page),
       pdf.render(page, OCR_RENDER_SCALE),
     ])
+    const { height } = size
+    first ??= size
     const lines = await raceAbort(recognizer.recognize(image), options.signal)
     linesByPage.push(
       lines.map((line) => ({
@@ -84,6 +88,7 @@ export async function extractByOcr(
     tokens,
     formatId: 'pdf',
     layout: { kind: 'paged', pages: pdf.pageCount, boxSpace: 'displayed' },
+    page: first ? makePageSpec(first.width, first.height) : DEFAULT_PAGE,
     ocr: true,
   }
 }

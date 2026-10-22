@@ -106,9 +106,9 @@ export function PdfPagePanel({
   const boxWidth = box ? Math.max(80, (box.width - MARGIN - GUTTER * (per - 1)) / per) : 0
 
   return (
-    <div className="flex h-full flex-col bg-[var(--color-bg-raised)]">
+    <div className={`flex h-full flex-col ${peek ? '' : 'bg-[var(--color-bg-raised)]'}`}>
       {peek && (
-        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-2 py-1 text-sm text-[var(--color-text-dim)]">
+        <div className="pointer-events-auto flex items-center justify-between rounded bg-[var(--color-bg-raised)]/90 px-2 py-1 text-sm text-[var(--color-text-dim)]">
           <Button
             aria-label="Previous page"
             disabled={start <= 0}

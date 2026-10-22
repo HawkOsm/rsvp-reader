@@ -1,5 +1,6 @@
 import Dexie, { type Table, type Transaction } from 'dexie'
 import { DEFAULT_WPM } from '../core/pacing'
+import { DEFAULT_PAGE, type PageSpec } from '../core/page-spec'
 import type { ContentLayout, FormatId, Token } from '../core/types'
 
 /** Bumped whenever the packed token format changes, so caches written by an
@@ -25,6 +26,9 @@ export interface BookRecord {
   /** Paged or reflowed. Every reader-UI branch on page-ness keys on this,
    * as does saving the original file at import. */
   layout: ContentLayout
+  /** The size of the book's page, scanned once at import and never changed
+   * (a PDF's first page; the default for anything without pages). */
+  page: PageSpec
   /** `v<CACHE_VERSION>:<size>:<lastModified>` — no file path exists on
    * web, so this (not a path) is what decides whether cached tokens are
    * still good. */
@@ -38,8 +42,8 @@ export interface BookRecord {
 
 /** A book row as an older version wrote it: `pages` instead of `layout`, and
  * no `formatId`. Only ever read by `normalizeBookRecord`. */
-export type StoredBookRecord = Omit<BookRecord, 'formatId' | 'layout'> &
-  Partial<Pick<BookRecord, 'formatId' | 'layout'>> & { pages?: number }
+export type StoredBookRecord = Omit<BookRecord, 'formatId' | 'layout' | 'page'> &
+  Partial<Pick<BookRecord, 'formatId' | 'layout' | 'page'>> & { pages?: number }
 
 /** Bring a book row from any earlier version up to the current shape.
  * Shared by the Dexie upgrade and by backup import, so an old backup file
@@ -50,13 +54,14 @@ export type StoredBookRecord = Omit<BookRecord, 'formatId' | 'layout'> &
  * an older version comes out as `'text'`: it reads identically (both
  * reflow), and nothing stored says otherwise. */
 export function normalizeBookRecord(raw: StoredBookRecord): BookRecord {
-  const { pages, formatId, layout, ...rest } = raw
+  const { pages, formatId, layout, page, ...rest } = raw
   const resolvedLayout: ContentLayout =
     layout ?? (pages !== undefined ? { kind: 'paged', pages } : { kind: 'reflow' })
   return {
     ...rest,
     formatId: formatId ?? (resolvedLayout.kind === 'paged' ? 'pdf' : 'text'),
     layout: resolvedLayout,
+    page: page ?? DEFAULT_PAGE,
   }
 }
 
@@ -159,6 +164,19 @@ export class RsvpDatabase extends Dexie {
             delete book.pages
             book.formatId = next.formatId
             book.layout = next.layout
+          }),
+      )
+
+    // Every book gets a page size. Older ones have none stored (their PDFs were
+    // never measured), so they take the default, frozen like any other.
+    this.version(4)
+      .stores({})
+      .upgrade((tx) =>
+        tx
+          .table<StoredBookRecord, number>('books')
+          .toCollection()
+          .modify((book) => {
+            book.page ??= DEFAULT_PAGE
           }),
       )
   }

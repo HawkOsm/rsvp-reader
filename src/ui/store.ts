@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { DEFAULT_WPM } from '../core/pacing'
-import { getDb } from '../storage/schema'
-import { getSetting, setSetting } from '../storage/settings'
+import { loadSetting, saveSetting } from '../api'
 import { clampScale, type PageSpread, type FitScales } from './book-nav'
 import { applyTheme, type ThemeMode } from './theme'
 
@@ -71,7 +70,7 @@ export const useAppStore = create<AppState>((set, get) => {
   const setter =
     <K extends keyof Settings>(key: K) =>
     (value: Settings[K]) => {
-      void setSetting(getDb(), key, value)
+      void saveSetting(key, value)
       set({ [key]: value } as Pick<Settings, K>)
     }
 
@@ -84,9 +83,8 @@ export const useAppStore = create<AppState>((set, get) => {
     arriveAtBottom: false,
 
     loadSettings: async () => {
-      const db = getDb()
       const keys = Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]
-      const values = await Promise.all(keys.map((k) => getSetting(db, k, DEFAULT_SETTINGS[k])))
+      const values = await Promise.all(keys.map((k) => loadSetting(k, DEFAULT_SETTINGS[k])))
       const loaded = Object.fromEntries(keys.map((k, i) => [k, values[i]])) as unknown as Settings
       applyTheme(loaded.theme)
       set({

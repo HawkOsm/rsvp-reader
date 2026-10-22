@@ -1,3 +1,4 @@
+import { DEFAULT_PAGE } from '../core/page-spec'
 import { tokenizeText } from '../core/tokenize'
 import { ExtractionError } from './errors'
 import { extensionOf } from './file-name'
@@ -37,5 +38,6 @@ export async function parseTextFile(file: File): Promise<ParseResult> {
     tokens,
     formatId: 'text',
     layout: { kind: 'reflow' },
+    page: DEFAULT_PAGE,
   }
 }

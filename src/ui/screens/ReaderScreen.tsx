@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createEngine } from '../../core/engine'
-import type { BookRecord } from '../../storage/schema'
 import { BookControls } from '../components/BookControls'
 import { Button } from '../components/Button'
+import { resolvePage, type BookRecord } from '../../api'
 import { PageOverlay } from '../components/PageOverlay'
 import { PagePanel } from '../components/PagePanel'
 import { ReaderHints } from '../components/ReaderHints'
@@ -81,8 +81,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
   const panelOpen = useAppStore((s) => s.panelOpen)
   const setPanelOpen = useAppStore((s) => s.setPanelOpen)
   const areaRef = useRef<HTMLDivElement>(null)
-  const placement = usePageOverlay(areaRef)
-  const overlay = placement?.box ?? null
+  const overlay = usePageOverlay(areaRef)
 
   useReaderKeyboardShortcuts(layout)
   useAutosaveProgress(bookId, mode)
@@ -125,11 +124,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
 
       <div ref={areaRef} className="relative flex min-h-0 flex-1">
         {mode === 'rsvp' && (
-          <div
-            className="flex min-h-0 min-w-0 flex-1 flex-col"
-            style={{ paddingRight: panelOpen && placement ? placement.insetRight : 0 }}
-            onClick={onTap}
-          >
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col" onClick={onTap}>
             <RsvpCanvas />
           </div>
         )}
@@ -142,7 +137,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
         )}
         {/* Over the reading area, never beside the word: see page-overlay.ts. */}
         {mode === 'rsvp' && panelOpen && overlay && (
-          <PageOverlay box={overlay}>
+          <PageOverlay box={overlay} page={resolvePage(book.page)} plain={layout.kind === 'paged'}>
             <PagePanel bookId={bookId} layout={layout} variant="side" />
           </PageOverlay>
         )}

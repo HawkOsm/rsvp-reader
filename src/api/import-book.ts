@@ -41,6 +41,7 @@ export async function importLocalFile(
     fingerprint,
     formatId: result.formatId,
     layout: result.layout,
+    page: result.page,
     ocr: result.ocr,
   })
   const bookId = book.id as number
@@ -51,6 +52,7 @@ export async function importLocalFile(
       title: result.title,
       formatId: result.formatId,
       layout: result.layout,
+      page: result.page,
       ocr: result.ocr,
     })
   }

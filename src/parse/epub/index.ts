@@ -1,3 +1,4 @@
+import { DEFAULT_PAGE } from '../../core/page-spec'
 import JSZip from 'jszip'
 import { tokenize } from '../../core/tokenize'
 import type { Token } from '../../core/types'
@@ -70,6 +71,7 @@ export async function parseEpub(file: File, options: ParseOptions = {}): Promise
     tokens,
     formatId: 'epub',
     layout: { kind: 'reflow' },
+    page: DEFAULT_PAGE,
     chapters,
   }
 }

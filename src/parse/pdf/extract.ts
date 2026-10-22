@@ -1,3 +1,4 @@
+import { DEFAULT_PAGE, makePageSpec } from '../../core/page-spec'
 import type { Token } from '../../core/types'
 import { wordToTokenBox } from '../../pdf/geometry'
 import type { PdfDocument } from '../../pdf/document'
@@ -72,6 +73,7 @@ export async function extractPdf(
     tokens,
     formatId: 'pdf',
     layout: { kind: 'paged', pages: pageCount, boxSpace: 'displayed' },
+    page: pageCount > 0 ? makePageSpec(doc.pageSize(0).width, doc.pageSize(0).height) : DEFAULT_PAGE,
   }
 }
 

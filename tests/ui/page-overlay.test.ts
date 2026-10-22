@@ -4,7 +4,6 @@ import {
   MAX_OVERLAY_WIDTH,
   MIN_OVERLAY_HEIGHT,
   pageOverlayBox,
-  pagePlacement,
   type OverlayBox,
 } from '../../src/ui/page-overlay'
 import { RSVP_MIN_HEIGHT, wordCenterY, wordZoneHalfHeight } from '../../src/ui/rsvp-geometry'
@@ -147,42 +146,5 @@ describe('breathingSpace', () => {
     expect(breathingSpace(56)).toBe(28)
     expect(breathingSpace(96)).toBe(48)
     expect(breathingSpace(200)).toBe(48)
-  })
-})
-
-describe('pagePlacement: when the window is too short to float the page', () => {
-  const wide = { width: 1100, height: 330 } // a short, wide desktop window
-
-  it('floats it as usual when there is room', () => {
-    const p = pagePlacement({ width: 375, height: 640 }, 56)
-    expect(p?.insetRight).toBe(0)
-    expect(p?.box).toEqual(pageOverlayBox({ width: 375, height: 640 }, 56))
-  })
-
-  it('docks it down the right side instead of dropping the page', () => {
-    expect(pageOverlayBox(wide, 56)).toBeNull()
-    const p = pagePlacement(wide, 56)
-    expect(p).not.toBeNull()
-    expect(p?.box.left + (p?.box.width ?? 0)).toBeLessThanOrEqual(wide.width)
-    expect(p?.box.height).toBeGreaterThan(200)
-  })
-
-  it('takes the room from the word display, so the page never covers it', () => {
-    const p = pagePlacement(wide, 56)!
-    // everything the word can reach ends before the page begins
-    expect(wide.width - p.insetRight).toBeLessThanOrEqual(p.box.left)
-  })
-
-  it('still gives none on a narrow, short screen, such as a phone on its side', () => {
-    expect(pagePlacement({ width: 560, height: 230 }, 56)).toBeNull()
-  })
-
-  it('never lets the docked page and the word display overlap, at any size', () => {
-    for (let width = 600; width <= 2000; width += 50) {
-      for (let height = 160; height <= 420; height += 20) {
-        const p = pagePlacement({ width, height }, 56)
-        if (p) expect(width - p.insetRight).toBeLessThanOrEqual(p.box.left)
-      }
-    }
   })
 })

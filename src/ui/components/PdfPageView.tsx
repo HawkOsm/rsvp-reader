@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
-import type { PdfHandle } from '../../pdf/client'
-import type { PageLine, PageSize } from '../../pdf/document'
 import {
   screenToTokenPoint,
   screenToUserPoint,
   tokenBoxToScreen,
   userBoxToScreen,
   type Box,
-} from '../../pdf/geometry'
+  type PageLine,
+  type PageSize,
+  type PdfHandle,
+} from '../../api'
 import { wordAt } from '../book-nav'
 import { useEngine } from '../engine-context'
 import { PdfTextLayer } from './PdfTextLayer'

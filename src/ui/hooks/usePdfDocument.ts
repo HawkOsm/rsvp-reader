@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import { pdfClient, type PdfHandle } from '../../pdf/client'
-import { loadFile } from '../../storage/files'
-import { getDb } from '../../storage/schema'
+import { openBookPdf, type PdfHandle } from '../../api'
 
 /** The engine dying more than this many times within the window is not a
  * glitch to recover from; the panel stays empty rather than loop. */
@@ -19,9 +17,8 @@ export function usePdfDocument(bookId: number): PdfHandle | null {
     let opened: PdfHandle | null = null
     let forgetLost = () => {}
     void (async () => {
-      const record = await loadFile(getDb(), bookId)
-      if (!record || cancelled) return
-      const handle = await pdfClient.open(await record.blob.arrayBuffer())
+      const handle = await openBookPdf(bookId)
+      if (!handle) return
       if (cancelled) {
         handle.close()
         return

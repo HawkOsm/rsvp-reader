@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { OCR_LANGUAGES, type OcrLanguage } from '../../ocr'
+import { OCR_LANGUAGES, type OcrLanguage } from '../../api'
 import { Button } from './Button'
 
 export interface OcrDialogProps {

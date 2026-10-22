@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { DEFAULT_WPM } from '../../core/pacing'
 import type { Token } from '../../core/types'
-import { getProgress, getTokens, touchOpened } from '../../storage/library'
-import { getDb, type BookRecord } from '../../storage/schema'
+import { loadBook, touchOpened, type BookRecord } from '../../api'
 import { useAppStore } from '../store'
 
 export interface LoadedBook {
@@ -33,12 +32,7 @@ export function useLoadedBook(bookId: string | undefined): LoadedBookState {
     let cancelled = false
     void (async () => {
       try {
-        const db = getDb()
-        const [book, tokens, progress] = await Promise.all([
-          db.books.get(id),
-          getTokens(db, id),
-          getProgress(db, id),
-        ])
+        const { book, tokens, progress } = await loadBook(id)
         if (cancelled) return
         if (!book || !tokens) {
           setState({
@@ -48,7 +42,7 @@ export function useLoadedBook(bookId: string | undefined): LoadedBookState {
           return
         }
         // Only a "last opened" stamp: not worth failing the open over.
-        touchOpened(db, id).catch(() => {})
+        touchOpened(id).catch(() => {})
         useAppStore.getState().setMode(progress?.mode ?? 'rsvp')
         setState({
           status: 'ready',

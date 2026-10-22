@@ -4,13 +4,13 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ExtractionError, NoTextLayerError } from '../../src/parse/errors'
 import type { BookRecord } from '../../src/storage/schema'
-import type { ImportBookOptions } from '../../src/ui/import-book'
+import type { ImportBookOptions } from '../../src/api/import-book'
 import { LibraryScreen } from '../../src/ui/screens/LibraryScreen'
 
 // The import itself (workers, MuPDF, Tesseract) is covered where it lives;
 // this is about what the library screen does with how it turns out.
 const importLocalFile = vi.fn<(file: File, options: ImportBookOptions) => Promise<BookRecord>>()
-vi.mock('../../src/ui/import-book', () => ({
+vi.mock('../../src/api/import-book', () => ({
   importLocalFile: (file: File, options: ImportBookOptions) => importLocalFile(file, options),
 }))
 

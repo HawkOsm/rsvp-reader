@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ACCEPTED_EXTENSIONS } from '../../parse/formats'
-import { ExtractionError, NoTextLayerError } from '../../parse'
-import type { OcrLanguage } from '../../ocr'
 import {
+  ACCEPTED_EXTENSIONS,
+  ExtractionError,
+  NoTextLayerError,
   getProgress,
+  importLocalFile,
   listBooks,
   removeBook,
+  requestPersistence,
   resetProgress,
-} from '../../storage/library'
-import { getDb, type BookRecord } from '../../storage/schema'
+  type BookRecord,
+  type OcrLanguage,
+} from '../../api'
 import { OcrDialog } from '../components/OcrDialog'
 import { ResumeDialog } from '../components/ResumeDialog'
-import { importLocalFile } from '../import-book'
-import { requestPersistence } from '../../storage/quota'
 import { pendingOpenFile } from '../tauri-open'
 import { Button } from '../components/Button'
 
@@ -38,7 +39,7 @@ export function LibraryScreen() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const refresh = useCallback(async () => {
-    setBooks(await listBooks(getDb()))
+    setBooks(await listBooks())
   }, [])
 
   useEffect(() => {
@@ -119,7 +120,7 @@ export function LibraryScreen() {
   }
 
   async function openBook(book: BookRecord) {
-    const progress = await getProgress(getDb(), book.id as number)
+    const progress = await getProgress(book.id as number)
     if (progress && progress.wordIndex > 0) {
       setPendingResume({ book, wordIndex: progress.wordIndex })
     } else {
@@ -129,13 +130,13 @@ export function LibraryScreen() {
 
   async function onRemove(book: BookRecord, e: React.MouseEvent) {
     e.stopPropagation()
-    await removeBook(getDb(), book.id as number)
+    await removeBook(book.id as number)
     await refresh()
   }
 
   async function onResetProgress(book: BookRecord, e: React.MouseEvent) {
     e.stopPropagation()
-    await resetProgress(getDb(), book.id as number)
+    await resetProgress(book.id as number)
     await refresh()
   }
 
@@ -285,7 +286,7 @@ export function LibraryScreen() {
           onStartOver={() => {
             const book = pendingResume.book
             setPendingResume(null)
-            void resetProgress(getDb(), book.id as number).then(() => navigate(`/reader/${book.id}`))
+            void resetProgress(book.id as number).then(() => navigate(`/reader/${book.id}`))
           }}
           onCancel={() => setPendingResume(null)}
         />
@@ -298,7 +299,7 @@ function BookProgress({ book }: { book: BookRecord }) {
   const [percent, setPercent] = useState<number | null>(null)
   useEffect(() => {
     let cancelled = false
-    void getProgress(getDb(), book.id as number).then((progress) => {
+    void getProgress(book.id as number).then((progress) => {
       if (cancelled) return
       if (!progress || book.totalWords <= 0) {
         setPercent(0)

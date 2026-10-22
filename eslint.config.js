@@ -27,4 +27,22 @@ export default tseslint.config(
       ecmaVersion: 2023,
     },
   },
+  {
+    // The UI talks to the rest of the app only through src/api: one typed,
+    // in-process boundary (there is no server). It may not reach past it.
+    files: ['src/ui/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/storage', '**/storage/*', '**/parse', '**/parse/*', '**/pdf', '**/pdf/*', '**/ocr', '**/ocr/*'],
+              message: 'The UI goes through src/api, not straight to storage, parsing, PDF or OCR.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 )

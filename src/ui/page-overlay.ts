@@ -62,32 +62,3 @@ export function pageOverlayBox(area: Size, fontSizePx: number): OverlayBox | nul
     height,
   }
 }
-
-/** Narrowest area worth docking the page beside the word in. */
-const MIN_SIDE_AREA_WIDTH = 600
-const MAX_SIDE_WIDTH = 440
-
-export interface PagePlacement {
-  box: OverlayBox
-  /** Room to take from the right of the word display, so the word is
-   * narrowed to fit beside the page instead of being covered by it. */
-  insetRight: number
-}
-
-/**
- * Where the page goes: floating above (or below) the word if there is room,
- * otherwise, in a wide window too short for that, docked down the right-hand
- * side with the word display narrowed to make room. `null` only when there is
- * no room either way.
- */
-export function pagePlacement(area: Size, fontSizePx: number): PagePlacement | null {
-  const floating = pageOverlayBox(area, fontSizePx)
-  if (floating) return { box: floating, insetRight: 0 }
-
-  if (area.width < MIN_SIDE_AREA_WIDTH || area.height < MIN_OVERLAY_HEIGHT + 2 * EDGE) return null
-  const width = Math.min(MAX_SIDE_WIDTH, Math.floor(area.width * 0.42))
-  return {
-    box: { top: EDGE, left: area.width - width - EDGE, width, height: area.height - 2 * EDGE },
-    insetRight: width + 2 * EDGE,
-  }
-}

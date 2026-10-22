@@ -1,4 +1,5 @@
 import { DEFAULT_WPM } from '../core/pacing'
+import type { PageSpec } from '../core/page-spec'
 import type { ContentLayout, FormatId, Token } from '../core/types'
 import { fingerprintOf } from './fingerprint'
 import type {
@@ -19,6 +20,7 @@ export interface AddBookInput {
   fingerprint: string
   formatId: FormatId
   layout: ContentLayout
+  page: PageSpec
   ocr?: true
 }
 
@@ -34,6 +36,7 @@ export async function addBook(db: RsvpDatabase, input: AddBookInput): Promise<Bo
     fingerprint: input.fingerprint,
     formatId: input.formatId,
     layout: input.layout,
+    page: input.page,
     ...(input.ocr && { ocr: true as const }),
     addedAt: Date.now(),
     lastOpenedAt: null,

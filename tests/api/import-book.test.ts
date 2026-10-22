@@ -5,7 +5,7 @@ import { loadFile } from '../../src/storage/files'
 import { exportBackup, importBackup } from '../../src/storage/backup'
 import { getTokens } from '../../src/storage/library'
 import { getDb } from '../../src/storage/schema'
-import { importLocalFile } from '../../src/ui/import-book'
+import { importLocalFile } from '../../src/api/import-book'
 
 // The parsers and OCR are covered where they live; this is about what the
 // import does with what they return.

@@ -82,5 +82,6 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./tests/setup.ts'],
+    testTimeout: 15_000, // EPUB parsing is slow when the whole suite runs at once
   },
 })

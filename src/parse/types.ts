@@ -1,3 +1,4 @@
+import type { PageSpec } from '../core/page-spec'
 import type { ContentLayout, FormatId, Token } from '../core/types'
 
 export interface ParsedChapter {
@@ -13,6 +14,8 @@ export interface ParseResult {
   tokens: Token[]
   formatId: FormatId
   layout: ContentLayout
+  /** The page's size, measured here once (the default if the format has none). */
+  page: PageSpec
   /** The words were recognised from page images, not read from a text
    * layer, so expect the odd mistake. */
   ocr?: true

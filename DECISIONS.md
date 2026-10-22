@@ -942,3 +942,22 @@ also draws from, so the two cannot drift. A property sweep over screen and text
 sizes (`tests/ui/page-overlay.test.ts`) checks the overlay never touches the
 band. If there is no room (a phone on its side, or very large text) there is no
 overlay: the Page button is disabled with the reason, rather than cover the word.
+
+## One in-process API between backend and UI; a frozen page size per book
+
+- **`src/api/` is the only way the UI reaches storage, parsing, PDF and OCR.** It
+  is a typed function boundary inside the app, not REST or WebSocket (there is
+  no server, by decision). It carries values, never database handles or rows'
+  internals (`listBooks()`, `loadBook(id)`, `openBookPdf(id)`, `loadSetting`,
+  `importLocalFile`, `resolvePage`, ...). `eslint.config.js` forbids `src/ui`
+  from importing `storage`, `parse`, `pdf` or `ocr` directly.
+- **Every book has a `page` (`core/page-spec.ts`):** width and height in PDF
+  points, measured once at import (a PDF's first page, from MuPDF) and frozen;
+  the default for anything without pages (text, EPUB). Sizes are named presets
+  (`book`, `letter`, `a4`) with `DEFAULT_PAGE` as the one global default. Books
+  from before this (Dexie v4) take the default. It is not re-measured.
+- **The page pop-up changes nothing under it.** It floats in the corner above
+  the word's baseline limit, does not catch clicks (`pointer-events: none`; only
+  its own prev/next opt back in), and no longer docks beside the word or
+  resizes anything. A PDF's own page is shown with no container; anything else
+  is drawn on a bone-coloured sheet shaped like the book's `page`.

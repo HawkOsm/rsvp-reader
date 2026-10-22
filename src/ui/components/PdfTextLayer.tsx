@@ -1,5 +1,5 @@
 import { Fragment, useMemo } from 'react'
-import type { PageLine } from '../../pdf/document'
+import type { PageLine } from '../../api'
 import './pdf-text-layer.css'
 
 interface PdfTextLayerProps {

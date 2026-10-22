@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePageOverlay } from '../../src/ui/hooks/usePageOverlay'
-import { pagePlacement } from '../../src/ui/page-overlay'
+import { pageOverlayBox } from '../../src/ui/page-overlay'
 import { useAppStore } from '../../src/ui/store'
 
 // jsdom does no layout: give an element a size, and let the test resize it.
@@ -36,7 +36,7 @@ describe('usePageOverlay', () => {
   it('gives the box that fits the area it is pointed at', () => {
     const ref = area()
     const { result } = renderHook(() => usePageOverlay(ref))
-    expect(result.current).toEqual(pagePlacement({ width: 375, height: 640 }, 56))
+    expect(result.current).toEqual(pageOverlayBox({ width: 375, height: 640 }, 56))
     expect(result.current).not.toBeNull()
   })
 
@@ -46,10 +46,7 @@ describe('usePageOverlay', () => {
     const upright = result.current
     size = { width: 740, height: 230 }
     act(() => notify())
-    expect(result.current?.insetRight).toBeGreaterThan(0) // sideways: docked beside the word instead
-    size = { width: 520, height: 230 }
-    act(() => notify())
-    expect(result.current).toBeNull() // narrow too: no room either way
+    expect(result.current).toBeNull() // sideways: no room that keeps off the word, so none
     size = { width: 375, height: 640 }
     act(() => notify())
     expect(result.current).toEqual(upright)
@@ -61,7 +58,7 @@ describe('usePageOverlay', () => {
     const small = result.current
     act(() => useAppStore.setState({ fontSize: 96 }))
     expect(result.current).not.toEqual(small)
-    expect(result.current).toEqual(pagePlacement({ width: 375, height: 640 }, 96))
+    expect(result.current).toEqual(pageOverlayBox({ width: 375, height: 640 }, 96))
   })
 
   it('is null until the area has a ref to measure', () => {
