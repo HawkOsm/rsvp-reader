@@ -86,6 +86,15 @@ describe('PdfPageView drawing', () => {
     expect(container.querySelector('canvas')?.style.width).toBe('306px')
   })
 
+  it('shrinks the whole page to fit a short space, not just its width', async () => {
+    const { doc } = fakeDoc()
+    // 306 wide would allow scale 0.5 (396 tall), but only 198 tall is available: scale 0.25
+    const { onReady, container } = view({ doc, boxWidth: 306, boxHeight: 198 })
+    await waitFor(() => expect(onReady).toHaveBeenCalled())
+    expect(container.querySelector('canvas')?.style.height).toBe('198px')
+    expect(container.querySelector('canvas')?.style.width).toBe('153px')
+  })
+
   it('uses a fixed scale when it is given one, whatever the width', async () => {
     const { doc } = fakeDoc()
     const { onReady, container } = view({ doc, scale: 1, boxWidth: 100 })

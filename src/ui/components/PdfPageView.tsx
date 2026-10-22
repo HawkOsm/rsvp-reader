@@ -20,6 +20,9 @@ interface PdfPageViewProps {
   doc: PdfHandle
   pageIndex: number
   boxWidth: number
+  /** With no `scale`, the page is also kept this short, so the whole page fits
+   * the space it is given instead of running past it. */
+  boxHeight?: number
   scale: number | undefined
   highlight: Box | null
   peek: boolean
@@ -43,6 +46,7 @@ export function PdfPageView({
   doc,
   pageIndex,
   boxWidth,
+  boxHeight,
   scale,
   highlight,
   peek,
@@ -65,7 +69,10 @@ export function PdfPageView({
     void (async () => {
       const pageSize = await doc.pageSize(pageIndex)
       if (cancelled) return
-      const cssScale = Math.max(0.1, scale ?? boxWidth / pageSize.width)
+      const cssScale = Math.max(
+        0.05,
+        scale ?? Math.min(boxWidth / pageSize.width, (boxHeight ?? Infinity) / pageSize.height),
+      )
       // Draw at the screen's real pixel density, then size the canvas back
       // down to CSS pixels — otherwise the browser stretches a low-res
       // bitmap over the page and the text goes soft.
@@ -94,7 +101,7 @@ export function PdfPageView({
       drawing.abort()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `boxWidth` only matters when there is no `scale`
-  }, [doc, pageIndex, scale === undefined ? boxWidth : null, scale])
+  }, [doc, pageIndex, scale === undefined ? boxWidth : null, scale === undefined ? boxHeight : null, scale])
 
   let mark: { left: number; top: number; width: number; height: number } | null = null
   if (drawn && highlight) {

@@ -3,6 +3,7 @@ import { HashRouter, Route, Routes } from 'react-router-dom'
 import { LibraryScreen } from './ui/screens/LibraryScreen'
 import { ReaderScreen } from './ui/screens/ReaderScreen'
 import { SettingsScreen } from './ui/screens/SettingsScreen'
+import { ErrorBoundary } from './ui/components/ErrorBoundary'
 import { UpdatePrompt } from './ui/components/UpdatePrompt'
 import { useAndroidBackButton } from './ui/hooks/useAndroidBackButton'
 import { useGlobalShortcuts } from './ui/hooks/useKeyboardShortcuts'
@@ -37,7 +38,9 @@ function App() {
 
   return (
     <HashRouter>
-      <AppRoutes />
+      <ErrorBoundary>
+        <AppRoutes />
+      </ErrorBoundary>
       <UpdatePrompt />
     </HashRouter>
   )

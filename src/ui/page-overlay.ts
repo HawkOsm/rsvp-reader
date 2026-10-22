@@ -25,8 +25,9 @@ export function breathingSpace(fontSizePx: number): number {
 /** Space kept between the page and the edge of the reading area. */
 const EDGE = 8
 
-/** Below this a page is not worth showing: not enough to read. */
-export const MIN_OVERLAY_HEIGHT = 140
+/** Below this there is no room at all. Above it the page is shrunk to fit,
+ * whatever the space. */
+export const MIN_OVERLAY_HEIGHT = 56
 
 /** On a wide screen the page does not stretch to fill it. */
 export const MAX_OVERLAY_WIDTH = 560

@@ -90,7 +90,7 @@ describe('pageOverlayBox when there is no room', () => {
   })
 
   it('has room again with smaller text', () => {
-    const area = { width: 740, height: 420 }
+    const area = { width: 740, height: 380 }
     expect(pageOverlayBox(area, 96)).toBeNull()
     expect(pageOverlayBox(area, 28)).not.toBeNull()
   })

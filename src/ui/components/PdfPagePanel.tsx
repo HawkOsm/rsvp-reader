@@ -139,6 +139,7 @@ export function PdfPagePanel({
                 doc={doc}
                 pageIndex={pageIndex}
                 boxWidth={boxWidth}
+                boxHeight={peek && box ? Math.max(40, box.height - 16) : undefined}
                 scale={scale}
                 highlight={pageIndex === tokenPage ? (token?.bbox ?? null) : null}
                 peek={peek}
