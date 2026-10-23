@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Fails CI if the web build's initial-load JS/CSS grows past a budget.
-// Run after `pnpm build`. The parse.worker chunk (pdf.js + JSZip, lazy
-// loaded only once a PDF/EPUB is actually opened) is checked separately
-// with its own, much larger budget — it's not part of the initial page
-// load, so it shouldn't be held to the same number.
+// Run after `pnpm build`. The entry chunk (what index.html loads) is the
+// initial page load. Route chunks (the reader, with pdf.js for page
+// rendering) load on first visit, and the parse.worker chunk (pdf.js +
+// JSZip) only once a PDF/EPUB is actually opened — each is checked with
+// its own budget, since neither is part of the initial page load.
 
 import { readdirSync, statSync } from 'node:fs'
 import { gzipSync } from 'node:zlib'
@@ -18,6 +19,7 @@ const DIST_ASSETS = 'dist/assets'
 // nagging on every small increment.
 const BUDGETS_KB = {
   mainBundle: 400, // the entry JS chunk (react-router, zustand, dexie, app code)
+  lazyChunk: 400, // the largest route chunk (the reader, with pdf.js's renderer)
   css: 30,
   worker: 700, // parse.worker: pdf.js + JSZip, lazy-loaded
 }
@@ -40,14 +42,22 @@ function main() {
   const cssFiles = files.filter((f) => f.endsWith('.css'))
 
   const workerFile = jsFiles.find((f) => f.startsWith('parse.worker'))
-  const mainFile = jsFiles
-    .filter((f) => f !== workerFile)
+  const html = readFileSync('dist/index.html', 'utf8')
+  const mainFile = jsFiles.find((f) => html.includes(`assets/${f}`))
+  const lazyFile = jsFiles
+    .filter((f) => f !== workerFile && f !== mainFile)
     .map((f) => ({ f, size: statSync(join(DIST_ASSETS, f)).size }))
     .sort((a, b) => b.size - a.size)[0]?.f
 
   const checks = []
   if (mainFile) {
     checks.push(['mainBundle', mainFile, gzipKb(join(DIST_ASSETS, mainFile))])
+  } else {
+    console.error('error: no entry chunk found in dist/index.html')
+    process.exit(1)
+  }
+  if (lazyFile) {
+    checks.push(['lazyChunk', lazyFile, gzipKb(join(DIST_ASSETS, lazyFile))])
   }
   if (workerFile) {
     checks.push(['worker', workerFile, gzipKb(join(DIST_ASSETS, workerFile))])

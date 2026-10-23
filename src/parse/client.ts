@@ -46,7 +46,9 @@ export function parseFileInWorker(
         resolve(message.result)
       } else if (message.type === 'error') {
         cleanup()
-        reject(message.extraction ? new ExtractionError(message.message) : new Error(message.message))
+        reject(
+          message.extraction ? new ExtractionError(message.message) : new Error(message.message),
+        )
       }
     }
 

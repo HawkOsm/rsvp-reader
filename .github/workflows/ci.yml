@@ -28,11 +28,14 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Format
+        run: pnpm format:check
+
       - name: Lint
         run: pnpm lint
 
       - name: Type-check
-        run: pnpm exec tsc -b
+        run: pnpm typecheck
 
       - name: Test
         run: pnpm test

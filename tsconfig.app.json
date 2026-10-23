@@ -22,7 +22,10 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+
+    /* Imports: `@/x` is `src/x` (mirrored in vite.config.ts) */
+    "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src"]
 }

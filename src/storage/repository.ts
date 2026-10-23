@@ -16,7 +16,7 @@ import {
   type SaveProgressInput,
 } from './library'
 import { requestPersistence } from './quota'
-import type { BookRecord, ProgressRecord, RsvpDatabase } from './schema'
+import { getDb, type BookRecord, type ProgressRecord, type RsvpDatabase } from './schema'
 import { getSetting, setSetting } from './settings'
 
 // The services' only view of persistence (Repository). They depend on
@@ -82,4 +82,12 @@ export class DexieRepository implements LibraryRepository, SettingsRepository {
 
   getSetting = <T>(key: string, fallback: T) => getSetting(this.db, key, fallback)
   setSetting = (key: string, value: unknown) => setSetting(this.db, key, value)
+}
+
+let instance: DexieRepository | null = null
+
+/** The app's repository, over the shared database. */
+export function getRepository(): DexieRepository {
+  instance ??= new DexieRepository(getDb())
+  return instance
 }

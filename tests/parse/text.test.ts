@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { ExtractionError } from '../../src/parse/errors'
-import { parseTextFile } from '../../src/parse/text'
+import { ExtractionError } from '@/parse/errors'
+import { parseTextFile } from '@/parse/text'
 
 function textFile(content: string, name = 'book.txt'): File {
   return new File([content], name, { type: 'text/plain' })

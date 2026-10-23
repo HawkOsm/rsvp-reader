@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { itemsToLines } from '../../../src/parse/pdf/lines'
-import type { PdfTextItem } from '../../../src/parse/pdf/types'
+import { itemsToLines } from '@/parse/pdf/lines'
+import type { PdfTextItem } from '@/parse/pdf/types'
 
 function item(
   str: string,
@@ -30,10 +30,7 @@ describe('itemsToLines', () => {
   })
 
   it('keeps two items on a line as separate words when there is a real gap', () => {
-    const lines = itemsToLines(
-      [item('Hello', 0, 30, false), item('world.', 40, 35, true)],
-      0,
-    )
+    const lines = itemsToLines([item('Hello', 0, 30, false), item('world.', 40, 35, true)], 0)
     expect(lines[0]?.words.map((w) => w.text)).toEqual(['Hello', 'world.'])
   })
 

@@ -9,10 +9,7 @@ export interface Token {
   bbox: [number, number, number, number] | null
 }
 
-export function makeToken(
-  text: string,
-  options: Partial<Omit<Token, 'text'>> = {},
-): Token {
+export function makeToken(text: string, options: Partial<Omit<Token, 'text'>> = {}): Token {
   return {
     text,
     paraEnd: options.paraEnd ?? false,

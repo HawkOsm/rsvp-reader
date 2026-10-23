@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { getDb } from '../../src/storage/schema'
-import { getProgress, getTokens } from '../../src/storage/library'
-import { loadFile } from '../../src/storage/files'
-import { makeToken } from '../../src/core/types'
+import { getDb } from '@/storage/schema'
+import { getProgress, getTokens } from '@/storage/library'
+import { loadFile } from '@/storage/files'
+import { makeToken } from '@/core/types'
 
 // Mirrors web/js/library.js's open() exactly — same store names, same
 // keyPaths, no secondary indexes — to prove RsvpDatabase's version(2)

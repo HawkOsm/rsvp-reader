@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { ExtractionError } from '../../src/parse/errors'
-import { parseFile } from '../../src/parse'
+import { ExtractionError } from '@/parse/errors'
+import { parseFile } from '@/parse'
 
 function textFile(content: string, name: string): File {
   return new File([content], name, { type: 'text/plain' })
@@ -19,11 +19,9 @@ describe('parseFile', () => {
   })
 
   it('dispatches .pdf to the PDF parser', async () => {
-    const file = new File(
-      [readFileSync('tests/fixtures/hyphenated-line-breaks.pdf')],
-      'book.pdf',
-      { type: 'application/pdf' },
-    )
+    const file = new File([readFileSync('tests/fixtures/hyphenated-line-breaks.pdf')], 'book.pdf', {
+      type: 'application/pdf',
+    })
     const result = await parseFile(file)
     expect(result.pages).toBe(1)
     expect(result.tokens.length).toBeGreaterThan(0)

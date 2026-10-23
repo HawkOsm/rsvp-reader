@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createEngine } from '../../src/core/engine'
-import { delayFor } from '../../src/core/pacing'
-import { makeToken } from '../../src/core/types'
+import { createEngine } from '@/core/engine'
+import { delayFor } from '@/core/pacing'
+import { makeToken } from '@/core/types'
 
 describe('engine timing', () => {
   it('advances 100 words at 600 WPM within 2% of the expected total time', () => {

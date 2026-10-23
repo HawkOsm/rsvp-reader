@@ -1,0 +1,9 @@
+# Generated, vendored or native — not ours to format.
+pnpm-lock.yaml
+dist/
+android/
+src-tauri/
+tests/fixtures/
+public/
+# Hand-wrapped prose; Prettier would reflow the tables.
+*.md

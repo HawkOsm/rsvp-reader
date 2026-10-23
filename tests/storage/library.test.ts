@@ -11,9 +11,9 @@ import {
   saveTokens,
   tokensAreFresh,
   touchOpened,
-} from '../../src/storage/library'
-import { getDb, type RsvpDatabase } from '../../src/storage/schema'
-import { makeToken } from '../../src/core/types'
+} from '@/storage/library'
+import { getDb, type RsvpDatabase } from '@/storage/schema'
+import { makeToken } from '@/core/types'
 
 function makeFile(bytes: number, name = 'book.txt', lastModified = 1_700_000_000_000): File {
   return new File([new Uint8Array(bytes)], name, { lastModified, type: 'text/plain' })

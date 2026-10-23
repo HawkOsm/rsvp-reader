@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chooseTitle, titleFromFileName } from '../../src/parse/title'
+import { chooseTitle, titleFromFileName } from '@/parse/title'
 
 // Mirrors text_extract.py's suggest_title() rules exactly.
 describe('chooseTitle', () => {

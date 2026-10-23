@@ -861,3 +861,53 @@ Two bugs the move turned up, both fixed:
 
 The library list also reads all progress rows in one query now, instead of
 one query per row from each row's own component.
+
+## Feature folders, one-way imports
+
+Restructured along the lines of
+[bulletproof-react](https://github.com/alan2207/bulletproof-react/blob/master/docs/project-structure.md):
+
+- **Feature folders.** `src/features/{library,reader,settings}` each hold
+  their screen, components and hooks, plus an `api/` folder with the
+  services from the previous change. The per-task top-level folders
+  (`src/library/`, `src/importing/`, `src/reading/`) and `src/services.ts`
+  are gone: importing joined the library feature, which is the only thing
+  that adds books, and each service file now creates its own default
+  instance (`getLibraryService()` and so on) over one shared
+  `getRepository()`. The settings service is shared (`src/lib/`), since the
+  app store, not one feature, loads and saves preferences.
+- **Shared code** is in `src/components/` (Button, WpmInput),
+  `src/stores/app-store.ts` and `src/lib/` (theme, keyboard helper, book
+  page geometry). `book-nav.ts`'s scale and fit helpers moved to
+  `lib/book-layout.ts`, because the store keeps the scale as a setting and
+  shared code must not import a feature.
+- **One-way imports, enforced.** `eslint.config.js` builds a
+  `no-restricted-imports` config per layer: shared code can't import a
+  feature or the app, features can't import each other, and only a
+  feature's `api/` can reach `storage/` or `parse/`. This uses ESLint's
+  built-in rule rather than `eslint-plugin-import`'s `no-restricted-paths`,
+  so there's no new dependency.
+- **`@/` alias** for `src/`, in `vite.config.ts` and `tsconfig.app.json`,
+  instead of `../../` chains. The new layers ban parent-relative imports
+  outright. `core/`, `parse/` and `storage/` keep their relative imports,
+  since they only reach into each other.
+- **No barrel files.** The `index.ts` re-export files from the previous
+  change were removed, and imports name the file they want. Barrels hide
+  where things come from and can defeat tree-shaking.
+- **Tests are type-checked.** No tsconfig covered `tests/` before, so a
+  type error there only surfaced if Vitest happened to trip on it.
+  `tsconfig.test.json` (referenced from `tsconfig.json`, so `tsc -b`
+  includes it) fixes that. Tests now mirror the source layout.
+- **Lazy routes and an error boundary.** The reader and settings screens
+  load on first visit (`React.lazy`), which takes pdf.js's renderer out of
+  the initial load: the entry chunk went from 260 KB to 117 KB gzip.
+  `tools/check-bundle-size.mjs` now finds the entry chunk from
+  `index.html` and gives the largest route chunk its own budget, instead of
+  calling the largest chunk "main". `app/ErrorBoundary.tsx` catches render
+  errors and offers a way back to the library instead of a blank window.
+- **Formatting enforced.** `.prettierrc.json` said 90 columns while the
+  code was written to 100, so 59 files failed `prettier --check`. The width
+  is now 100, the 31 files that still differed were reformatted,
+  `.prettierignore` skips generated, native and prose files, and CI runs
+  `pnpm format:check`. There's also a `typecheck` script, and `engines`
+  pins Node 22, which Capacitor's CLI already required.

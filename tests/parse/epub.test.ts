@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { ExtractionError } from '../../src/parse/errors'
-import { parseEpub } from '../../src/parse/epub'
+import { ExtractionError } from '@/parse/errors'
+import { parseEpub } from '@/parse/epub'
 
 function fixtureFile(name: string): File {
   return new File([readFileSync(`tests/fixtures/${name}`)], name, {

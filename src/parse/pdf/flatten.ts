@@ -36,9 +36,7 @@ export function flattenPdfWords(lines: RawLine[], lineEndsParagraph: boolean[]):
         pendingParaEnd = false
         const joinsLower = /^[a-z]/.test(word.text)
         const text = joinsLower ? stem.text + word.text : `${stem.text}-${word.text}`
-        out.push(
-          makeToken(text, { page: stem.page, bbox: stem.bbox, paraEnd: stemParaEnd }),
-        )
+        out.push(makeToken(text, { page: stem.page, bbox: stem.bbox, paraEnd: stemParaEnd }))
         continue
       }
 

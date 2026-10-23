@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { addBook, saveProgress } from '../../src/storage/library'
-import { setSetting } from '../../src/storage/settings'
-import { exportBackup, importBackup } from '../../src/storage/backup'
-import { getDb, type RsvpDatabase } from '../../src/storage/schema'
+import { addBook, saveProgress } from '@/storage/library'
+import { setSetting } from '@/storage/settings'
+import { exportBackup, importBackup } from '@/storage/backup'
+import { getDb, type RsvpDatabase } from '@/storage/schema'
 
 let db: RsvpDatabase
 

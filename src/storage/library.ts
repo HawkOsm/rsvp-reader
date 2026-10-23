@@ -1,13 +1,7 @@
 import { DEFAULT_WPM } from '../core/pacing'
 import type { Token } from '../core/types'
 import { fingerprintOf } from './fingerprint'
-import type {
-  BookRecord,
-  BookSource,
-  ProgressRecord,
-  ReadingMode,
-  RsvpDatabase,
-} from './schema'
+import type { BookRecord, BookSource, ProgressRecord, ReadingMode, RsvpDatabase } from './schema'
 
 // Ported from db.py's Database class — same operations, backed by Dexie
 // instead of SQLite. See DECISIONS.md for how the table shapes differ

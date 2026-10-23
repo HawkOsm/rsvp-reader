@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { requestPersistence, storageUsage } from '../../src/storage/quota'
+import { requestPersistence, storageUsage } from '@/storage/quota'
 
 const originalStorage = navigator.storage
 

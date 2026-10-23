@@ -5,12 +5,17 @@
   "version": "0.2.0",
   "type": "module",
   "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
+    "typecheck": "tsc -b",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest"
   },

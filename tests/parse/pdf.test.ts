@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { ExtractionError } from '../../src/parse/errors'
-import { parsePdf } from '../../src/parse/pdf'
+import { ExtractionError } from '@/parse/errors'
+import { parsePdf } from '@/parse/pdf'
 
 function fileFrom(path: string, name: string): File {
   return new File([readFileSync(path)], name, { type: 'application/pdf' })
@@ -105,12 +105,12 @@ describe('parsePdf', () => {
   })
 
   it('rejects a PDF with no real text layer (a scan) with a clear message', async () => {
-    await expect(
-      parsePdf(fileFrom(`${FIXTURES}/scanned-blank.pdf`, 'scan.pdf')),
-    ).rejects.toThrow(ExtractionError)
-    await expect(
-      parsePdf(fileFrom(`${FIXTURES}/scanned-blank.pdf`, 'scan.pdf')),
-    ).rejects.toThrow(/no text layer/i)
+    await expect(parsePdf(fileFrom(`${FIXTURES}/scanned-blank.pdf`, 'scan.pdf'))).rejects.toThrow(
+      ExtractionError,
+    )
+    await expect(parsePdf(fileFrom(`${FIXTURES}/scanned-blank.pdf`, 'scan.pdf'))).rejects.toThrow(
+      /no text layer/i,
+    )
   })
 
   it('rejects a password-protected PDF with a clear message', async () => {

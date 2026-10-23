@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractBlocks } from '../../../src/parse/epub/content'
+import { extractBlocks } from '@/parse/epub/content'
 
 function parse(html: string): Document {
   return new DOMParser().parseFromString(`<html><body>${html}</body></html>`, 'text/html')
@@ -48,7 +48,7 @@ describe('extractBlocks', () => {
     expect(blocks[0]?.text).toBe('A claim needing support follows here.')
   })
 
-  it('keeps a real link\'s text (not a footnote marker)', () => {
+  it("keeps a real link's text (not a footnote marker)", () => {
     const blocks = extractBlocks(parse('<p>See <a href="https://example.com">the source</a>.</p>'))
     expect(blocks[0]?.text).toBe('See the source.')
   })

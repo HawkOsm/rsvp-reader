@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { sortReadingOrder } from '../../../src/parse/pdf/columns'
-import type { RawLine } from '../../../src/parse/pdf/types'
+import { sortReadingOrder } from '@/parse/pdf/columns'
+import type { RawLine } from '@/parse/pdf/types'
 
 function line(text: string, x0: number, y: number): RawLine {
   return { page: 0, x0, y, words: [{ text, page: 0, bbox: [x0, y, x0 + 40, y + 12] }] }

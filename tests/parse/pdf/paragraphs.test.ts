@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { markParagraphBreaks } from '../../../src/parse/pdf/paragraphs'
-import type { RawLine } from '../../../src/parse/pdf/types'
+import { markParagraphBreaks } from '@/parse/pdf/paragraphs'
+import type { RawLine } from '@/parse/pdf/types'
 
 function line(page: number, y: number, x0 = 72): RawLine {
   return { page, x0, y, words: [{ text: 'w', page, bbox: [x0, y, x0 + 10, y + 12] }] }
