@@ -828,3 +828,36 @@ plain, version-free names — `rsvp-reader-linux-x86_64.AppImage`,
 `rsvp-reader.apk` — via `tauri build --bundles` instead of tauri-action, and
 a final `publish` job attaches them with `gh`. If the token still can't
 create the release, create the draft by hand and re-run only that job.
+
+## Services layer: the UI stops touching storage
+
+The UI used to call `getDb()` and the `src/storage/` functions itself, and
+`ui/import-book.ts` held the import logic. Now each task the UI does has its
+own folder with one service: `library/` (list, reset, remove), `importing/`
+(parse and store a file), `reading/` (open a book, save the position) and
+`settings/`. The services see storage only through the `LibraryRepository`
+and `SettingsRepository` interfaces in `storage/repository.ts`, implemented
+by `DexieRepository` over the existing storage functions, which keep their
+own tests. Parsing is a `BookParser` strategy: `workerParser` in the app,
+and `inlineParser` in tests, since jsdom has no Worker. `src/services.ts`
+builds all of them: `getServices()` for the app, and `createServices({ db,
+parser })` for tests. The UI gets plain view types (`BookSummary`,
+`OpenedBook`) instead of storage rows. An ESLint `no-restricted-imports`
+rule keeps `src/ui/` out of `storage/` and `parse/`. pdf.js's worker setup is
+the one exception, since that's rendering, not parsing.
+
+Two bugs the move turned up, both fixed:
+
+- **Import errors lost their message.** `ExtractionError` didn't survive
+  `postMessage`: the worker client always rejected with a plain `Error`, so
+  the library's `instanceof ExtractionError` check never matched. A
+  password-protected PDF showed "Could not add that file." instead of
+  saying why. The worker now flags extraction errors, the client rebuilds
+  the class, and `ImportService` turns them into an `ImportError` the UI
+  shows as-is.
+- **"Default WPM" did nothing.** The setting was saved but never read, and
+  the reader always started a new book at 300. `ReadingService.open()`
+  takes it as `defaultWpm`.
+
+The library list also reads all progress rows in one query now, instead of
+one query per row from each row's own component.

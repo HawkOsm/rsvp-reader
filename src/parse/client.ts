@@ -1,3 +1,4 @@
+import { ExtractionError } from './errors'
 import type { ParseResult } from './types'
 import type { WorkerRequest, WorkerResponse } from './parse.worker'
 
@@ -45,7 +46,7 @@ export function parseFileInWorker(
         resolve(message.result)
       } else if (message.type === 'error') {
         cleanup()
-        reject(new Error(message.message))
+        reject(message.extraction ? new ExtractionError(message.message) : new Error(message.message))
       }
     }
 

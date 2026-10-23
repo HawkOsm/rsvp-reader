@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
-import { getDb } from '../../storage/schema'
-import { saveProgress } from '../../storage/library'
+import { getServices } from '../../services'
 import { useEngine } from '../engine-context'
 import type { ReadingMode } from '../store'
 
@@ -20,7 +19,7 @@ export function useAutosaveProgress(bookId: number | null, mode: ReadingMode): v
 
     function save() {
       if (bookId === null) return
-      void saveProgress(getDb(), bookId, { wordIndex: engine.index, wpm: engine.wpm, mode })
+      void getServices().reading.savePosition(bookId, { wordIndex: engine.index, wpm: engine.wpm, mode })
       lastSavedIndex = engine.index
     }
 

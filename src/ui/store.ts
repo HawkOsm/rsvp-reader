@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { DEFAULT_WPM } from '../core/pacing'
-import { getDb } from '../storage/schema'
-import { getSetting, setSetting } from '../storage/settings'
+import { getServices } from '../services'
 import { clampScale, type BookLayout, type FitScales } from './book-nav'
 import { applyTheme, type ThemeMode } from './theme'
 
@@ -64,7 +63,7 @@ export const useAppStore = create<AppState>((set, get) => {
   const setter =
     <K extends keyof Settings>(key: K) =>
     (value: Settings[K]) => {
-      void setSetting(getDb(), key, value)
+      void getServices().settings.save(key, value)
       set({ [key]: value } as Pick<Settings, K>)
     }
 
@@ -76,10 +75,7 @@ export const useAppStore = create<AppState>((set, get) => {
     pendingFit: fitFor(DEFAULT_SETTINGS.bookLayout),
 
     loadSettings: async () => {
-      const db = getDb()
-      const keys = Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]
-      const values = await Promise.all(keys.map((k) => getSetting(db, k, DEFAULT_SETTINGS[k])))
-      const loaded = Object.fromEntries(keys.map((k, i) => [k, values[i]])) as unknown as Settings
+      const loaded = await getServices().settings.load(DEFAULT_SETTINGS)
       applyTheme(loaded.theme)
       set({
         ...loaded,

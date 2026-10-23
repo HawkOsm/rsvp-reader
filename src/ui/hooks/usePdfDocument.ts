@@ -2,8 +2,7 @@ import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { useEffect, useState, type RefObject } from 'react'
 import '../../parse/pdf/worker-src'
-import { loadFile } from '../../storage/files'
-import { getDb } from '../../storage/schema'
+import { getServices } from '../../services'
 
 /** The book's stored PDF, opened — `null` until it loads. */
 export function usePdfDocument(bookId: number): PDFDocumentProxy | null {
@@ -11,9 +10,9 @@ export function usePdfDocument(bookId: number): PDFDocumentProxy | null {
   useEffect(() => {
     let cancelled = false
     let loaded: PDFDocumentProxy | null = null
-    void loadFile(getDb(), bookId).then(async (record) => {
-      if (!record || cancelled) return
-      const data = new Uint8Array(await record.blob.arrayBuffer())
+    void getServices().reading.originalFile(bookId).then(async (blob) => {
+      if (!blob || cancelled) return
+      const data = new Uint8Array(await blob.arrayBuffer())
       const opened = await getDocument({ data }).promise
       if (cancelled) {
         void opened.destroy()

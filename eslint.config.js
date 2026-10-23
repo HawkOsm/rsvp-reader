@@ -27,4 +27,24 @@ export default tseslint.config(
       ecmaVersion: 2023,
     },
   },
+  {
+    // The UI goes through src/services.ts and the task folders (library/,
+    // importing/, reading/, settings/), never straight to storage or the
+    // parsers. pdf.js's worker setup is the one exception: it's rendering,
+    // not parsing.
+    files: ['src/ui/**/*.{ts,tsx}', 'src/App.tsx', 'src/main.tsx'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '(^|/)(storage|parse)(/(?!pdf/worker-src$).*)?$',
+              message: 'Use a service from src/services.ts instead.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 )

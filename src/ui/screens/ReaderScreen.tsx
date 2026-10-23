@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { DEFAULT_WPM } from '../../core/pacing'
 import { createEngine } from '../../core/engine'
-import type { Token } from '../../core/types'
-import { getProgress, getTokens, touchOpened } from '../../storage/library'
-import { getDb, type BookRecord } from '../../storage/schema'
+import type { OpenedBook } from '../../reading'
+import { getServices } from '../../services'
 import { BookControls } from '../components/BookControls'
 import { Button } from '../components/Button'
 import { PagePanel } from '../components/PagePanel'
@@ -17,13 +15,6 @@ import { useReaderKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useTouchControls } from '../hooks/useTouchControls'
 import { useWakeLock } from '../hooks/useWakeLock'
 import { useAppStore } from '../store'
-
-interface LoadedBook {
-  book: BookRecord
-  tokens: Token[]
-  startIndex: number
-  startWpm: number
-}
 
 function Centered({ children, dim }: { children: ReactNode; dim?: boolean }) {
   const color = dim ? 'text-[var(--color-text-dim)]' : 'text-[var(--color-text)]'
@@ -38,7 +29,7 @@ export function ReaderScreen() {
   const { bookId } = useParams<{ bookId: string }>()
   const navigate = useNavigate()
   const setMode = useAppStore((s) => s.setMode)
-  const [loaded, setLoaded] = useState<LoadedBook | null>(null)
+  const [loaded, setLoaded] = useState<OpenedBook | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -48,27 +39,18 @@ export function ReaderScreen() {
       return
     }
     let cancelled = false
-    void (async () => {
-      const db = getDb()
-      const [book, tokens, progress] = await Promise.all([
-        db.books.get(id),
-        getTokens(db, id),
-        getProgress(db, id),
-      ])
-      if (cancelled) return
-      if (!book || !tokens) {
-        setLoadError('This book could not be found. It may have been removed.')
-        return
-      }
-      void touchOpened(db, id)
-      setMode(progress?.mode ?? 'rsvp')
-      setLoaded({
-        book,
-        tokens,
-        startIndex: progress?.wordIndex ?? 0,
-        startWpm: progress?.wpm ?? DEFAULT_WPM,
+    const { defaultWpm } = useAppStore.getState()
+    void getServices()
+      .reading.open(id, { defaultWpm })
+      .then((book) => {
+        if (cancelled) return
+        if (!book) {
+          setLoadError('This book could not be found. It may have been removed.')
+          return
+        }
+        setMode(book.position.mode)
+        setLoaded(book)
       })
-    })()
     return () => {
       cancelled = true
     }
@@ -90,16 +72,16 @@ export function ReaderScreen() {
   }
   if (!loaded) return <Centered dim>Loading…</Centered>
 
-  return <ReaderContent loaded={loaded} />
+  return <ReaderContent book={loaded} />
 }
 
-function ReaderContent({ loaded }: { loaded: LoadedBook }) {
-  const { book, tokens, startIndex, startWpm } = loaded
+function ReaderContent({ book }: { book: OpenedBook }) {
+  const { tokens, position } = book
   const engine = useMemo(
-    () => createEngine(tokens, { index: startIndex, wpm: startWpm }),
-    // Deliberately excludes startIndex/startWpm: the engine owns playback
-    // state from here on; re-running this on every index change would
-    // recreate it on every word.
+    () => createEngine(tokens, { index: position.wordIndex, wpm: position.wpm }),
+    // Deliberately excludes the position: the engine owns playback state
+    // from here on; re-running this on every index change would recreate
+    // it on every word.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [tokens],
   )
@@ -112,8 +94,8 @@ function ReaderContent({ loaded }: { loaded: LoadedBook }) {
   )
 }
 
-function ReaderBody({ book }: { book: BookRecord }) {
-  const bookId = book.id as number
+function ReaderBody({ book }: { book: OpenedBook }) {
+  const bookId = book.id
   const pages = book.pages
   const navigate = useNavigate()
   const engine = useEngine()

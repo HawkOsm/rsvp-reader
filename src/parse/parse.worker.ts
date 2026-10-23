@@ -1,4 +1,4 @@
-import { parseFile } from './index'
+import { ExtractionError, parseFile } from './index'
 import type { ParseProgress, ParseResult } from './types'
 
 /**
@@ -12,7 +12,10 @@ export type WorkerRequest = { type: 'parse'; file: File } | { type: 'cancel' }
 export type WorkerResponse =
   | { type: 'progress'; progress: ParseProgress }
   | { type: 'result'; result: ParseResult }
-  | { type: 'error'; message: string }
+  /** `extraction`: the error was an ExtractionError — a message meant for
+   * the user. Error classes don't survive postMessage, so this flag
+   * carries it across and client.ts rebuilds the class. */
+  | { type: 'error'; message: string; extraction: boolean }
 
 const controller = new AbortController()
 
@@ -38,6 +41,7 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
       const response: WorkerResponse = {
         type: 'error',
         message: error instanceof Error ? error.message : String(error),
+        extraction: error instanceof ExtractionError,
       }
       self.postMessage(response)
     })

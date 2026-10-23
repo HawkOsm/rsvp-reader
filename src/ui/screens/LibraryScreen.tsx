@@ -1,36 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ExtractionError } from '../../parse'
-import {
-  getProgress,
-  listBooks,
-  removeBook,
-  resetProgress,
-} from '../../storage/library'
-import { getDb, type BookRecord } from '../../storage/schema'
-import { ResumeDialog } from '../components/ResumeDialog'
-import { importLocalFile } from '../import-book'
-import { requestPersistence } from '../../storage/quota'
-import { pendingOpenFile } from '../tauri-open'
+import { ImportError } from '../../importing'
+import type { BookSummary } from '../../library'
+import { getServices } from '../../services'
 import { Button } from '../components/Button'
-
-interface PendingResume {
-  book: BookRecord
-  wordIndex: number
-}
+import { ResumeDialog } from '../components/ResumeDialog'
+import { pendingOpenFile } from '../tauri-open'
 
 export function LibraryScreen() {
   const navigate = useNavigate()
-  const [books, setBooks] = useState<BookRecord[]>([])
+  const { library, importing: importer } = getServices()
+  const [books, setBooks] = useState<BookSummary[]>([])
   const [importing, setImporting] = useState<{ fraction: number; message?: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [pendingResume, setPendingResume] = useState<PendingResume | null>(null)
+  const [pendingResume, setPendingResume] = useState<BookSummary | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const refresh = useCallback(async () => {
-    setBooks(await listBooks(getDb()))
-  }, [])
+    setBooks(await library.list())
+  }, [library])
 
   useEffect(() => {
     void refresh()
@@ -52,19 +41,18 @@ export function LibraryScreen() {
       setError(null)
       setImporting({ fraction: 0 })
       try {
-        const book = await importLocalFile(file, {
+        const book = await importer.importFile(file, {
           onProgress: (fraction, message) => setImporting({ fraction, message }),
         })
-        void requestPersistence()
         await refresh()
         navigate(`/reader/${book.id}`)
       } catch (err) {
-        setError(err instanceof ExtractionError ? err.message : 'Could not add that file.')
+        setError(err instanceof ImportError ? err.message : 'Could not add that file.')
       } finally {
         setImporting(null)
       }
     },
-    [navigate, refresh],
+    [importer, navigate, refresh],
   )
 
   useEffect(() => {
@@ -88,24 +76,23 @@ export function LibraryScreen() {
     if (file) void addFile(file)
   }
 
-  async function openBook(book: BookRecord) {
-    const progress = await getProgress(getDb(), book.id as number)
-    if (progress && progress.wordIndex > 0) {
-      setPendingResume({ book, wordIndex: progress.wordIndex })
+  function openBook(book: BookSummary) {
+    if (book.wordIndex > 0) {
+      setPendingResume(book)
     } else {
       navigate(`/reader/${book.id}`)
     }
   }
 
-  async function onRemove(book: BookRecord, e: React.MouseEvent) {
+  async function onRemove(book: BookSummary, e: React.MouseEvent) {
     e.stopPropagation()
-    await removeBook(getDb(), book.id as number)
+    await library.remove(book.id)
     await refresh()
   }
 
-  async function onResetProgress(book: BookRecord, e: React.MouseEvent) {
+  async function onResetProgress(book: BookSummary, e: React.MouseEvent) {
     e.stopPropagation()
-    await resetProgress(getDb(), book.id as number)
+    await library.resetPosition(book.id)
     await refresh()
   }
 
@@ -182,13 +169,13 @@ export function LibraryScreen() {
             {books.map((book) => (
               <tr
                 key={book.id}
-                onClick={() => void openBook(book)}
+                onClick={() => openBook(book)}
                 className="cursor-pointer border-t border-[var(--color-border)] hover:bg-[var(--color-bg-hover)]"
                 data-testid="book-row"
               >
                 <td className="py-2">{book.title}</td>
                 <td className="py-2" data-testid="book-progress">
-                  <BookProgress book={book} />
+                  {book.percent.toFixed(0)}%
                 </td>
                 <td className="py-2 text-[var(--color-text-dim)]">
                   {book.lastOpenedAt ? new Date(book.lastOpenedAt).toLocaleDateString() : '—'}
@@ -215,45 +202,21 @@ export function LibraryScreen() {
 
       {pendingResume && (
         <ResumeDialog
-          title={pendingResume.book.title}
-          progressPercent={
-            pendingResume.book.totalWords > 0
-              ? Math.min(100, (pendingResume.wordIndex / pendingResume.book.totalWords) * 100)
-              : 0
-          }
+          title={pendingResume.title}
+          progressPercent={pendingResume.percent}
           onResume={() => {
-            const book = pendingResume.book
+            const book = pendingResume
             setPendingResume(null)
             navigate(`/reader/${book.id}`)
           }}
           onStartOver={() => {
-            const book = pendingResume.book
+            const book = pendingResume
             setPendingResume(null)
-            void resetProgress(getDb(), book.id as number).then(() => navigate(`/reader/${book.id}`))
+            void library.resetPosition(book.id).then(() => navigate(`/reader/${book.id}`))
           }}
           onCancel={() => setPendingResume(null)}
         />
       )}
     </div>
   )
-}
-
-function BookProgress({ book }: { book: BookRecord }) {
-  const [percent, setPercent] = useState<number | null>(null)
-  useEffect(() => {
-    let cancelled = false
-    void getProgress(getDb(), book.id as number).then((progress) => {
-      if (cancelled) return
-      if (!progress || book.totalWords <= 0) {
-        setPercent(0)
-        return
-      }
-      setPercent(Math.min(100, (progress.wordIndex / book.totalWords) * 100))
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [book.id, book.totalWords])
-
-  return <span>{percent === null ? '…' : `${percent.toFixed(0)}%`}</span>
 }

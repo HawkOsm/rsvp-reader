@@ -117,6 +117,12 @@ export async function getProgress(
   return db.progress.get(bookId)
 }
 
+/** Every book's progress row, for the library list (one read, not one per
+ * book). */
+export async function listProgress(db: RsvpDatabase): Promise<ProgressRecord[]> {
+  return db.progress.toArray()
+}
+
 /** Reset the word index to the start, keeping the WPM/mode the reader had. */
 export async function resetProgress(db: RsvpDatabase, bookId: number): Promise<void> {
   const existing = await db.progress.get(bookId)
