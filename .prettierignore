@@ -6,3 +6,5 @@ src-tauri/gen
 public/ocr
 tests/fixtures
 pnpm-lock.yaml
+test-results
+playwright-report

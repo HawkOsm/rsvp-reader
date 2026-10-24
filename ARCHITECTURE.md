@@ -48,6 +48,7 @@ src/
   pdf/                the only code that touches MuPDF; one long-lived PDF worker
   ocr/                Tesseract for scanned PDFs, opt-in
   storage/            Dexie (IndexedDB): schema, migrations, small accessor functions
+e2e/                  Playwright smoke test of the built app, at three window sizes
 tests/                mirrors src/ (tests/features/reader/… tests src/features/reader/…)
 ```
 
