@@ -126,14 +126,14 @@ Things that are true everywhere and must stay true. Breaking one is a bug even i
 
 ## Cross-cutting concerns
 
-| Concern  | Where                                                                                                                                                                                                  |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Errors   | `parse/errors.ts` (`ExtractionError`, `NoTextLayerError`), revived across worker boundaries by `parse/worker-errors.ts`; render crashes are caught by `app/ErrorBoundary.tsx`                          |
-| Workers  | `parse/parse.worker.ts` (one per non-PDF file, then terminated); `pdf/pdf.worker.ts` (one, long-lived, idle-shutdown)                                                                                  |
-| Settings | `stores/app-store.ts`, persisted through `stores/api/settings.ts`                                                                                                                                      |
-| Theme    | `lib/theme.ts` sets CSS variables; components use `var(--color-…)` via Tailwind                                                                                                                        |
-| Platform | `platform/`: one `Platform` interface (launch file, back button, status bar, splash, keep screen on, self-update) with web, Tauri and Capacitor implementations; `getPlatform()` picks one at start-up |
-| Offline  | `vite-plugin-pwa` precaches the shell and MuPDF's WASM; OCR data is cached on first use                                                                                                                |
+| Concern  | Where                                                                                                                                                                                                                                                                                                                    |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Errors   | `parse/errors.ts` (`ExtractionError`, `NoTextLayerError`), revived across worker boundaries by `parse/worker-errors.ts`. Anything unexpected goes to `lib/error-log.ts` (on this device only; Settings → Error log), including render crashes caught by `app/ErrorBoundary.tsx`, uncaught errors and PDF engine crashes. |
+| Workers  | `parse/parse.worker.ts` (one per non-PDF file, then terminated); `pdf/pdf.worker.ts` (one, long-lived, idle-shutdown)                                                                                                                                                                                                    |
+| Settings | `stores/app-store.ts`, persisted through `stores/api/settings.ts`                                                                                                                                                                                                                                                        |
+| Theme    | `lib/theme.ts` sets CSS variables; components use `var(--color-…)` via Tailwind                                                                                                                                                                                                                                          |
+| Platform | `platform/`: one `Platform` interface (launch file, back button, status bar, splash, keep screen on, self-update) with web, Tauri and Capacitor implementations; `getPlatform()` picks one at start-up                                                                                                                   |
+| Offline  | `vite-plugin-pwa` precaches the shell and MuPDF's WASM; OCR data is cached on first use                                                                                                                                                                                                                                  |
 
 ## Where to go next
 

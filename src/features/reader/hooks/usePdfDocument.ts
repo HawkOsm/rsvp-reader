@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
+import { logError } from '@/lib/error-log'
 import { openBookPdf, type PdfHandle } from '@/features/reader/api/pdf'
 
 /** The engine dying more than this many times within the window is not a
@@ -26,14 +27,16 @@ export function usePdfDocument(bookId: number): PdfHandle | null {
       opened = handle
       forgetLost = handle.onLost(() => {
         if (cancelled) return
+        logError('pdf engine', 'The PDF engine stopped; reopening the book.')
         setDoc(null)
         const now = Date.now()
         crashes.current = [...crashes.current.filter((t) => now - t < CRASH_WINDOW_MS), now]
         if (crashes.current.length <= MAX_CRASHES) setAttempt((n) => n + 1)
       })
       setDoc(handle)
-    })().catch(() => {
+    })().catch((err) => {
       // A PDF that will not open leaves the panel empty, as a missing file does.
+      logError('open pdf', err)
     })
     return () => {
       cancelled = true

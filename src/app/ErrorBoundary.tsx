@@ -1,4 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { Button } from '@/components/Button'
+import { formatErrorLog, logError, readErrorLog } from '@/lib/error-log'
 
 interface State {
   error: Error | null
@@ -15,7 +17,10 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('Screen crashed:', error, info.componentStack)
+    logError(
+      'screen',
+      Object.assign(error, { stack: `${error.stack ?? ''}\n${info.componentStack ?? ''}` }),
+    )
   }
 
   render() {
@@ -29,9 +34,17 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
           {'\n\n'}
           {error.stack}
         </pre>
-        <a className="underline" href="#/" onClick={() => this.setState({ error: null })}>
-          Back to the library
-        </a>
+        <div className="flex gap-4">
+          <Button
+            variant="link"
+            onClick={() => void navigator.clipboard?.writeText(formatErrorLog(readErrorLog()))}
+          >
+            Copy error details
+          </Button>
+          <a className="underline" href="#/" onClick={() => this.setState({ error: null })}>
+            Back to the library
+          </a>
+        </div>
       </div>
     )
   }

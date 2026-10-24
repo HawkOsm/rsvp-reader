@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { clearErrorLog, readErrorLog } from '@/lib/error-log'
 import { ExtractionError, NoTextLayerError } from '@/parse/errors'
 import type { BookRecord } from '@/storage/schema'
 import type { ImportBookOptions } from '@/features/library/api/import-book'
@@ -57,12 +58,15 @@ describe('adding a book', () => {
     expect(await screen.findByText('This PDF is password protected.')).toBeInTheDocument()
   })
 
-  it('does not leak the details of an unexpected failure', async () => {
+  it('keeps the details of an unexpected failure in the error log, not on screen', async () => {
+    clearErrorLog()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     importLocalFile.mockImplementation(fails(new Error('worker exploded at 0xdeadbeef')))
     renderLibrary()
     await addFile()
-    expect(await screen.findByText('Could not add that file.')).toBeInTheDocument()
+    expect(await screen.findByText(/Could not add that file\./)).toBeInTheDocument()
     expect(screen.queryByText(/deadbeef/)).not.toBeInTheDocument()
+    expect(readErrorLog().at(-1)).toMatchObject({ where: 'import', message: /deadbeef/ })
   })
 })
 

@@ -20,6 +20,7 @@ import { ResumeDialog } from './ResumeDialog'
 import { getPlatform } from '@/platform'
 import { Button } from '@/components/Button'
 import { Page } from '@/components/Page'
+import { logError } from '@/lib/error-log'
 
 interface PendingResume {
   book: BookRecord
@@ -92,7 +93,11 @@ export function LibraryScreen() {
         if (!aliveRef.current) return
         if (err instanceof NoTextLayerError && !ocr) setOcrOffer(file)
         else if (err instanceof DOMException && err.name === 'AbortError') setError(null)
-        else setError(err instanceof ExtractionError ? err.message : 'Could not add that file.')
+        else if (err instanceof ExtractionError) setError(err.message)
+        else {
+          logError('import', err)
+          setError('Could not add that file. Settings → Error log has the details.')
+        }
       } finally {
         if (abortRef.current === controller) abortRef.current = null
         if (aliveRef.current) setImporting(null)
