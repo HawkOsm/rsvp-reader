@@ -57,10 +57,20 @@ describe('the error log', () => {
   })
 
   it('catches errors nothing else caught', () => {
-    const stop = logUncaughtErrors()
-    window.dispatchEvent(new ErrorEvent('error', { error: new Error('uncaught one') }))
-    stop()
-    window.dispatchEvent(new ErrorEvent('error', { error: new Error('after stopping') }))
+    // Mark the test's own errors as handled, or the test runner reports
+    // them as real uncaught errors.
+    const handled = (event: Event) => event.preventDefault()
+    window.addEventListener('error', handled)
+    const fire = (message: string) =>
+      window.dispatchEvent(new ErrorEvent('error', { error: new Error(message), cancelable: true }))
+    try {
+      const stop = logUncaughtErrors()
+      fire('uncaught one')
+      stop()
+      fire('after stopping')
+    } finally {
+      window.removeEventListener('error', handled)
+    }
     expect(readErrorLog().map((e) => e.message)).toEqual(['uncaught one'])
   })
 })
