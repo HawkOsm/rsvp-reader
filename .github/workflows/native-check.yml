@@ -1,0 +1,39 @@
+# Builds the desktop and Android apps when a change could break them, so a
+# broken native build shows up on its pull request, not on release day. Not on
+# every change: these builds take several minutes each (macOS the longest).
+name: Native build check
+
+on:
+  pull_request:
+    paths:
+      - 'src-tauri/**'
+      - 'android/**'
+      - 'capacitor.config.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'tools/check-android-permissions.sh'
+      - '.github/workflows/build-apps.yml'
+      - '.github/workflows/native-check.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src-tauri/**'
+      - 'android/**'
+      - 'capacitor.config.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'tools/check-android-permissions.sh'
+      - '.github/workflows/build-apps.yml'
+      - '.github/workflows/native-check.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: native-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-apps.yml
+    with:
+      retention-days: 7
+    # No secrets: a check builds the unsigned debug APK, which is all it needs.
