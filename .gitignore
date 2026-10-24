@@ -43,3 +43,7 @@ android/build/
 
 # OCR engine and language data, copied by scripts/copy-ocr-assets.mjs
 /public/ocr/
+
+# Playwright output
+/test-results/
+/playwright-report/

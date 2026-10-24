@@ -46,6 +46,22 @@ jobs:
       - name: Bundle size check
         run: node tools/check-bundle-size.mjs
 
+      # The smoke test from CONTRIBUTING.md, in a real browser, against the
+      # build above: catches what unit tests can't (workers, layout, saving).
+      - name: Install Chromium for the smoke test
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Smoke test (Playwright)
+        run: pnpm exec playwright test
+
+      - name: Upload the smoke test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
       - name: Android manifest permission check
         run: |
           if [ -d android ]; then
