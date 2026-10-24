@@ -1,14 +1,15 @@
-# Runs on every push/PR: the checks that should block a merge. Separate
-# from build.yml (native installers) and deploy-app.yml (PWA deploy) —
-# this one is cheap and fast, so it should never be blocked waiting on
-# either of those.
+# Runs on every pull request and push to main: the checks that block a merge
+# (its `test` job is required by main's branch protection). Separate from
+# native-check.yml (native builds, only when native files change) and
+# deploy-app.yml (the PWA, deployed by hand): this one is fast, and never
+# waits on either.
 name: CI
 
 on:
   push:
-    branches: [next, main]
+    branches: [main]
   pull_request:
-    branches: [next, main]
+    branches: [main]
   workflow_dispatch:
 
 permissions:

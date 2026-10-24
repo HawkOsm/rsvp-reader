@@ -68,8 +68,9 @@ Anything on `main` could ship today. Work that takes more than one PR goes behin
 flag, off by default.
 
 - **Mechanism:** `src/lib/flags.ts` and Settings → Experimental; CI on every PR.
-- **Not enforced yet:** GitHub branch protection (required checks before merging). Turning it on
-  makes this a hard rule instead of a habit.
+- **Enforced by:** GitHub branch protection on `main`: the `test` check must pass on code that
+  is up to date with `main`, and nothing is pushed straight to it. The native builds are not
+  required, because they only run when native files change.
 
 ## 8. Failures leave a record
 
