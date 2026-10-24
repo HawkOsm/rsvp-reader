@@ -3,6 +3,7 @@ import { Button } from '@/components/Button'
 import { CONTROL, Field } from '@/components/Field'
 import { Page } from '@/components/Page'
 import { WpmInput } from '@/components/WpmInput'
+import { ExperimentalFlags } from './ExperimentalFlags'
 import { useAppStore } from '@/stores/app-store'
 import { DARK_PALETTE } from '@/lib/theme'
 
@@ -96,6 +97,8 @@ export function SettingsScreen() {
           )}
         </label>
       </section>
+
+      <ExperimentalFlags />
 
       <section className="mt-8 flex max-w-xl flex-col gap-2 border-t border-border pt-4 text-sm text-text-dim">
         <h2 className="text-base font-medium text-text">About and licences</h2>
