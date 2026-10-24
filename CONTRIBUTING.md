@@ -123,7 +123,13 @@ Versions are kept in step in `package.json`, `src-tauri/tauri.conf.json` and
    the draft.
 4. Check the downloads, then publish the draft by hand.
 
-`deploy-app.yml` publishes the web build to GitHub Pages.
+The builds themselves are defined once, in `build-apps.yml`. `release.yml` calls it on a tag, and
+`native-check.yml` calls it on any pull request that touches the native shells (`src-tauri/`,
+`android/`, `capacitor.config.ts`) or the dependencies (`package.json`, `pnpm-lock.yaml`). That
+way a broken desktop or Android build fails its PR, not the release. You can also start it by
+hand from the Actions tab.
+
+`deploy-app.yml` publishes the web build to GitHub Pages. It runs only when started by hand.
 
 ## Licence
 
