@@ -4,5 +4,7 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
     "types": ["vite/client", "node", "vitest/globals"]
   },
-  "include": ["src", "tests"]
+  "include": ["src", "tests"],
+  // Playwright's, type-checked by tsconfig.node.json
+  "exclude": ["tests/e2e"]
 }

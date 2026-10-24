@@ -55,7 +55,7 @@ ships. Nothing should merge while CI is red (see 7).
 | Layer   | What                                            | Where              | Runs           |
 | ------- | ----------------------------------------------- | ------------------ | -------------- |
 | Unit    | pure logic, hooks, storage on fake-indexeddb    | `tests/`           | every push     |
-| Browser | the built app at desktop, short and phone sizes | `e2e/`             | every push     |
+| Browser | the built app at desktop, short and phone sizes | `tests/e2e/`       | every push     |
 | Native  | Linux, Windows, macOS and Android builds        | `native-check.yml` | native changes |
 
 - **Rule:** a bug fix comes with the test that would have caught it. If it escaped the unit

@@ -11,7 +11,7 @@ on:
       - 'capacitor.config.ts'
       - 'package.json'
       - 'pnpm-lock.yaml'
-      - 'tools/check-android-permissions.sh'
+      - 'scripts/check-android-permissions.sh'
       - '.github/workflows/build-apps.yml'
       - '.github/workflows/native-check.yml'
   push:
@@ -22,7 +22,7 @@ on:
       - 'capacitor.config.ts'
       - 'package.json'
       - 'pnpm-lock.yaml'
-      - 'tools/check-android-permissions.sh'
+      - 'scripts/check-android-permissions.sh'
       - '.github/workflows/build-apps.yml'
       - '.github/workflows/native-check.yml'
   workflow_dispatch:

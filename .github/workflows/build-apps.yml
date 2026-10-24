@@ -99,7 +99,7 @@ jobs:
         with:
           build-root-directory: android
 
-      - run: ./tools/check-android-permissions.sh
+      - run: ./scripts/check-android-permissions.sh
 
       - name: Decode signing keystore
         if: env.ANDROID_KEYSTORE_BASE64 != ''

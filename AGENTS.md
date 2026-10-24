@@ -28,7 +28,7 @@ pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 pnpm exec playwright test
 ```
 
-A task is not finished until both pass. The second is the browser smoke test (`e2e/`), run against
+A task is not finished until both pass. The second is the browser smoke test (`tests/e2e/`), run against
 the build at three window sizes. For a UI change, also look at it in `pnpm dev` (port 5180).
 
 ## Rules

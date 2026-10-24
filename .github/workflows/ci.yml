@@ -44,7 +44,7 @@ jobs:
         run: pnpm build
 
       - name: Bundle size check
-        run: node tools/check-bundle-size.mjs
+        run: node scripts/check-bundle-size.mjs
 
       # The smoke test from CONTRIBUTING.md, in a real browser, against the
       # build above: catches what unit tests can't (workers, layout, saving).
@@ -65,7 +65,7 @@ jobs:
       - name: Android manifest permission check
         run: |
           if [ -d android ]; then
-            ./tools/check-android-permissions.sh
+            ./scripts/check-android-permissions.sh
           else
             echo "no android/ directory on this branch — skipping"
           fi
