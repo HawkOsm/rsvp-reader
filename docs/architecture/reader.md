@@ -66,12 +66,16 @@ specification; keep them in step.
 
 ## Known fragile spots
 
-These are the places that broke most often in October 2026. Test them by hand after touching
-them (see the smoke test in CONTRIBUTING.md):
+These broke most often in October 2026. Each one now has a browser test in `e2e/reader.spec.ts`;
+each test was checked by breaking the code on purpose and confirming the test fails.
 
-- **The page overlay at small or short windows.** It was redesigned three times. Its rule is in
-  `page-overlay.ts`; change the rule there, with a test, not in the component.
+- **The page overlay at small or short windows.** It was redesigned three times. The test sweeps
+  nine window sizes, from a sideways phone to 320x480, and checks that the overlay never overlaps
+  the word, stays inside the window and draws the page. Its rule is in `page-overlay.ts`; change
+  the rule there, with a unit test, not in the component.
 - **Book-mode fitting.** `pendingFit` is applied once page sizes arrive (`setBookFits`). Getting
-  the order wrong gives a page at the wrong size, or a blank one.
-- **The PDF worker dying.** `pdf/client.ts` reports it through `onLost`, and the view has to
-  reopen the document.
+  the order wrong gives a page at the wrong size, or a blank one. The test checks that "Fit"
+  leaves nothing to scroll, before and after the window shrinks.
+- **The PDF worker dying.** `pdf/client.ts` reports it through `onLost`, and `usePdfDocument`
+  reopens the book (at most three times a minute). The test throws inside the real worker and
+  checks that a new worker takes over and the pages draw again.
