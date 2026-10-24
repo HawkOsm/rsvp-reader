@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { saveProgress } from '@/features/reader/api/book'
 import { useEngine } from '@/features/reader/engine-context'
 import type { ReadingMode } from '@/stores/app-store'
@@ -11,31 +11,30 @@ const SAVE_EVERY_WORDS = 20
  * whenever you pause, go back to the library, or close the app". */
 export function useAutosaveProgress(bookId: number | null, mode: ReadingMode): void {
   const engine = useEngine()
+  // Read at save time, not captured: a save made as the mode changes must
+  // record the mode being switched to. (It once recorded the one being left,
+  // and closing the app soon after reopened the book in the wrong mode.)
+  const modeRef = useRef(mode)
 
   useEffect(() => {
     if (bookId === null) return
-
     let lastSavedIndex = engine.index
-
     function save() {
       if (bookId === null) return
-      void saveProgress(bookId, { wordIndex: engine.index, wpm: engine.wpm, mode })
+      void saveProgress(bookId, { wordIndex: engine.index, wpm: engine.wpm, mode: modeRef.current })
       lastSavedIndex = engine.index
     }
-
     const offWord = engine.on('word', (index) => {
       if (Math.abs(index - lastSavedIndex) >= SAVE_EVERY_WORDS) save()
     })
     const offPlaying = engine.on('playing', (playing) => {
       if (!playing) save()
     })
-
     function onVisibilityChange() {
       if (document.visibilityState === 'hidden') save()
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
     window.addEventListener('beforeunload', save)
-
     return () => {
       save()
       offWord()
@@ -43,5 +42,13 @@ export function useAutosaveProgress(bookId: number | null, mode: ReadingMode): v
       document.removeEventListener('visibilitychange', onVisibilityChange)
       window.removeEventListener('beforeunload', save)
     }
+  }, [bookId, engine])
+
+  // Switching modes is itself worth remembering.
+  useEffect(() => {
+    if (modeRef.current === mode) return
+    modeRef.current = mode
+    if (bookId !== null)
+      void saveProgress(bookId, { wordIndex: engine.index, wpm: engine.wpm, mode })
   }, [bookId, mode, engine])
 }
