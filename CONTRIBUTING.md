@@ -40,8 +40,17 @@ A change is done when **all of these pass locally**, in this order (CI runs the 
 pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && node tools/check-bundle-size.mjs
 ```
 
-If the change touches anything you can see, also run the **smoke test** below in `pnpm dev`. The
-unit tests can't catch layout and worker problems, and those are what broke most in the past.
+```bash
+pnpm exec playwright test
+```
+
+The second command runs the **smoke test** below automatically in Chromium, against the build, at
+three window sizes (desktop, a short window, a phone): `e2e/smoke.spec.ts`. The first time, run
+`pnpm exec playwright install chromium`. `pnpm e2e` builds and runs it in one go. Unit tests can't
+catch layout, worker or saving problems, and those are what broke most in the past.
+
+If you change something you can see, still try it by hand too. The automated test checks that the
+reader works, not that it looks right.
 
 ### Smoke test (two minutes)
 
@@ -74,6 +83,8 @@ If lint says an import is not allowed, the fix is to move code, not to silence t
 
 ## Tests
 
+- `e2e/` is the browser smoke test (Playwright). When a bug escapes the unit tests, add the
+  user-visible check there too.
 - `tests/` mirrors `src/`: `src/features/reader/book-nav.ts` is tested in
   `tests/features/reader/book-nav.test.ts`.
 - Test pure logic directly (book-nav, page-overlay, pacing). It's cheap and exact. Prefer moving

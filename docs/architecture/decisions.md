@@ -992,6 +992,19 @@ per-task service classes (on the pdf.js code); `next` got the MuPDF/OCR switch a
 **Rejected.** Merging `main` into `next`: every moved file would conflict, and `main`'s pdf.js
 code would be thrown away anyway.
 
+## 2026-10-24: A browser smoke test in CI
+
+Unit tests passed while the app kept breaking at runtime, so CONTRIBUTING.md's manual smoke test is
+now automated with Playwright (`e2e/smoke.spec.ts`). It runs against the production build
+(`vite preview`), not the dev server, at three window sizes (desktop, a short window, a phone),
+and fails on any console error. The very first runs found a real bug: on a mode switch,
+`useAutosaveProgress` saved the mode being _left_, so closing the app soon after switching
+reopened the book in the wrong mode at an older word (about 1 run in 13). It now saves the mode
+being switched to; `tests/features/reader/useAutosaveProgress.test.tsx` pins it.
+
+The web server is started as `node node_modules/vite/bin/vite.js preview`, not through `pnpm`:
+through pnpm, Playwright's stop signal never reached Vite and the run never exited.
+
 ## 2026-10-24: Native builds checked on pull requests, from one definition
 
 Desktop and Android builds used to run only on a version tag, so a change that broke them (a Node

@@ -23,8 +23,12 @@ pnpm install
 pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
-A task is not finished until that whole line passes. For a UI change, also run the smoke test in
-CONTRIBUTING.md against `pnpm dev` (port 5180) and check the console for errors.
+```bash
+pnpm exec playwright test
+```
+
+A task is not finished until both pass. The second is the browser smoke test (`e2e/`), run against
+the build at three window sizes. For a UI change, also look at it in `pnpm dev` (port 5180).
 
 ## Rules
 
