@@ -43,14 +43,14 @@ export interface ReaderHintsProps {
 export function ReaderHints({ mode, layout }: ReaderHintsProps) {
   const hints = mode === 'rsvp' ? RSVP : layout.kind === 'paged' ? BOOK_PAGED : BOOK_TEXT
   return (
-    <ul className="hidden flex-wrap justify-center gap-x-5 gap-y-1.5 px-4 pb-3 text-xs text-[var(--color-text-dim)] md:flex">
+    <ul className="hidden flex-wrap justify-center gap-x-5 gap-y-1.5 px-4 pb-3 text-xs text-text-dim md:flex">
       {hints.map(([keys, label]) => (
         <li key={label} className="flex items-center gap-1.5">
           <span className="flex gap-1">
             {keys.map((key) => (
               <kbd
                 key={key}
-                className="rounded border border-[var(--color-border)] bg-[var(--color-bg-raised)] px-1.5 py-0.5 font-sans text-[var(--color-text)]"
+                className="rounded border border-border bg-bg-raised px-1.5 py-0.5 font-sans text-text"
               >
                 {key}
               </kbd>

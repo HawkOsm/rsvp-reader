@@ -13,7 +13,7 @@ export function ScrubBar() {
       value={index}
       onChange={(e) => engine.seek(Number(e.target.value))}
       aria-label="Scrub"
-      className="w-full accent-[var(--color-accent)]"
+      className="w-full accent-accent"
     />
   )
 }

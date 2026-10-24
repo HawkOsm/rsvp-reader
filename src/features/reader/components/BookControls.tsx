@@ -36,10 +36,10 @@ export const BookControls = memo(function BookControls({ pageCount }: BookContro
         <Button disabled={page <= 0} onClick={() => turn(engine, pageCount, layout, -1)}>
           ‹ Previous
         </Button>
-        <span className="text-sm text-[var(--color-text-dim)]" data-testid="book-page-label">
+        <span className="text-sm text-text-dim" data-testid="book-page-label">
           {pageLabel(page, pageCount, layout)}
         </span>
-        <label className="flex items-center gap-2 text-sm text-[var(--color-text-dim)]">
+        <label className="flex items-center gap-2 text-sm text-text-dim">
           Size
           <input
             type="range"
@@ -49,7 +49,7 @@ export const BookControls = memo(function BookControls({ pageCount }: BookContro
             value={percent}
             onChange={(e) => setBookScale(Number(e.target.value) / 100)}
             aria-label="Page size"
-            className="w-32 accent-[var(--color-accent)]"
+            className="w-32 accent-accent"
           />
           <span className="w-10 text-right tabular-nums" data-testid="book-scale">
             {percent}%

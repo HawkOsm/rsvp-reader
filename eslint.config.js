@@ -106,5 +106,23 @@ export default tseslint.config(
       ecmaVersion: 2023,
     },
   },
+  {
+    // The design system's colours are Tailwind utilities (bg-bg-raised,
+    // text-text-dim, border-border); see docs/architecture/ui.md.
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Literal[value=/\\[var\\(--color-/]',
+          message: "Use the colour's utility (e.g. text-text-dim), not [var(--color-…)].",
+        },
+        {
+          selector: 'TemplateElement[value.raw=/\\[var\\(--color-/]',
+          message: "Use the colour's utility (e.g. text-text-dim), not [var(--color-…)].",
+        },
+      ],
+    },
+  },
   ...layers,
 )

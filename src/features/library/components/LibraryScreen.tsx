@@ -19,6 +19,7 @@ import { OcrDialog } from './OcrDialog'
 import { ResumeDialog } from './ResumeDialog'
 import { getPlatform } from '@/platform'
 import { Button } from '@/components/Button'
+import { Page } from '@/components/Page'
 
 interface PendingResume {
   book: BookRecord
@@ -145,18 +146,10 @@ export function LibraryScreen() {
   }
 
   return (
-    <div
-      className="flex min-h-screen flex-col gap-4 bg-[var(--color-bg)] p-6 text-[var(--color-text)]"
-      onDragOver={(e) => {
-        e.preventDefault()
-        setDragOver(true)
-      }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={onDrop}
-    >
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">RSVP Reader</h1>
-        <div className="flex items-center gap-3">
+    <Page
+      title="RSVP Reader"
+      actions={
+        <>
           <Button onClick={() => navigate('/settings')} variant="link">
             Settings
           </Button>
@@ -167,25 +160,32 @@ export function LibraryScreen() {
           >
             Add book
           </Button>
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={ACCEPTED_EXTENSIONS.join(',')}
-          className="hidden"
-          onChange={onFilePicked}
-          aria-label="Add book"
-        />
-      </div>
+        </>
+      }
+      onDragOver={(e) => {
+        e.preventDefault()
+        setDragOver(true)
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={onDrop}
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={ACCEPTED_EXTENSIONS.join(',')}
+        className="hidden"
+        onChange={onFilePicked}
+        aria-label="Add book"
+      />
 
       {dragOver && (
-        <div className="rounded border-2 border-dashed border-[var(--color-accent)] p-6 text-center text-sm text-[var(--color-text-dim)]">
+        <div className="rounded border-2 border-dashed border-accent p-6 text-center text-sm text-text-dim">
           Drop to add
         </div>
       )}
 
       {importing && (
-        <div className="text-sm text-[var(--color-text-dim)]" role="status">
+        <div className="text-sm text-text-dim" role="status">
           Adding book{importing.message ? `: ${importing.message}` : '…'} (
           {Math.round(importing.fraction * 100)}%){' '}
           <Button onClick={() => abortRef.current?.abort()} variant="link" small>
@@ -194,19 +194,13 @@ export function LibraryScreen() {
         </div>
       )}
 
-      {error && (
-        <div className="rounded border border-[var(--color-accent)] p-3 text-sm text-[var(--color-accent)]">
-          {error}
-        </div>
-      )}
+      {error && <div className="rounded border border-accent p-3 text-sm text-accent">{error}</div>}
 
       {books.length === 0 && !importing ? (
-        <p className="text-sm text-[var(--color-text-dim)]">
-          No books yet — add one, or drag a file in.
-        </p>
+        <p className="text-sm text-text-dim">No books yet — add one, or drag a file in.</p>
       ) : (
         <table className="w-full text-left text-sm">
-          <thead className="text-[var(--color-text-dim)]">
+          <thead className="text-text-dim">
             <tr>
               <th className="py-2 font-normal">Title</th>
               <th className="py-2 font-normal">Progress</th>
@@ -219,14 +213,14 @@ export function LibraryScreen() {
               <tr
                 key={book.id}
                 onClick={() => void openBook(book)}
-                className="cursor-pointer border-t border-[var(--color-border)] hover:bg-[var(--color-bg-hover)]"
+                className="cursor-pointer border-t border-border hover:bg-bg-hover"
                 data-testid="book-row"
               >
                 <td className="py-2">
                   {book.title}
                   {book.ocr && (
                     <span
-                      className="ml-2 rounded border border-[var(--color-border)] px-1 text-xs text-[var(--color-text-dim)]"
+                      className="ml-2 rounded border border-border px-1 text-xs text-text-dim"
                       title="The text was recognised from page images, so expect the odd mistake"
                     >
                       OCR
@@ -236,7 +230,7 @@ export function LibraryScreen() {
                 <td className="py-2" data-testid="book-progress">
                   <BookProgress book={book} />
                 </td>
-                <td className="py-2 text-[var(--color-text-dim)]">
+                <td className="py-2 text-text-dim">
                   {book.lastOpenedAt ? new Date(book.lastOpenedAt).toLocaleDateString() : '—'}
                 </td>
                 <td className="py-2 text-right">
@@ -291,7 +285,7 @@ export function LibraryScreen() {
           onCancel={() => setPendingResume(null)}
         />
       )}
-    </div>
+    </Page>
   )
 }
 

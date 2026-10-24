@@ -42,7 +42,7 @@ function App() {
   }, [])
 
   if (!settingsLoaded) {
-    return <div className="min-h-screen bg-[var(--color-bg)]" />
+    return <div className="min-h-screen bg-bg" />
   }
 
   return (

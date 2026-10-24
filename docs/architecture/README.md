@@ -5,6 +5,7 @@ and the invariants. These pages go one level deeper, one subsystem each.
 
 | Page                                     | Covers                                                                        |
 | ---------------------------------------- | ----------------------------------------------------------------------------- |
+| [ui.md](ui.md)                           | The design system: colour tokens, shared components, UI rules                 |
 | [reader.md](reader.md)                   | The engine, the two reading modes, the page overlay, state, and shortcuts     |
 | [formats-and-pdf.md](formats-and-pdf.md) | Adding a format, the parse workers, the MuPDF pipeline, OCR, coordinates      |
 | [storage.md](storage.md)                 | IndexedDB tables, the import flow, migrations and the rules for changing them |

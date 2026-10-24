@@ -1,4 +1,7 @@
 import { useNavigate } from 'react-router-dom'
+import { Button } from '@/components/Button'
+import { CONTROL, Field } from '@/components/Field'
+import { Page } from '@/components/Page'
 import { WpmInput } from '@/components/WpmInput'
 import { useAppStore } from '@/stores/app-store'
 import { DARK_PALETTE } from '@/lib/theme'
@@ -23,47 +26,40 @@ export function SettingsScreen() {
   const setOrpColor = useAppStore((s) => s.setOrpColor)
 
   return (
-    <div className="flex min-h-screen flex-col gap-6 bg-[var(--color-bg)] p-6 text-[var(--color-text)]">
-      <div className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          className="text-sm text-[var(--color-text-dim)]"
-        >
+    <Page
+      title="Settings"
+      back={
+        <Button variant="link" onClick={() => navigate('/')}>
           ← Library
-        </button>
-        <h1 className="text-xl font-semibold">Settings</h1>
-      </div>
-
+        </Button>
+      }
+    >
       <section className="flex max-w-md flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
-          Theme
+        <Field label="Theme">
           <select
             value={theme}
             onChange={(e) => setTheme(e.target.value as 'dark' | 'light' | 'system')}
-            className="rounded border border-[var(--color-border)] bg-[var(--color-bg-raised)] px-2 py-1"
+            className={CONTROL}
           >
             <option value="system">System</option>
             <option value="dark">Dark</option>
             <option value="light">Light</option>
           </select>
-        </label>
+        </Field>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Default WPM (used for newly-opened books)
+        <Field label="Default WPM (used for newly-opened books)">
           <WpmInput
             value={defaultWpm}
             onCommit={setDefaultWpm} // Check the WpmInput component for details on how this works
-            className="rounded border border-[var(--color-border)] bg-[var(--color-bg-raised)] px-2 py-1"
+            className={CONTROL}
           />
-        </label>
+        </Field>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Font family
+        <Field label="Font family">
           <select
             value={fontFamily}
             onChange={(e) => setFontFamily(e.target.value)}
-            className="rounded border border-[var(--color-border)] bg-[var(--color-bg-raised)] px-2 py-1"
+            className={CONTROL}
           >
             {FONT_CHOICES.map((choice) => (
               <option key={choice.value} value={choice.value}>
@@ -71,10 +67,9 @@ export function SettingsScreen() {
               </option>
             ))}
           </select>
-        </label>
+        </Field>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Font size ({fontSize}px)
+        <Field label={`Font size (${fontSize}px)`}>
           <input
             type="range"
             min={28}
@@ -82,7 +77,7 @@ export function SettingsScreen() {
             value={fontSize}
             onChange={(e) => setFontSize(Number(e.target.value))}
           />
-        </label>
+        </Field>
 
         <label className="flex items-center gap-3 text-sm">
           <input
@@ -102,8 +97,8 @@ export function SettingsScreen() {
         </label>
       </section>
 
-      <section className="mt-8 flex max-w-xl flex-col gap-2 border-t border-[var(--color-border)] pt-4 text-sm text-[var(--color-text-dim)]">
-        <h2 className="text-base font-medium text-[var(--color-text)]">About and licences</h2>
+      <section className="mt-8 flex max-w-xl flex-col gap-2 border-t border-border pt-4 text-sm text-text-dim">
+        <h2 className="text-base font-medium text-text">About and licences</h2>
         <p>
           RSVP Reader is free software under the GNU General Public License, version 3 or (at your
           option) any later version. Its source code is at{' '}
@@ -136,6 +131,6 @@ export function SettingsScreen() {
           <code>THIRD_PARTY.md</code> in the source.
         </p>
       </section>
-    </div>
+    </Page>
   )
 }

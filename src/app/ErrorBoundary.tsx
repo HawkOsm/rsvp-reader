@@ -22,9 +22,9 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
     const { error } = this.state
     if (!error) return this.props.children
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[var(--color-bg)] p-6 text-[var(--color-text)]">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-bg p-6 text-text">
         <p className="text-lg">Something went wrong on this screen.</p>
-        <pre className="max-h-64 max-w-[90vw] overflow-auto rounded border border-[var(--color-border)] p-3 text-xs text-[var(--color-text-dim)]">
+        <pre className="max-h-64 max-w-[90vw] overflow-auto rounded border border-border p-3 text-xs text-text-dim">
           {error.message}
           {'\n\n'}
           {error.stack}

@@ -40,7 +40,7 @@ src/
     library/          the book list, importing a file, the OCR offer
     reader/           RSVP view, book mode, page overlay, transport, shortcuts
     settings/         the settings screen
-  components/         UI shared by features (Button, WpmInput)
+  components/         the design system: Page, Dialog, Field, Button, WpmInput
   lib/                shared pure helpers (theme, keyboard, book-layout geometry)
   stores/             the zustand app store (persisted settings + reading mode)
   platform/           the device: web, Tauri, Capacitor behind one interface
