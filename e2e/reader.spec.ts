@@ -158,5 +158,6 @@ test('the page comes back after the PDF engine crashes', async ({ page }) => {
     .poll(() => canvas.evaluate((c) => (c as { width: number }).width), { timeout: 20_000 })
     .toBeGreaterThan(0)
 
-  expect(errors.filter((e: string) => !e.includes('simulated engine crash'))).toEqual([])
+  // The crash itself, and the error log noting it, are expected.
+  expect(errors.filter((e: string) => !/simulated engine crash|\[pdf engine\]/.test(e))).toEqual([])
 })

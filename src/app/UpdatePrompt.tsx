@@ -18,7 +18,7 @@ export function UpdatePrompt() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center p-4">
-      <div className="flex items-center gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-raised)] px-4 py-2 text-sm text-[var(--color-text)] shadow-lg">
+      <div className="flex items-center gap-3 rounded-lg border border-border bg-bg-raised px-4 py-2 text-sm text-text shadow-lg">
         {needRefresh ? (
           <>
             <span>A new version is ready.</span>

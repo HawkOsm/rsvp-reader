@@ -47,7 +47,7 @@ export function TextReflowPanel() {
 
   return (
     <div
-      className="h-full overflow-y-auto p-4 text-[var(--color-text)]"
+      className="h-full overflow-y-auto p-4 text-text"
       style={{ columnWidth: '32rem', columnGap: '3rem' }}
     >
       {paragraphs.map((paragraph) => (
@@ -59,7 +59,7 @@ export function TextReflowPanel() {
                 onClick={() => engine.seek(word.index)}
                 className={
                   word.index === index
-                    ? 'cursor-pointer rounded bg-[var(--color-accent)] px-0.5 text-[var(--color-bg)]'
+                    ? 'cursor-pointer rounded bg-accent px-0.5 text-bg'
                     : 'cursor-pointer'
                 }
               >

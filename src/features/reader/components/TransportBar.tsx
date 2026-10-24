@@ -47,10 +47,10 @@ export const TransportBar = memo(function TransportBar({ layout }: TransportBarP
         >
           {playing ? 'Pause' : 'Play'}
         </Button>
-        <div className="text-sm text-[var(--color-text-dim)]" data-testid="word-counter">
+        <div className="text-sm text-text-dim" data-testid="word-counter">
           {counterParts.join(' · ')}
         </div>
-        <label className="flex items-center gap-2 text-sm text-[var(--color-text-dim)]">
+        <label className="flex items-center gap-2 text-sm text-text-dim">
           WPM
           <input
             type="range"
@@ -60,12 +60,12 @@ export const TransportBar = memo(function TransportBar({ layout }: TransportBarP
             value={wpm}
             onChange={(e) => engine.setWpm(Number(e.target.value))}
             aria-label="WPM speed"
-            className="w-40 accent-[var(--color-accent)]"
+            className="w-40 accent-accent"
           />
           <WpmInput
             value={wpm}
             onCommit={(next) => engine.setWpm(next)}
-            className="w-16 rounded border border-[var(--color-border)] bg-[var(--color-bg-raised)] px-1 py-0.5 text-[var(--color-text)]"
+            className="w-16 rounded border border-border bg-bg-raised px-1 py-0.5 text-text"
           />
         </label>
       </div>

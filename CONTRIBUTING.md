@@ -99,6 +99,10 @@ If lint says an import is not allowed, the fix is to move code, not to silence t
 - `main` is the only long-lived branch. Work on a short-lived branch, open a PR, and merge once CI
   is green. Don't keep two long-running branches that restructure the same code; that's how this
   repo once ended up with two incompatible restructures.
+- **`main` is always releasable.** Anything merged into it could ship today. Work that takes
+  more than one PR is merged behind a **feature flag** (`src/lib/flags.ts`), off by default.
+  Check it with `useFlag('name')`, and switch it on for your own device in Settings →
+  Experimental. When the feature is finished, delete the flag and its `if`s.
 - One logical change per commit. Moving files and changing behaviour go in **separate** commits,
   so a move can be reviewed as "nothing changed".
 - Commit subjects are a plain imperative sentence saying what changes for the user or the code,

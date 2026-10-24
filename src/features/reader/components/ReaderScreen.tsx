@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createEngine } from '@/core/engine'
 import { BookControls } from './BookControls'
 import { Button } from '@/components/Button'
+import { Centered } from '@/components/Page'
 import { resolvePage } from '@/core/page-spec'
 import type { BookRecord } from '@/features/reader/api/book'
 import { PageOverlay } from './PageOverlay'
@@ -18,17 +19,6 @@ import { useReaderKeyboardShortcuts } from '@/features/reader/hooks/useReaderKey
 import { useTouchControls } from '@/features/reader/hooks/useTouchControls'
 import { useWakeLock } from '@/features/reader/hooks/useWakeLock'
 import { useAppStore } from '@/stores/app-store'
-
-function Centered({ children, dim }: { children: ReactNode; dim?: boolean }) {
-  const color = dim ? 'text-[var(--color-text-dim)]' : 'text-[var(--color-text)]'
-  return (
-    <div
-      className={`flex min-h-screen flex-col items-center justify-center gap-4 bg-[var(--color-bg)] p-6 ${color}`}
-    >
-      {children}
-    </div>
-  )
-}
 
 export function ReaderScreen() {
   const { bookId } = useParams<{ bookId: string }>()
@@ -93,8 +83,8 @@ function ReaderBody({ book }: { book: BookRecord }) {
   }, [mode, engine])
 
   return (
-    <div className="flex h-screen flex-col bg-[var(--color-bg)] text-[var(--color-text)]">
-      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-[var(--color-border)] px-4 py-2 text-sm">
+    <div className="flex h-screen flex-col bg-bg text-text">
+      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border px-4 py-2 text-sm">
         <div>
           <Button onClick={() => navigate('/')}>‹ Library</Button>
         </div>

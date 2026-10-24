@@ -1,46 +1,33 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
+import { getPlatform, type ScreenLock } from '@/platform'
 
-/** Keeps the screen awake while `active` is true, via the Screen Wake Lock
- * API. Silently does nothing where it's unsupported (Safari < 16.4,
- * Tauri/Capacitor need their own platform plugin — see docs/architecture/decisions.md) —
- * losing the wake lock is an inconvenience, not a correctness issue. */
+/** Keeps the screen on while `active`. The device may refuse, or let go when
+ * the app is hidden; it is asked again when the app is visible again. */
 export function useWakeLock(active: boolean): void {
-  const lockRef = useRef<WakeLockSentinel | null>(null)
-
   useEffect(() => {
-    if (!active || !navigator.wakeLock) return
-
+    if (!active) return
+    let lock: ScreenLock | null = null
     let cancelled = false
-    navigator.wakeLock
-      .request('screen')
-      .then((lock) => {
-        if (cancelled) {
-          void lock.release()
-          return
-        }
-        lockRef.current = lock
-      })
-      .catch(() => {
-        // Refused (e.g. the tab isn't visible yet) — nothing to do.
-      })
 
-    function onVisibilityChange() {
-      if (document.visibilityState === 'visible' && !lockRef.current && active) {
-        navigator.wakeLock
-          ?.request('screen')
-          .then((lock) => {
-            lockRef.current = lock
-          })
-          .catch(() => {})
-      }
+    async function acquire() {
+      if (lock) return
+      const platform = await getPlatform()
+      const acquired = await platform.keepScreenOn()
+      if (cancelled) acquired?.release()
+      else lock = acquired
     }
-    document.addEventListener('visibilitychange', onVisibilityChange)
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') void acquire()
+      else lock = null // the system releases it when the app is hidden
+    }
 
+    void acquire()
+    document.addEventListener('visibilitychange', onVisibilityChange)
     return () => {
       cancelled = true
       document.removeEventListener('visibilitychange', onVisibilityChange)
-      void lockRef.current?.release()
-      lockRef.current = null
+      lock?.release()
+      lock = null
     }
   }, [active])
 }

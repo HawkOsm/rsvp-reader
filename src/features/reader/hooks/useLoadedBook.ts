@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { logError } from '@/lib/error-log'
 import { DEFAULT_WPM } from '@/core/pacing'
 import type { Token } from '@/core/types'
 import { loadBook, touchOpened, type BookRecord } from '@/features/reader/api/book'
@@ -53,7 +54,8 @@ export function useLoadedBook(bookId: string | undefined): LoadedBookState {
             startWpm: progress?.wpm ?? DEFAULT_WPM,
           },
         })
-      } catch {
+      } catch (err) {
+        logError('open book', err)
         if (!cancelled) setState({ status: 'error', message: 'This book could not be opened.' })
       }
     })()

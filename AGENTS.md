@@ -10,7 +10,8 @@ Dexie, zustand, MuPDF WASM, Tesseract). One web build is shipped as a PWA, a Tau
 and a Capacitor Android app. **There is no server, and there must never be a network call at
 runtime.**
 
-Read [ARCHITECTURE.md](ARCHITECTURE.md) before structural changes. The subsystem docs are in
+Read [ARCHITECTURE.md](ARCHITECTURE.md) and
+[docs/architecture/principles.md](docs/architecture/principles.md) before structural changes. The subsystem docs are in
 [docs/architecture/](docs/architecture/README.md).
 
 ## Commands
@@ -38,13 +39,18 @@ the build at three window sizes. For a UI change, also look at it in `pnpm dev` 
    enforces this; **never disable `no-restricted-imports`**. Move the code instead.
 2. **`core/` stays pure**: no DOM, React, I/O or timers except the injected ones.
 3. **Only `src/pdf/document.ts` calls MuPDF.** Everything else goes through `pdfClient`.
+   **Only `src/platform/` imports `@tauri-apps` or `@capacitor`.** Everything else asks
+   `getPlatform()`; add a method to the `Platform` interface rather than checking the platform.
 4. **Schema changes add a Dexie version** with an upgrade and a test against the old version.
    Never edit an existing version, and never re-parse books in a migration.
 5. **Branch on `book.layout.kind`**, never on whether a field happens to be present.
 6. **Pacing and ORP match the Python original** (`v-legacy` tag). Don't change their output
    unless that's the task.
 7. **Move files and change behaviour in separate commits.**
-8. A bug fix includes a test that fails without it. Put testable logic in pure functions
+8. **Never swallow an unexpected error.** Log it with `logError` (`src/lib/error-log.ts`), or
+   say in a comment why it is expected. Unfinished features go behind a flag
+   (`src/lib/flags.ts`) so `main` stays releasable.
+9. A bug fix includes a test that fails without it. Put testable logic in pure functions
    (`*.ts` next to the component) and test those.
 
 ## Don't touch

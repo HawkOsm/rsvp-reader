@@ -10,7 +10,8 @@ import tseslint from 'typescript-eslint'
 //
 //   core                          the RSVP engine and pure types; no I/O, no DOM
 //   parse, pdf, ocr, storage      the "backend": parsers, MuPDF, Tesseract, IndexedDB
-//   lib, components, stores       shared by every feature
+//   lib, components, stores,      shared by every feature; platform/ is the only
+//   platform                      code that may import @tauri-apps or @capacitor
 //   features/<name>               one folder per task; only its api/ touches the backend
 //   app                           routes, shell and app-wide hooks
 //
@@ -24,7 +25,14 @@ const UI = ['app', 'features', 'stores', 'components', 'lib']
 /** An import of one of `folders` under src/, by alias or relative path. */
 const into = (folders) => `^(@/|(\\.{1,2}/)+)(${folders.join('|')})(/|$)`
 
-const restrict = (...patterns) => ({
+const NATIVE = [
+  '^@(tauri-apps|capacitor)/',
+  "Native APIs are only used in src/platform; ask getPlatform() from '@/platform' instead.",
+]
+
+/** Forbid these imports, and native APIs (everywhere but src/platform). */
+const restrict = (...patterns) => restrictOnly(...patterns, NATIVE)
+const restrictOnly = (...patterns) => ({
   'no-restricted-imports': [
     'error',
     { patterns: patterns.map(([regex, message]) => ({ regex, message })) },
@@ -32,7 +40,7 @@ const restrict = (...patterns) => ({
 })
 
 const PARENT_RELATIVE = ['^\\.\\./', "Import from another folder with '@/', not '../'."]
-const NO_UI = [into(UI), 'The backend and core must not import UI code.']
+const NO_UI = [into(UI), 'Lower layers (core, backend, platform) must not import UI code.']
 const NO_APP = [into(['app']), 'Only the app imports from src/app.']
 const NO_FEATURES = [into(['features']), 'Shared code must not depend on a feature.']
 const NO_BACKEND = [
@@ -50,6 +58,8 @@ const layers = [
     rules: restrict([into(BACKEND), 'core has no I/O.'], NO_UI),
   },
   { files: BACKEND.map((dir) => `src/${dir}/**`), rules: restrict(NO_UI) },
+  // The one place that talks to Tauri and Capacitor; shared, so no UI.
+  { files: ['src/platform/**'], rules: restrictOnly(PARENT_RELATIVE, NO_UI, NO_FEATURES) },
   {
     files: ['src/lib/**', 'src/components/**', 'src/stores/**'],
     ignores: ['src/stores/api/**'],
@@ -94,6 +104,24 @@ export default tseslint.config(
     ],
     languageOptions: {
       ecmaVersion: 2023,
+    },
+  },
+  {
+    // The design system's colours are Tailwind utilities (bg-bg-raised,
+    // text-text-dim, border-border); see docs/architecture/ui.md.
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Literal[value=/\\[var\\(--color-/]',
+          message: "Use the colour's utility (e.g. text-text-dim), not [var(--color-…)].",
+        },
+        {
+          selector: 'TemplateElement[value.raw=/\\[var\\(--color-/]',
+          message: "Use the colour's utility (e.g. text-text-dim), not [var(--color-…)].",
+        },
+      ],
     },
   },
   ...layers,

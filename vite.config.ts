@@ -15,8 +15,12 @@ const tesseractVersion = (
   ) as { version: string }
 ).version
 
+const appVersion = (JSON.parse(readFileSync('package.json', 'utf8')) as { version: string }).version
+
 // https://vite.dev/config/
 export default defineConfig({
+  // The version, for the error log (src/lib/error-log.ts).
+  define: { __APP_VERSION__: JSON.stringify(appVersion) },
   // Must match `devUrl` in src-tauri/tauri.conf.json, or `pnpm tauri dev`
   // waits forever on a port nothing is listening on.
   server: { port: 5180, strictPort: true },
