@@ -1036,3 +1036,13 @@ reader-only view state out of the shared store.
 
 **Rejected:** React Native for mobile (Discord's route). A rewrite of the UI for one maintainer,
 when the Capacitor shell already runs the same build.
+
+## 2026-10-24: `main` is protected, and `next` is gone
+
+Branch protection on `main` requires the CI `test` job to pass on a branch that is up to date
+with `main`, applies to admins too (so every change goes through a PR), and refuses force-pushes
+and deletion. The native build checks are not required: they run only when native files change,
+so requiring them would leave other PRs waiting for a check that never comes. No review is
+required, since there is one maintainer.
+
+The `next` branch, a leftover from the migration, is deleted and dropped from CI's triggers.

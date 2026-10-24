@@ -96,8 +96,10 @@ If lint says an import is not allowed, the fix is to move code, not to silence t
 
 ## Commits and branches
 
-- `main` is the only long-lived branch. Work on a short-lived branch, open a PR, and merge once CI
-  is green. Don't keep two long-running branches that restructure the same code; that's how this
+- `main` is the only long-lived branch, and it is **protected**: changes reach it only through
+  a PR whose `test` check has passed on code that is up to date with `main`. Direct pushes and
+  force-pushes are refused, for the owner too. In an emergency, protection can be switched off
+  in the repository's settings (Settings → Branches), and switched back on afterwards. Don't keep two long-running branches that restructure the same code; that's how this
   repo once ended up with two incompatible restructures.
 - **`main` is always releasable.** Anything merged into it could ship today. Work that takes
   more than one PR is merged behind a **feature flag** (`src/lib/flags.ts`), off by default.
