@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ExtractionError } from '../../src/parse/errors'
+import { ExtractionError } from '@/parse/errors'
 import {
   extractByOcr,
   OCR_RENDER_SCALE,
   raceAbort,
   type PageRecognizer,
   type PageRenderer,
-} from '../../src/ocr/ocr-pdf'
-import type { PageLine, RenderedPage } from '../../src/pdf/document'
+} from '@/ocr/ocr-pdf'
+import type { PageLine, RenderedPage } from '@/pdf/document'
 
 const HEIGHT = 800
 
@@ -16,7 +16,7 @@ function renderer(pageCount: number): PageRenderer & { renders: [number, number]
   return {
     pageCount,
     renders,
-    pageSize: async () => ({ width: 600, height: HEIGHT }),
+    pageSize: async () => ({ width: 600, height: HEIGHT, userToPage: [1, 0, 0, 1, 0, 0] }),
     render: async (page, scale) => {
       renders.push([page, scale])
       return { width: 1, height: 1, scale, rgba: new Uint8ClampedArray(4) } satisfies RenderedPage
@@ -44,7 +44,10 @@ describe('extractByOcr', () => {
       recognizer([[line(0, 'First', 'page.')], [line(0, 'Second', 'page.')]]),
       'scan.pdf',
     )
-    expect(pdf.renders).toEqual([[0, OCR_RENDER_SCALE], [1, OCR_RENDER_SCALE]])
+    expect(pdf.renders).toEqual([
+      [0, OCR_RENDER_SCALE],
+      [1, OCR_RENDER_SCALE],
+    ])
     expect(result.tokens.map((t) => [t.text, t.page])).toEqual([
       ['First', 0],
       ['page.', 0],
@@ -137,7 +140,9 @@ describe('raceAbort', () => {
   })
 
   it('passes a rejection through', async () => {
-    await expect(raceAbort(Promise.reject(new Error('nope')), new AbortController().signal)).rejects.toThrow('nope')
+    await expect(
+      raceAbort(Promise.reject(new Error('nope')), new AbortController().signal),
+    ).rejects.toThrow('nope')
   })
 
   it('rejects at once if already aborted', async () => {

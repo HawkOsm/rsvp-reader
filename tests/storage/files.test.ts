@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { addBook } from '../../src/storage/library'
-import { loadFile, removeFile, saveFile } from '../../src/storage/files'
-import { getDb, type RsvpDatabase } from '../../src/storage/schema'
+import { addBook } from '@/storage/library'
+import { loadFile, removeFile, saveFile } from '@/storage/files'
+import { getDb, type RsvpDatabase } from '@/storage/schema'
 import { TEXT_BOOK } from './fixtures'
 
 let db: RsvpDatabase

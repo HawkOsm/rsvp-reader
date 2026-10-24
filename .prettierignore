@@ -1,0 +1,8 @@
+# Generated or vendored: never hand-formatted.
+dist
+android
+src-tauri/target
+src-tauri/gen
+public/ocr
+tests/fixtures
+pnpm-lock.yaml

@@ -29,3 +29,8 @@ export const DEFAULT_PAGE: PageSpec = Object.freeze({ ...PAGE_PRESETS[DEFAULT_PA
 
 /** Width over height: how a sheet of this page is shaped. */
 export const aspectOf = (page: PageSpec): number => page.width / page.height
+
+/** The page to draw for a stored size: frozen, and the default if there is none. */
+export function resolvePage(page: { width: number; height: number } | undefined | null): PageSpec {
+  return page ? makePageSpec(page.width, page.height) : DEFAULT_PAGE
+}

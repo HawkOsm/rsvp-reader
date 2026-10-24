@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { parsePdf } from '../../src/parse/pdf'
+import { parsePdf } from '@/parse/pdf'
 
 interface Golden {
   words: string[]
@@ -12,7 +12,9 @@ interface Golden {
 // What the original Python reader (PyMuPDF) made of the same files — see
 // tests/fixtures/legacy-pdf/README.md.
 describe.each(['two-column-text', 'hyphenated-line-breaks'])('%s vs the Python reader', (name) => {
-  const golden = JSON.parse(readFileSync(`tests/fixtures/legacy-pdf/${name}.json`, 'utf8')) as Golden
+  const golden = JSON.parse(
+    readFileSync(`tests/fixtures/legacy-pdf/${name}.json`, 'utf8'),
+  ) as Golden
 
   async function parse() {
     const bytes = readFileSync(`tests/fixtures/${name}.pdf`)

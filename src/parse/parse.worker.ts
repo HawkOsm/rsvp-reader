@@ -1,5 +1,5 @@
-import type { PdfErrorKind } from '../pdf/protocol'
-import { parseFile } from './index'
+import type { PdfErrorKind } from '@/pdf/protocol'
+import { parseFile } from './'
 import type { ParseProgress, ParseResult } from './types'
 import { describeError } from './worker-errors'
 

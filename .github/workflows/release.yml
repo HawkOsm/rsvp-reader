@@ -5,7 +5,7 @@
 #   rsvp-reader-macos-universal.dmg
 #   rsvp-reader.apk
 # The Actions token has been refused permission to *create* a release
-# (see DECISIONS.md's v0.2 log), so the publish job uploads into a draft
+# (see docs/architecture/decisions.md's v0.2 log), so the publish job uploads into a draft
 # you created yourself if it can't create one.
 name: Release
 
@@ -94,7 +94,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21' # Gradle 8.x needs <= 21; see DECISIONS.md's Phase 8 log
+          java-version: '21' # Gradle 8.x needs <= 21; see docs/architecture/decisions.md's Phase 8 log
       - uses: android-actions/setup-android@v3
         with:
           # The default also asks for 'tools', which current sdkmanager no longer has.

@@ -13,7 +13,7 @@ import { join } from 'node:path'
 const DIST_ASSETS = 'dist/assets'
 
 // Gzip sizes, in KB — generous headroom over what the app actually ships
-// today (checked into DECISIONS.md's Phase 9 log), so this catches a real
+// today (checked into docs/architecture/decisions.md's Phase 9 log), so this catches a real
 // regression (an accidentally-bundled heavy dependency) rather than
 // nagging on every small increment.
 const BUDGETS_KB = {

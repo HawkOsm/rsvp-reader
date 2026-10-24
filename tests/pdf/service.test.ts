@@ -2,8 +2,8 @@
 import { readFileSync } from 'node:fs'
 import * as mupdf from 'mupdf'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { PdfRequest, PdfResponse } from '../../src/pdf/protocol'
-import { createPdfService } from '../../src/pdf/service'
+import type { PdfRequest, PdfResponse } from '@/pdf/protocol'
+import { createPdfService } from '@/pdf/service'
 
 const bytes = (name = 'two-column-text') => {
   const b = readFileSync(`tests/fixtures/${name}.pdf`)
@@ -72,7 +72,9 @@ describe('drawing pages', () => {
     await request('open', { doc: 1, data: bytes() }).done
     const jobs = [0, 1, 2].map((page) => request('render', { doc: 1, page, scale: 0.25 }))
     await Promise.all(jobs.map((j) => j.done))
-    const order = responses.filter((r) => r.type === 'done' && jobs.some((j) => j.id === r.id)).map((r) => r.id)
+    const order = responses
+      .filter((r) => r.type === 'done' && jobs.some((j) => j.id === r.id))
+      .map((r) => r.id)
     expect(order).toEqual(jobs.map((j) => j.id))
   })
 
@@ -99,7 +101,10 @@ describe('drawing pages', () => {
     const { request, answer } = setup()
     const draw = request('render', { doc: 9, page: 0, scale: 1 })
     await draw.done
-    expect(answer(draw.id)).toMatchObject({ type: 'error', message: expect.stringMatching(/not open/) })
+    expect(answer(draw.id)).toMatchObject({
+      type: 'error',
+      message: expect.stringMatching(/not open/),
+    })
   })
 })
 

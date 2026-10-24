@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { openPdf, type PageWord } from '../../src/pdf/document'
-import { screenToUserPoint, userBoxToScreen } from '../../src/pdf/geometry'
+import { openPdf, type PageWord } from '@/pdf/document'
+import { screenToUserPoint, userBoxToScreen } from '@/pdf/geometry'
 import { makePdf, type PageSpec } from './make-pdf'
 
 // Books imported by the pdf.js-based versions kept each word's box in raw
@@ -17,7 +17,10 @@ const pages: [string, PageSpec][] = [
   ['a page rotated 90°', { rotate: 90 }],
   ['a page rotated 180°', { rotate: 180 }],
   ['a page rotated 270°', { rotate: 270 }],
-  ['a rotated page with an offset box', { mediaBox: [100, 200, 712, 992], rotate: 90, at: [172, 900] }],
+  [
+    'a rotated page with an offset box',
+    { mediaBox: [100, 200, 712, 992], rotate: 90, at: [172, 900] },
+  ],
 ]
 
 /** The box pdf.js stored for the first word, roughly: from the baseline
@@ -29,10 +32,7 @@ function legacyBox(spec: PageSpec, word: PageWord): [number, number, number, num
   return [x, y, x + width, y + size]
 }
 
-const overlap = (
-  a: { left: number; top: number; width: number; height: number },
-  b: PageWord,
-) => {
+const overlap = (a: { left: number; top: number; width: number; height: number }, b: PageWord) => {
   const ix = Math.max(0, Math.min(a.left + a.width, b.x1) - Math.max(a.left, b.x0))
   const iy = Math.max(0, Math.min(a.top + a.height, b.y1) - Math.max(a.top, b.y0))
   return (ix * iy) / (a.width * a.height)

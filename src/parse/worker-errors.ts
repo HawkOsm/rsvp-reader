@@ -1,4 +1,4 @@
-import type { PdfErrorKind } from '../pdf/protocol'
+import type { PdfErrorKind } from '@/pdf/protocol'
 import { ExtractionError, NoTextLayerError } from './errors'
 
 // `postMessage` flattens an Error to a string, which would lose the one

@@ -8,8 +8,7 @@ export type ContentLayout =
    * as displayed (rotation and crop applied). Without it they are in raw PDF
    * user space, as the pdf.js-based versions stored them, and need the
    * page's own transform to find where they are drawn. */
-  | { kind: 'paged'; pages: number; boxSpace?: 'displayed' }
-  | { kind: 'reflow' }
+  { kind: 'paged'; pages: number; boxSpace?: 'displayed' } | { kind: 'reflow' }
 
 /** One displayed word, mirroring the Python engine's `Token` dataclass. */
 export interface Token {
@@ -25,10 +24,7 @@ export interface Token {
   bbox: [number, number, number, number] | null
 }
 
-export function makeToken(
-  text: string,
-  options: Partial<Omit<Token, 'text'>> = {},
-): Token {
+export function makeToken(text: string, options: Partial<Omit<Token, 'text'>> = {}): Token {
   return {
     text,
     paraEnd: options.paraEnd ?? false,

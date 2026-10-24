@@ -1,4 +1,4 @@
-import { ExtractionError } from '../parse/errors'
+import { ExtractionError } from '@/parse/errors'
 import type { PageRecognizer } from './ocr-pdf'
 import { startGuarded } from './startup'
 import { ocrToLines } from './words'
@@ -60,7 +60,9 @@ export async function createRecognizer(
   options: { signal?: AbortSignal } = {},
 ): Promise<Recognizer> {
   const core = assetUrl(
-    WebAssembly.validate(SIMD_PROBE) ? 'tesseract-core-simd-lstm.wasm.js' : 'tesseract-core-lstm.wasm.js',
+    WebAssembly.validate(SIMD_PROBE)
+      ? 'tesseract-core-simd-lstm.wasm.js'
+      : 'tesseract-core-lstm.wasm.js',
   )
   const languages = language.split('+')
   await Promise.all([

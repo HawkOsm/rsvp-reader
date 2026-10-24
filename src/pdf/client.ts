@@ -1,5 +1,5 @@
-import { reviveError } from '../parse/worker-errors'
-import type { ParseResult } from '../parse/types'
+import { reviveError } from '@/parse/worker-errors'
+import type { ParseResult } from '@/parse/types'
 import type { PageLine, PageSize, RenderedPage } from './document'
 import type { PdfRequest, PdfResponse, PdfResults } from './protocol'
 
@@ -51,7 +51,10 @@ const LINES_CACHED = 8
 
 const aborted = () => new DOMException('Cancelled', 'AbortError')
 
-export function createPdfClient(makeWorker: () => WorkerLike, { idleMs = 30_000 }: PdfClientOptions = {}) {
+export function createPdfClient(
+  makeWorker: () => WorkerLike,
+  { idleMs = 30_000 }: PdfClientOptions = {},
+) {
   let worker: WorkerLike | null = null
   let idleTimer: ReturnType<typeof setTimeout> | undefined
   let nextId = 1
@@ -120,12 +123,20 @@ export function createPdfClient(makeWorker: () => WorkerLike, { idleMs = 30_000 
   function call<K extends PdfRequest['type']>(
     type: K,
     fields: Omit<Extract<PdfRequest, { type: K }>, 'id' | 'type'>,
-    options: { transfer?: Transferable[]; onProgress?: Pending['onProgress']; signal?: AbortSignal } = {},
+    options: {
+      transfer?: Transferable[]
+      onProgress?: Pending['onProgress']
+      signal?: AbortSignal
+    } = {},
   ): { id: number; result: Promise<PdfResults[K]> } {
     const id = nextId++
     const result = new Promise<PdfResults[K]>((resolve, reject) => {
       if (options.signal?.aborted) return reject(aborted())
-      pending.set(id, { resolve: resolve as Pending['resolve'], reject, onProgress: options.onProgress })
+      pending.set(id, {
+        resolve: resolve as Pending['resolve'],
+        reject,
+        onProgress: options.onProgress,
+      })
       try {
         // `fields` always matches `type`; TypeScript can't see that through the generic.
         start().postMessage({ id, type, ...fields } as unknown as PdfRequest, options.transfer)
@@ -154,10 +165,17 @@ export function createPdfClient(makeWorker: () => WorkerLike, { idleMs = 30_000 
 
   return {
     /** Read a PDF into tokens. Cancelling stops the worker at its next page. */
-    async parse(file: File, { onProgress, signal }: ParseInWorkerOptions = {}): Promise<ParseResult> {
+    async parse(
+      file: File,
+      { onProgress, signal }: ParseInWorkerOptions = {},
+    ): Promise<ParseResult> {
       const data = await file.arrayBuffer()
       if (signal?.aborted) throw aborted()
-      const { id, result } = call('parse', { fileName: file.name, data }, { transfer: [data], onProgress })
+      const { id, result } = call(
+        'parse',
+        { fileName: file.name, data },
+        { transfer: [data], onProgress },
+      )
       const onAbort = () => sendCancel(id)
       signal?.addEventListener('abort', onAbort)
       try {
@@ -175,10 +193,18 @@ export function createPdfClient(makeWorker: () => WorkerLike, { idleMs = 30_000 
       live.set(doc, listeners)
       const sizes = new Map<number, Promise<PageSize>>()
       const lines = new Map<number, Promise<PageLine[]>>()
-      const lost = () => Promise.reject(new Error('That PDF is not open (the book was closed, or the PDF engine restarted).'))
+      const lost = () =>
+        Promise.reject(
+          new Error('That PDF is not open (the book was closed, or the PDF engine restarted).'),
+        )
 
       /** Remember a page's answer, but not a failed one, and not too many. */
-      function cached<T>(cache: Map<number, Promise<T>>, page: number, limit: number, ask: () => Promise<T>) {
+      function cached<T>(
+        cache: Map<number, Promise<T>>,
+        page: number,
+        limit: number,
+        ask: () => Promise<T>,
+      ) {
         let answer = cache.get(page)
         if (!answer) {
           answer = ask()
@@ -192,11 +218,17 @@ export function createPdfClient(makeWorker: () => WorkerLike, { idleMs = 30_000 
       return {
         pageCount,
         pageSize: (page) =>
-          live.has(doc) ? cached(sizes, page, Infinity, () => call('pageSize', { doc, page }).result) : lost(),
+          live.has(doc)
+            ? cached(sizes, page, Infinity, () => call('pageSize', { doc, page }).result)
+            : lost(),
         render: (page, scale, options) =>
-          live.has(doc) ? call('render', { doc, page, scale }, { signal: options?.signal }).result : lost(),
+          live.has(doc)
+            ? call('render', { doc, page, scale }, { signal: options?.signal }).result
+            : lost(),
         lines: (page) =>
-          live.has(doc) ? cached(lines, page, LINES_CACHED, () => call('lines', { doc, page }).result) : lost(),
+          live.has(doc)
+            ? cached(lines, page, LINES_CACHED, () => call('lines', { doc, page }).result)
+            : lost(),
         onLost(listener) {
           listeners.add(listener)
           return () => listeners.delete(listener)

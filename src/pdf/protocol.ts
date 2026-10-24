@@ -1,4 +1,4 @@
-import type { ParseResult } from '../parse/types'
+import type { ParseResult } from '@/parse/types'
 import type { PageLine, PageSize, RenderedPage } from './document'
 
 // What the main thread and the PDF worker say to each other. Every request

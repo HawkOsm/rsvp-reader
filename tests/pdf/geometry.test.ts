@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { screenToTokenPoint, tokenBoxToScreen, wordToTokenBox } from '../../src/pdf/geometry'
+import { screenToTokenPoint, tokenBoxToScreen, wordToTokenBox } from '@/pdf/geometry'
 
 const PAGE_HEIGHT = 800
 

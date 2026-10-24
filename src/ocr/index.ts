@@ -1,5 +1,5 @@
-import { pdfClient } from '../pdf/client'
-import type { ParseResult } from '../parse/types'
+import { pdfClient } from '@/pdf/client'
+import type { ParseResult } from '@/parse/types'
 import { extractByOcr } from './ocr-pdf'
 import { createRecognizer, type OcrLanguage } from './recognizer'
 

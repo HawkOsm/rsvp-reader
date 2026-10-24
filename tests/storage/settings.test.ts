@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { getSetting, setSetting } from '../../src/storage/settings'
-import { getDb, type RsvpDatabase } from '../../src/storage/schema'
+import { getSetting, setSetting } from '@/storage/settings'
+import { getDb, type RsvpDatabase } from '@/storage/schema'
 
 let db: RsvpDatabase
 

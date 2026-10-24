@@ -8,7 +8,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Keep in sync with package.json/src-tauri/tauri.conf.json's version
-        // (see DECISIONS.md's Phase 9 log) — versionCode just needs to
+        // (see docs/architecture/decisions.md's Phase 9 log) — versionCode just needs to
         // strictly increase release over release, so it's separate from
         // the semver string.
         versionCode 2

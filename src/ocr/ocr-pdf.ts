@@ -1,11 +1,11 @@
-import { DEFAULT_PAGE, makePageSpec } from '../core/page-spec'
-import { wordToTokenBox } from '../pdf/geometry'
-import type { PageLine, PageSize, RenderedPage } from '../pdf/document'
-import { ExtractionError } from '../parse/errors'
-import { linesToTokens } from '../parse/pdf/extract'
-import type { RawLine } from '../parse/pdf/types'
-import { chooseTitle } from '../parse/title'
-import type { ParseOptions, ParseResult } from '../parse/types'
+import { DEFAULT_PAGE, makePageSpec } from '@/core/page-spec'
+import { wordToTokenBox } from '@/pdf/geometry'
+import type { PageLine, PageSize, RenderedPage } from '@/pdf/document'
+import { ExtractionError } from '@/parse/errors'
+import { linesToTokens } from '@/parse/pdf/extract'
+import type { RawLine } from '@/parse/pdf/types'
+import { chooseTitle } from '@/parse/title'
+import type { ParseOptions, ParseResult } from '@/parse/types'
 
 /** Pixels per PDF point to draw pages at for recognition: 3 is about
  * 216 dpi, close enough to the 300 Tesseract likes without the memory and

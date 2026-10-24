@@ -17,7 +17,7 @@ AGPL-3.0-or-later (or a commercial licence from Artifex).
 - **It is compatible with this project.** GPLv3 section 13 and AGPLv3 section
   13 explicitly allow combining the two, so the app is distributed under
   GPL-3.0-or-later. Section 13 of GPLv3 also says the AGPL's network terms
-  apply to the combination as such: if someone offers a *modified* build as a
+  apply to the combination as such: if someone offers a _modified_ build as a
   service that users interact with over a network, they must offer those users
   its source. This project runs nothing server-side, but a host of the PWA is
   in that position if they modify it.
@@ -51,27 +51,27 @@ since that needs a maintained allow-list to compare against first).
 
 ## Direct npm/pnpm dependencies (production)
 
-| Package                          | Version | License            |
-| --------------------------------- | ------- | ------------------- |
-| @capacitor/android                | 8.5.2   | MIT                  |
-| @capacitor/app                    | 8.1.1   | MIT                  |
-| @capacitor/core                   | 8.5.2   | MIT                  |
-| @capacitor/splash-screen          | 8.0.2   | MIT                  |
-| @capacitor/status-bar             | 8.0.3   | MIT                  |
-| @tauri-apps/api                   | 2.12.0  | Apache-2.0 OR MIT    |
-| @tauri-apps/plugin-fs             | 2.6.0   | MIT OR Apache-2.0    |
-| @tauri-apps/plugin-http           | 2.7.0   | MIT OR Apache-2.0    |
-| @tauri-apps/plugin-window-state   | 2.5.0   | MIT OR Apache-2.0    |
-| dexie                              | 4.4.6   | Apache-2.0           |
-| jszip                              | 3.10.2  | MIT OR GPL-3.0-or-later (used under the MIT term) |
-| mupdf                              | 1.28.1  | **AGPL-3.0-or-later** (see above) |
-| tesseract.js                       | 7.0.0   | Apache-2.0           |
-| tesseract.js-core                  | 7.0.0   | Apache-2.0           |
-| @tesseract.js-data/eng, /tur       | 1.0.0   | MIT (package); the trained models are tesseract-ocr/tessdata_best, Apache-2.0 |
-| react / react-dom                  | 19.3.0  | MIT                  |
-| react-router / react-router-dom    | 7.18.4  | MIT                  |
-| workbox-core / workbox-window      | 7.4.1   | MIT                  |
-| zustand                            | 5.0.15  | MIT                  |
+| Package                         | Version | License                                                                       |
+| ------------------------------- | ------- | ----------------------------------------------------------------------------- |
+| @capacitor/android              | 8.5.2   | MIT                                                                           |
+| @capacitor/app                  | 8.1.1   | MIT                                                                           |
+| @capacitor/core                 | 8.5.2   | MIT                                                                           |
+| @capacitor/splash-screen        | 8.0.2   | MIT                                                                           |
+| @capacitor/status-bar           | 8.0.3   | MIT                                                                           |
+| @tauri-apps/api                 | 2.12.0  | Apache-2.0 OR MIT                                                             |
+| @tauri-apps/plugin-fs           | 2.6.0   | MIT OR Apache-2.0                                                             |
+| @tauri-apps/plugin-http         | 2.7.0   | MIT OR Apache-2.0                                                             |
+| @tauri-apps/plugin-window-state | 2.5.0   | MIT OR Apache-2.0                                                             |
+| dexie                           | 4.4.6   | Apache-2.0                                                                    |
+| jszip                           | 3.10.2  | MIT OR GPL-3.0-or-later (used under the MIT term)                             |
+| mupdf                           | 1.28.1  | **AGPL-3.0-or-later** (see above)                                             |
+| tesseract.js                    | 7.0.0   | Apache-2.0                                                                    |
+| tesseract.js-core               | 7.0.0   | Apache-2.0                                                                    |
+| @tesseract.js-data/eng, /tur    | 1.0.0   | MIT (package); the trained models are tesseract-ocr/tessdata_best, Apache-2.0 |
+| react / react-dom               | 19.3.0  | MIT                                                                           |
+| react-router / react-router-dom | 7.18.4  | MIT                                                                           |
+| workbox-core / workbox-window   | 7.4.1   | MIT                                                                           |
+| zustand                         | 5.0.15  | MIT                                                                           |
 
 (Transitive dependencies of the above — `pako`, `readable-stream`, `cookie`,
 etc. — are all MIT/ISC/0BSD/`(MIT AND Zlib)`; full list via the
@@ -81,7 +81,7 @@ etc. — are all MIT/ISC/0BSD/`(MIT AND Zlib)`; full list via the
 
 474 crates at last count (mostly transitive, pulled in by `tauri`,
 `webkit2gtk`, and the plugin crates) — far too many to hand-list here
-without this file going stale immediately. License *types* present, per
+without this file going stale immediately. License _types_ present, per
 `cargo license`: MIT, Apache-2.0, BSD-3-Clause, ISC, MPL-2.0, Zlib,
 Unicode-3.0, CDLA-Permissive-2.0, and dual/triple combinations of those
 (e.g. `Apache-2.0 OR MIT OR Zlib`). No crate is GPL/AGPL/copyleft-only.

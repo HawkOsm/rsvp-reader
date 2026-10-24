@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dirname, resolveEpubPath } from '../../../src/parse/epub/path'
+import { dirname, resolveEpubPath } from '@/parse/epub/path'
 
 describe('resolveEpubPath', () => {
   it('resolves a plain sibling href', () => {

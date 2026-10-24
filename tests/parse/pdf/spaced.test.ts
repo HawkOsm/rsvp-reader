@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { joinLetterSpacedLines } from '../../../src/parse/pdf/spaced'
-import type { RawLine, RawWord } from '../../../src/parse/pdf/types'
+import { joinLetterSpacedLines } from '@/parse/pdf/spaced'
+import type { RawLine, RawWord } from '@/parse/pdf/types'
 
 /** Lay `text` out one character per word: letters `letterGap` apart, and
  * `wordGap` where the text has a space. A character that is a digit run
@@ -65,8 +65,7 @@ describe('joinLetterSpacedLines: what it joins', () => {
 
 describe('joinLetterSpacedLines: where it draws the word break', () => {
   // letters 4 apart; "CHAPTERONE" with one wider gap after the 7th letter.
-  const line = (breakGap: number) =>
-    withGaps('CHAPTERONE', [4, 4, 4, 4, 4, 4, breakGap, 4, 4])
+  const line = (breakGap: number) => withGaps('CHAPTERONE', [4, 4, 4, 4, 4, 4, breakGap, 4, 4])
 
   it('splits at a gap clearly wider than the letter gaps', () => {
     expect(texts(join(line(8)))).toEqual(['CHAPTER', 'ONE'])
@@ -85,9 +84,9 @@ describe('joinLetterSpacedLines: where it draws the word break', () => {
 
   it('does not split on sub-point jitter when the letters are almost touching', () => {
     // typical gap 0.3pt, one 0.9pt: three times as wide, but invisible
-    expect(texts(join(withGaps('CHAPTERONE', [0.3, 0.3, 0.9, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3])))).toEqual([
-      'CHAPTERONE',
-    ])
+    expect(
+      texts(join(withGaps('CHAPTERONE', [0.3, 0.3, 0.9, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]))),
+    ).toEqual(['CHAPTERONE'])
   })
 
   it('still splits when the letters touch (no tracking at all)', () => {
@@ -141,7 +140,11 @@ describe('joinLetterSpacedLines: what it leaves alone', () => {
 describe('joinLetterSpacedLines: around it', () => {
   it('keeps page and block, and handles each line separately', () => {
     const a = { ...spaced('PARTS ONE'), page: 3, block: 2 }
-    const b: RawLine = { page: 3, block: 3, words: [{ text: 'Text.', page: 3, bbox: [0, 0, 30, 10] }] }
+    const b: RawLine = {
+      page: 3,
+      block: 3,
+      words: [{ text: 'Text.', page: 3, bbox: [0, 0, 30, 10] }],
+    }
     const [first, second] = joinLetterSpacedLines([a, b])
     expect(first).toMatchObject({ page: 3, block: 2 })
     expect(texts(first)).toEqual(['PARTS', 'ONE'])

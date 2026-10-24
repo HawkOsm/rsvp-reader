@@ -1,4 +1,4 @@
-import { ExtractionError } from '../parse/errors'
+import { ExtractionError } from '@/parse/errors'
 
 export interface StartupOptions {
   signal?: AbortSignal

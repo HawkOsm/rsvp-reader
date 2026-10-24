@@ -1,5 +1,5 @@
-import { describeError } from '../parse/worker-errors'
-import { extractPdf } from '../parse/pdf/extract'
+import { describeError } from '@/parse/worker-errors'
+import { extractPdf } from '@/parse/pdf/extract'
 import { openPdf, type PdfDocument, type RenderedPage } from './document'
 import type { PdfRequest, PdfResponse, PdfResults } from './protocol'
 

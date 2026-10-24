@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createRecognizer } from '../../src/ocr/recognizer'
-import { ExtractionError } from '../../src/parse/errors'
+import { createRecognizer } from '@/ocr/recognizer'
+import { ExtractionError } from '@/parse/errors'
 
 // Starting Tesseract itself needs a browser; what is testable here is the
 // part before it, which checks the engine and language files can be had.

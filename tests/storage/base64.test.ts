@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arrayBufferToBase64, base64ToArrayBuffer } from '../../src/storage/base64'
+import { arrayBufferToBase64, base64ToArrayBuffer } from '@/storage/base64'
 
 describe('base64', () => {
   it('round-trips arbitrary bytes, including all 256 byte values', () => {

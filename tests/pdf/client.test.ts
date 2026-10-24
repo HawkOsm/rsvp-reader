@@ -2,11 +2,11 @@
 import { getEventListeners } from 'node:events'
 import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ExtractionError, NoTextLayerError } from '../../src/parse/errors'
-import { parsePdf } from '../../src/parse/pdf'
-import { createPdfClient, type WorkerLike } from '../../src/pdf/client'
-import type { PdfRequest, PdfResponse } from '../../src/pdf/protocol'
-import { createPdfService } from '../../src/pdf/service'
+import { ExtractionError, NoTextLayerError } from '@/parse/errors'
+import { parsePdf } from '@/parse/pdf'
+import { createPdfClient, type WorkerLike } from '@/pdf/client'
+import type { PdfRequest, PdfResponse } from '@/pdf/protocol'
+import { createPdfService } from '@/pdf/service'
 
 /** A worker that runs the real service in this thread, delivering messages
  * asynchronously the way a real one does. */
@@ -84,7 +84,9 @@ describe('parse', () => {
   it('does not start at all when already cancelled', async () => {
     const controller = new AbortController()
     controller.abort()
-    await expect(client.parse(fileOf('two-column-text'), { signal: controller.signal })).rejects.toMatchObject({
+    await expect(
+      client.parse(fileOf('two-column-text'), { signal: controller.signal }),
+    ).rejects.toMatchObject({
       name: 'AbortError',
     })
     expect(workers).toHaveLength(0)
@@ -105,7 +107,7 @@ describe('parse', () => {
 })
 
 describe('an open book', () => {
-  it('remembers a page\'s lines, so turning back does not ask again', async () => {
+  it("remembers a page's lines, so turning back does not ask again", async () => {
     const pdf = await client.open(arrayBufferOf('two-column-text'))
     await pdf.lines(0)
     await pdf.lines(0)
@@ -158,7 +160,9 @@ describe('an open book', () => {
     const pdf = await client.open(arrayBufferOf('two-column-text'))
     const controller = new AbortController()
     controller.abort()
-    await expect(pdf.render(0, 1, { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' })
+    await expect(pdf.render(0, 1, { signal: controller.signal })).rejects.toMatchObject({
+      name: 'AbortError',
+    })
     expect(workers[0]?.requests.some((r) => r.type === 'render')).toBe(false)
     pdf.close()
   })
@@ -190,14 +194,18 @@ describe('an open book', () => {
   })
 
   it('explains a PDF that will not open', async () => {
-    await expect(client.open(arrayBufferOf('password-protected'))).rejects.toThrow(/password protected/)
+    await expect(client.open(arrayBufferOf('password-protected'))).rejects.toThrow(
+      /password protected/,
+    )
   })
 
   it('closes the document in the worker, once', async () => {
     const pdf = await client.open(arrayBufferOf('two-column-text'))
     pdf.close()
     pdf.close()
-    await vi.waitFor(() => expect(workers[0]?.requests.filter((r) => r.type === 'close')).toHaveLength(1))
+    await vi.waitFor(() =>
+      expect(workers[0]?.requests.filter((r) => r.type === 'close')).toHaveLength(1),
+    )
     await expect(pdf.pageSize(2)).rejects.toThrow(/not open/)
   })
 
@@ -241,11 +249,14 @@ describe('what is sent to the worker', () => {
 describe('the worker lifetime', () => {
   const idleMs = 1000
   beforeEach(() => {
-    client = createPdfClient(() => {
-      const worker = new InProcessWorker()
-      workers.push(worker)
-      return worker
-    }, { idleMs })
+    client = createPdfClient(
+      () => {
+        const worker = new InProcessWorker()
+        workers.push(worker)
+        return worker
+      },
+      { idleMs },
+    )
   })
 
   it('is stopped once nothing has used it for a while', async () => {

@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs'
 import * as mupdf from 'mupdf'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { openPdf } from '../../src/pdf/document'
+import { openPdf } from '@/pdf/document'
 
 // MuPDF's objects live in WebAssembly memory, which the garbage collector
 // never feels pressure from, so every one must be destroyed by hand. These

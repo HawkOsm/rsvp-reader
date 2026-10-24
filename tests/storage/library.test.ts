@@ -11,9 +11,9 @@ import {
   saveTokens,
   tokensAreFresh,
   touchOpened,
-} from '../../src/storage/library'
-import { getDb, type RsvpDatabase } from '../../src/storage/schema'
-import { makeToken } from '../../src/core/types'
+} from '@/storage/library'
+import { getDb, type RsvpDatabase } from '@/storage/schema'
+import { makeToken } from '@/core/types'
 import { TEXT_BOOK } from './fixtures'
 
 function makeFile(bytes: number, name = 'book.txt', lastModified = 1_700_000_000_000): File {
@@ -82,7 +82,12 @@ describe('tokens', () => {
   })
 
   it('tokensAreFresh is false until the fingerprint and count both match', async () => {
-    const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'stale', ...TEXT_BOOK })
+    const book = await addBook(db, {
+      title: 'T',
+      source: 'local',
+      fingerprint: 'stale',
+      ...TEXT_BOOK,
+    })
     const file = makeFile(163495)
 
     expect(await tokensAreFresh(db, book, file)).toBe(false) // no tokens yet

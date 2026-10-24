@@ -1,4 +1,4 @@
-import { pdfClient } from '../pdf/client'
+import { pdfClient } from '@/pdf/client'
 import { formatOfFileName } from './formats'
 import type { ParseResult } from './types'
 import { reviveError } from './worker-errors'

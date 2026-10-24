@@ -1,4 +1,4 @@
-import { makeToken, type Token } from '../../core/types'
+import { makeToken, type Token } from '@/core/types'
 import type { RawLine, RawWord } from './types'
 
 const HYPHEN_RE = /[-‐‑]$/

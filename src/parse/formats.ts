@@ -1,4 +1,4 @@
-import type { FormatId } from '../core/types'
+import type { FormatId } from '@/core/types'
 import { extensionOf } from './file-name'
 
 // Pure data, no imports of parser code: the UI reads this (for the file

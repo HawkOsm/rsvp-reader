@@ -1,17 +1,11 @@
-import { DEFAULT_WPM } from '../core/pacing'
-import type { PageSpec } from '../core/page-spec'
-import type { ContentLayout, FormatId, Token } from '../core/types'
+import { DEFAULT_WPM } from '@/core/pacing'
+import type { PageSpec } from '@/core/page-spec'
+import type { ContentLayout, FormatId, Token } from '@/core/types'
 import { fingerprintOf } from './fingerprint'
-import type {
-  BookRecord,
-  BookSource,
-  ProgressRecord,
-  ReadingMode,
-  RsvpDatabase,
-} from './schema'
+import type { BookRecord, BookSource, ProgressRecord, ReadingMode, RsvpDatabase } from './schema'
 
 // Ported from db.py's Database class — same operations, backed by Dexie
-// instead of SQLite. See DECISIONS.md for how the table shapes differ
+// instead of SQLite. See docs/architecture/decisions.md for how the table shapes differ
 // (packed one-row-per-book tokens, a separate progress table, no file path).
 
 export interface AddBookInput {

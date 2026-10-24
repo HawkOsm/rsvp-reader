@@ -1,5 +1,5 @@
-import { openPdf } from '../../pdf/document'
-import type { ParseOptions, ParseResult } from '../types'
+import { openPdf } from '@/pdf/document'
+import type { ParseOptions, ParseResult } from '@/parse/types'
 import { extractPdf } from './extract'
 
 /** Read a PDF on the current thread. The app does this inside the PDF

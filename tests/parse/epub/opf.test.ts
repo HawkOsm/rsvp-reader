@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseContainer, parseOpf } from '../../../src/parse/epub/opf'
+import { parseContainer, parseOpf } from '@/parse/epub/opf'
 
 const CONTAINER_XML = `<?xml version="1.0"?>
 <container xmlns="urn:oasis:names:tc:opendocument:xmlns:container" version="1.0">

@@ -1,5 +1,5 @@
-import { DEFAULT_PAGE } from '../core/page-spec'
-import { tokenizeText } from '../core/tokenize'
+import { DEFAULT_PAGE } from '@/core/page-spec'
+import { tokenizeText } from '@/core/tokenize'
 import { ExtractionError } from './errors'
 import { extensionOf } from './file-name'
 import { stripMarkdown } from './markdown'

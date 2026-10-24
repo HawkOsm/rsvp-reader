@@ -1,4 +1,4 @@
-import type { PageLine, PageWord } from '../pdf/document'
+import type { PageLine, PageWord } from '@/pdf/document'
 
 // Turns what Tesseract found on a page image into the same `PageLine`s the
 // PDF text layer gives, so everything after (header/footer removal,
@@ -6,17 +6,19 @@ import type { PageLine, PageWord } from '../pdf/document'
 
 /** The part of Tesseract's page result this uses. */
 export interface OcrBlocks {
-  blocks: {
-    paragraphs: {
-      lines: {
-        words: {
-          text: string
-          confidence: number
-          bbox: { x0: number; y0: number; x1: number; y1: number }
+  blocks:
+    | {
+        paragraphs: {
+          lines: {
+            words: {
+              text: string
+              confidence: number
+              bbox: { x0: number; y0: number; x1: number; y1: number }
+            }[]
+          }[]
         }[]
       }[]
-    }[]
-  }[] | null
+    | null
 }
 
 /** Tesseract scores each word 0-100. Below this it is almost always a

@@ -6,10 +6,7 @@ export async function saveFile(db: RsvpDatabase, bookId: number, file: File): Pr
   await db.files.put({ bookId, blob: file, fileName: file.name, mimeType: file.type })
 }
 
-export async function loadFile(
-  db: RsvpDatabase,
-  bookId: number,
-): Promise<FileRecord | undefined> {
+export async function loadFile(db: RsvpDatabase, bookId: number): Promise<FileRecord | undefined> {
   return db.files.get(bookId)
 }
 

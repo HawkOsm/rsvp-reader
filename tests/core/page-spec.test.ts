@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { aspectOf, DEFAULT_PAGE, makePageSpec, PAGE_PRESETS } from '../../src/core/page-spec'
-import { resolvePage } from '../../src/api/pages'
+import { aspectOf, DEFAULT_PAGE, makePageSpec, PAGE_PRESETS, resolvePage } from '@/core/page-spec'
 
 describe('page spec', () => {
   it('is frozen, so it cannot change after it is scanned', () => {
@@ -13,7 +12,12 @@ describe('page spec', () => {
   })
 
   it('falls back to the default for a size that makes no sense', () => {
-    for (const [w, h] of [[0, 792], [612, -1], [NaN, 5], [Infinity, 5]]) {
+    for (const [w, h] of [
+      [0, 792],
+      [612, -1],
+      [NaN, 5],
+      [Infinity, 5],
+    ]) {
       expect(makePageSpec(w as number, h as number)).toBe(DEFAULT_PAGE)
     }
   })

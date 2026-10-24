@@ -26,8 +26,7 @@ const LONG_PAUSE_CHARS = new Set(['.', '!', '?', '\u2026'])
 /** Trailing characters that wrap real punctuation and should be looked past. */
 const CLOSERS = '"\'\u2019\u201d\u00bb)]}*_'
 
-const CORE_STRIP =
-  '"\'\u2018\u2019\u201c\u201d\u00ab\u00bb()[]{}.,;:!?\u2026\u2014\u2013-*_'
+const CORE_STRIP = '"\'\u2018\u2019\u201c\u201d\u00ab\u00bb()[]{}.,;:!?\u2026\u2014\u2013-*_'
 
 /** The word without surrounding punctuation/quotes. */
 export function core(word: string): string {

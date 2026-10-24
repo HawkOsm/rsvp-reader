@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { orpIndex } from '../../src/core/orp'
-import { delayFor } from '../../src/core/pacing'
-import { normalize, tokenize, tokenizeText } from '../../src/core/tokenize'
-import { makeToken } from '../../src/core/types'
+import { orpIndex } from '@/core/orp'
+import { delayFor } from '@/core/pacing'
+import { normalize, tokenize, tokenizeText } from '@/core/tokenize'
+import { makeToken } from '@/core/types'
 
 // Expected values below were computed by calling rsvp_engine.py's
 // delay_for()/orp_index() directly on the same inputs (not re-derived by

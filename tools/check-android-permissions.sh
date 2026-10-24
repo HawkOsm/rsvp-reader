@@ -30,7 +30,7 @@ if [[ ${#unexpected[@]} -gt 0 ]]; then
   echo "error: AndroidManifest.xml declares permission(s) not on the allow-list:" >&2
   printf '  %s\n' "${unexpected[@]}" >&2
   echo "If this is intentional, add it to ALLOWED in tools/check-android-permissions.sh" >&2
-  echo "and explain why in DECISIONS.md." >&2
+  echo "and explain why in docs/architecture/decisions.md." >&2
   exit 1
 fi
 

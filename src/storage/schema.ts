@@ -1,7 +1,7 @@
 import Dexie, { type Table, type Transaction } from 'dexie'
-import { DEFAULT_WPM } from '../core/pacing'
-import { DEFAULT_PAGE, type PageSpec } from '../core/page-spec'
-import type { ContentLayout, FormatId, Token } from '../core/types'
+import { DEFAULT_WPM } from '@/core/pacing'
+import { DEFAULT_PAGE, type PageSpec } from '@/core/page-spec'
+import type { ContentLayout, FormatId, Token } from '@/core/types'
 
 /** Bumped whenever the packed token format changes, so caches written by an
  * older version stop matching and get rebuilt on next open. Mirrors
@@ -68,7 +68,7 @@ export function normalizeBookRecord(raw: StoredBookRecord): BookRecord {
 export interface TokenRecord {
   bookId: number
   /** The whole book's tokens as one value, not one Dexie row per word —
-   * keeps writes fast (see DECISIONS.md). */
+   * keeps writes fast (see docs/architecture/decisions.md). */
   tokens: Token[]
 }
 
@@ -99,7 +99,7 @@ export interface FileRecord {
  * is not a coincidence: it's what lets `.version(2)`'s `.upgrade()` below
  * carry a real user's existing library forward instead of erroring or
  * silently ignoring it once the new app is served from the same origin
- * (see DECISIONS.md's Phase 10 log). Loose types on purpose — this shape
+ * (see docs/architecture/decisions.md's Phase 10 log). Loose types on purpose — this shape
  * only ever exists mid-migration.
  */
 interface LegacyBookRecord {
@@ -206,7 +206,7 @@ async function migrateFromLegacyWebApp(tx: Transaction): Promise<void> {
       pages,
       // No lastModified was ever recorded, so this can't match a real
       // fingerprintOf(file) — fine, since nothing currently re-derives
-      // tokens from it (see DECISIONS.md's Phase 4 log); it only needs to
+      // tokens from it (see docs/architecture/decisions.md's Phase 4 log); it only needs to
       // be a stable, book-unique value for addBook()'s dedup check.
       fingerprint: `legacy:${legacy.size ?? 0}:${legacy.id}`,
       addedAt: legacy.addedAt ?? Date.now(),

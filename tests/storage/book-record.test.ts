@@ -1,12 +1,8 @@
-import { DEFAULT_PAGE } from '../../src/core/page-spec'
+import { DEFAULT_PAGE } from '@/core/page-spec'
 import Dexie from 'dexie'
 import { describe, expect, it } from 'vitest'
-import { exportBackup, importBackup, type Backup } from '../../src/storage/backup'
-import {
-  getDb,
-  normalizeBookRecord,
-  type StoredBookRecord,
-} from '../../src/storage/schema'
+import { exportBackup, importBackup, type Backup } from '@/storage/backup'
+import { getDb, normalizeBookRecord, type StoredBookRecord } from '@/storage/schema'
 
 const base: Omit<StoredBookRecord, 'id' | 'title'> = {
   source: 'local',

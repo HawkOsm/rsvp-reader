@@ -1,4 +1,4 @@
-import { ExtractionError } from '../parse/errors'
+import { ExtractionError } from '@/parse/errors'
 
 // The only module that talks to MuPDF. Everything else (extraction, the
 // worker, the page view) goes through `PdfDocument`, so swapping or
@@ -152,7 +152,8 @@ export async function openPdf(data: Uint8Array): Promise<PdfDocument> {
     },
 
     render(index, scale) {
-      if (!Number.isFinite(scale) || scale <= 0) throw new RangeError(`Cannot draw at scale ${scale}.`)
+      if (!Number.isFinite(scale) || scale <= 0)
+        throw new RangeError(`Cannot draw at scale ${scale}.`)
       return withPage(index, (page) => {
         const [x0, y0, x1, y1] = page.getBounds()
         const width = x1 - x0
@@ -172,7 +173,12 @@ export async function openPdf(data: Uint8Array): Promise<PdfDocument> {
             width: pixmap.getWidth(),
             height: pixmap.getHeight(),
             scale: used,
-            rgba: rgbToRgba(pixmap.getPixels(), pixmap.getWidth(), pixmap.getHeight(), pixmap.getStride()),
+            rgba: rgbToRgba(
+              pixmap.getPixels(),
+              pixmap.getWidth(),
+              pixmap.getHeight(),
+              pixmap.getStride(),
+            ),
           }
         } finally {
           pixmap.destroy()

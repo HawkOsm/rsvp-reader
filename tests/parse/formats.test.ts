@@ -1,14 +1,14 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import type { FormatId } from '../../src/core/types'
+import type { FormatId } from '@/core/types'
 import {
   ACCEPTED_EXTENSIONS,
   FALLBACK_FORMAT,
   FORMAT_EXTENSIONS,
   FORMAT_IDS,
   formatOfFileName,
-} from '../../src/parse/formats'
-import { loadParser } from '../../src/parse/registry'
+} from '@/parse/formats'
+import { loadParser } from '@/parse/registry'
 
 // One real file per format; text needs none. Typed so a new format without
 // a fixture here is a compile error, not a confusing test failure.

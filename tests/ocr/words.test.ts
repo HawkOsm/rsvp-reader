@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MIN_WORD_CONFIDENCE, ocrToLines, type OcrBlocks } from '../../src/ocr/words'
+import { MIN_WORD_CONFIDENCE, ocrToLines, type OcrBlocks } from '@/ocr/words'
 
 const word = (text: string, x0: number, y0: number, confidence = 90) => ({
   text,
@@ -62,13 +62,21 @@ describe('ocrToLines', () => {
 
   it('leaves out a line that has no words left', () => {
     const page: OcrBlocks = {
-      blocks: [{ paragraphs: [{ lines: [{ words: [word('x', 0, 0, 5)] }, { words: [word('kept', 0, 40)] }] }] }],
+      blocks: [
+        {
+          paragraphs: [
+            { lines: [{ words: [word('x', 0, 0, 5)] }, { words: [word('kept', 0, 40)] }] },
+          ],
+        },
+      ],
     }
     expect(ocrToLines(page, 1).map((l) => l.words[0]?.text)).toEqual(['kept'])
   })
 
   it('trims whitespace around a word', () => {
-    const page: OcrBlocks = { blocks: [{ paragraphs: [{ lines: [{ words: [word(' padded ', 0, 0)] }] }] }] }
+    const page: OcrBlocks = {
+      blocks: [{ paragraphs: [{ lines: [{ words: [word(' padded ', 0, 0)] }] }] }],
+    }
     expect(ocrToLines(page, 1)[0]?.words[0]?.text).toBe('padded')
   })
 

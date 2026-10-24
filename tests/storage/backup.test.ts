@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { addBook, saveProgress } from '../../src/storage/library'
-import { setSetting } from '../../src/storage/settings'
-import { exportBackup, importBackup } from '../../src/storage/backup'
-import { getDb, type RsvpDatabase } from '../../src/storage/schema'
+import { addBook, saveProgress } from '@/storage/library'
+import { setSetting } from '@/storage/settings'
+import { exportBackup, importBackup } from '@/storage/backup'
+import { getDb, type RsvpDatabase } from '@/storage/schema'
 import { TEXT_BOOK } from './fixtures'
 
 let db: RsvpDatabase
@@ -36,7 +36,12 @@ describe('backup', () => {
 
   it('restores into an empty database, files included', async () => {
     const source = getDb(`test-src-${Math.random().toString(36).slice(2)}`)
-    const book = await addBook(source, { title: 'Restored', source: 'local', fingerprint: 'f2', ...TEXT_BOOK })
+    const book = await addBook(source, {
+      title: 'Restored',
+      source: 'local',
+      fingerprint: 'f2',
+      ...TEXT_BOOK,
+    })
     await saveProgress(source, book.id as number, { wordIndex: 12, wpm: 500, mode: 'book' })
     await setSetting(source, 'wpm', 500)
     await source.files.put({

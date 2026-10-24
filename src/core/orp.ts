@@ -12,7 +12,7 @@ import { core } from './pacing'
  * Operates on codepoints, like Python's `len()`/indexing does, so a
  * Turkish "ı" or "ğ" counts as one letter each — no grapheme clustering
  * (Intl.Segmenter) needed, since Python's engine doesn't do that either
- * and this keeps the two in exact parity. See DECISIONS.md.
+ * and this keeps the two in exact parity. See docs/architecture/decisions.md.
  */
 export function orpIndex(word: string): number {
   if (word.length === 0) return 0

@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { ExtractionError } from '../../src/parse/errors'
-import { isEngineUnsupported, MAX_PIXELS, openPdf } from '../../src/pdf/document'
+import { ExtractionError } from '@/parse/errors'
+import { isEngineUnsupported, MAX_PIXELS, openPdf } from '@/pdf/document'
 
 const bytes = (name: string) => new Uint8Array(readFileSync(`tests/fixtures/${name}.pdf`))
 
@@ -105,11 +105,15 @@ describe('isEngineUnsupported', () => {
   it('recognises a browser that cannot compile the WebAssembly', () => {
     expect(isEngineUnsupported(new WebAssembly.CompileError('invalid opcode'))).toBe(true)
     expect(isEngineUnsupported(new WebAssembly.LinkError('bad import'))).toBe(true)
-    expect(isEngineUnsupported(new Error('WebAssembly.instantiate(): expected magic word'))).toBe(true)
+    expect(isEngineUnsupported(new Error('WebAssembly.instantiate(): expected magic word'))).toBe(
+      true,
+    )
   })
 
   it('does not blame the browser for other failures', () => {
-    expect(isEngineUnsupported(new Error('Failed to fetch dynamically imported module'))).toBe(false)
+    expect(isEngineUnsupported(new Error('Failed to fetch dynamically imported module'))).toBe(
+      false,
+    )
     expect(isEngineUnsupported(new TypeError('x is undefined'))).toBe(false)
     expect(isEngineUnsupported('WebAssembly')).toBe(false)
   })

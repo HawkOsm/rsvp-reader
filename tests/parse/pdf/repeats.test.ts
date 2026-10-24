@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { dropRepeatedHeadersFooters } from '../../../src/parse/pdf/repeats'
-import type { RawLine } from '../../../src/parse/pdf/types'
+import { dropRepeatedHeadersFooters } from '@/parse/pdf/repeats'
+import type { RawLine } from '@/parse/pdf/types'
 
 function line(text: string): RawLine {
   return { page: 0, block: 0, words: [{ text, page: 0, bbox: [72, 700, 100, 712] }] }

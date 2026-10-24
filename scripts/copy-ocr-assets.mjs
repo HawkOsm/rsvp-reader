@@ -11,9 +11,18 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const files = [
   ['node_modules/tesseract.js/dist/worker.min.js', 'worker.min.js'],
   ['node_modules/tesseract.js-core/tesseract-core-lstm.wasm.js', 'tesseract-core-lstm.wasm.js'],
-  ['node_modules/tesseract.js-core/tesseract-core-simd-lstm.wasm.js', 'tesseract-core-simd-lstm.wasm.js'],
-  ['node_modules/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz', 'lang/eng.traineddata.gz'],
-  ['node_modules/@tesseract.js-data/tur/4.0.0_best_int/tur.traineddata.gz', 'lang/tur.traineddata.gz'],
+  [
+    'node_modules/tesseract.js-core/tesseract-core-simd-lstm.wasm.js',
+    'tesseract-core-simd-lstm.wasm.js',
+  ],
+  [
+    'node_modules/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz',
+    'lang/eng.traineddata.gz',
+  ],
+  [
+    'node_modules/@tesseract.js-data/tur/4.0.0_best_int/tur.traineddata.gz',
+    'lang/tur.traineddata.gz',
+  ],
 ]
 
 for (const [from, to] of files) {

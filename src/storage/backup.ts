@@ -12,7 +12,7 @@ import {
 // cross-device sync until cloud sync exists. Tokens are deliberately left
 // out: they're cheap to rebuild from the source (the included file, or a
 // re-added local file matched by fingerprint) and would otherwise make the
-// backup as large as the library itself. See DECISIONS.md.
+// backup as large as the library itself. See docs/architecture/decisions.md.
 
 const BACKUP_FORMAT_VERSION = 1
 
@@ -40,10 +40,7 @@ export interface ExportOptions {
   includeFiles?: boolean
 }
 
-export async function exportBackup(
-  db: RsvpDatabase,
-  options: ExportOptions = {},
-): Promise<Backup> {
+export async function exportBackup(db: RsvpDatabase, options: ExportOptions = {}): Promise<Backup> {
   const [books, progress, settings] = await Promise.all([
     db.books.toArray(),
     db.progress.toArray(),
@@ -79,25 +76,18 @@ export async function importBackup(db: RsvpDatabase, backup: Backup): Promise<vo
   if (backup.formatVersion !== BACKUP_FORMAT_VERSION) {
     throw new Error(`Unsupported backup format version: ${backup.formatVersion}`)
   }
-  await db.transaction(
-    'rw',
-    db.books,
-    db.progress,
-    db.settings,
-    db.files,
-    async () => {
-      for (const book of backup.books) await db.books.put(normalizeBookRecord(book))
-      for (const p of backup.progress) await db.progress.put(p)
-      for (const s of backup.settings) await db.settings.put(s)
-      if (backup.files) {
-        for (const [bookIdStr, file] of Object.entries(backup.files)) {
-          const bookId = Number(bookIdStr)
-          const blob = new Blob([base64ToArrayBuffer(file.dataBase64)], {
-            type: file.mimeType,
-          })
-          await db.files.put({ bookId, blob, fileName: file.fileName, mimeType: file.mimeType })
-        }
+  await db.transaction('rw', db.books, db.progress, db.settings, db.files, async () => {
+    for (const book of backup.books) await db.books.put(normalizeBookRecord(book))
+    for (const p of backup.progress) await db.progress.put(p)
+    for (const s of backup.settings) await db.settings.put(s)
+    if (backup.files) {
+      for (const [bookIdStr, file] of Object.entries(backup.files)) {
+        const bookId = Number(bookIdStr)
+        const blob = new Blob([base64ToArrayBuffer(file.dataBase64)], {
+          type: file.mimeType,
+        })
+        await db.files.put({ bookId, blob, fileName: file.fileName, mimeType: file.mimeType })
       }
-    },
-  )
+    }
+  })
 }

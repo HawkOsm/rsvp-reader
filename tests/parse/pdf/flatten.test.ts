@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { flattenPdfWords } from '../../../src/parse/pdf/flatten'
-import type { RawLine, RawWord } from '../../../src/parse/pdf/types'
+import { flattenPdfWords } from '@/parse/pdf/flatten'
+import type { RawLine, RawWord } from '@/parse/pdf/types'
 
 function word(text: string, page = 0): RawWord {
   return { text, page, bbox: [0, 0, 10, 10] }

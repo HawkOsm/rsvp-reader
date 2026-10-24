@@ -1,10 +1,10 @@
-import { DEFAULT_PAGE, makePageSpec } from '../../core/page-spec'
-import type { Token } from '../../core/types'
-import { wordToTokenBox } from '../../pdf/geometry'
-import type { PdfDocument } from '../../pdf/document'
-import { NoTextLayerError } from '../errors'
-import { chooseTitle } from '../title'
-import type { ParseOptions, ParseResult } from '../types'
+import { DEFAULT_PAGE, makePageSpec } from '@/core/page-spec'
+import type { Token } from '@/core/types'
+import { wordToTokenBox } from '@/pdf/geometry'
+import type { PdfDocument } from '@/pdf/document'
+import { NoTextLayerError } from '@/parse/errors'
+import { chooseTitle } from '@/parse/title'
+import type { ParseOptions, ParseResult } from '@/parse/types'
 import { flattenPdfWords } from './flatten'
 import { joinLetterSpacedLines } from './spaced'
 import { markParagraphBreaks } from './paragraphs'
@@ -73,7 +73,8 @@ export async function extractPdf(
     tokens,
     formatId: 'pdf',
     layout: { kind: 'paged', pages: pageCount, boxSpace: 'displayed' },
-    page: pageCount > 0 ? makePageSpec(doc.pageSize(0).width, doc.pageSize(0).height) : DEFAULT_PAGE,
+    page:
+      pageCount > 0 ? makePageSpec(doc.pageSize(0).width, doc.pageSize(0).height) : DEFAULT_PAGE,
   }
 }
 

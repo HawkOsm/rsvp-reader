@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { stripMarkdown } from '../../src/parse/markdown'
+import { stripMarkdown } from '@/parse/markdown'
 
 describe('stripMarkdown', () => {
   it('strips ATX headers', () => {

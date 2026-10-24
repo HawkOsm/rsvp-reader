@@ -1,5 +1,5 @@
-import type { PageSpec } from '../core/page-spec'
-import type { ContentLayout, FormatId, Token } from '../core/types'
+import type { PageSpec } from '@/core/page-spec'
+import type { ContentLayout, FormatId, Token } from '@/core/types'
 
 export interface ParsedChapter {
   title: string

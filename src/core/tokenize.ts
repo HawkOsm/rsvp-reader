@@ -4,7 +4,7 @@ const SOFT_HYPHEN = '\u00ad'
 
 // A hyphen at the end of a line, between two letters, is almost always a
 // word broken across lines by the typesetter. Python's `\w` (Unicode mode)
-// is approximated here with \p{L}\p{N}_; see DECISIONS.md.
+// is approximated here with \p{L}\p{N}_; see docs/architecture/decisions.md.
 const LINE_HYPHEN = /(?<=[\p{L}\p{N}_])[-\u2010\u2011]\n(?=[a-z\u00e0-\u00ff])/gu
 
 // A single newline inside a paragraph is a soft wrap; a blank line is a

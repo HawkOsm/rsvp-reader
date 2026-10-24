@@ -1,4 +1,4 @@
-import type { FormatId } from '../core/types'
+import type { FormatId } from '@/core/types'
 import type { ParseOptions, ParseResult } from './types'
 
 export type ParseFn = (file: File, options: ParseOptions) => Promise<ParseResult>
@@ -13,8 +13,8 @@ export type ParseFn = (file: File, options: ParseOptions) => Promise<ParseResult
 // (pdf/client.ts), so the `pdf` loader here serves tests and any caller
 // already off the main thread.
 const LOADERS: Record<FormatId, () => Promise<ParseFn>> = {
-  pdf: async () => (await import('./pdf')).parsePdf,
-  epub: async () => (await import('./epub')).parseEpub,
+  pdf: async () => (await import('@/parse/pdf')).parsePdf,
+  epub: async () => (await import('@/parse/epub')).parseEpub,
   text: async () => (await import('./text')).parseTextFile,
 }
 

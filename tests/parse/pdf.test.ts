@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { ExtractionError } from '../../src/parse/errors'
-import { parsePdf } from '../../src/parse/pdf'
+import { ExtractionError } from '@/parse/errors'
+import { parsePdf } from '@/parse/pdf'
 
 function fileFrom(path: string, name: string): File {
   return new File([readFileSync(path)], name, { type: 'application/pdf' })
@@ -20,7 +20,7 @@ describe('parsePdf', () => {
     // the next word starts lowercase, so the heuristic (shared with
     // rsvp_engine.py's tokenize_pdf) reads them as line-break artifacts,
     // not real compounds. That's the heuristic's known limitation, not a
-    // bug: see DECISIONS.md.
+    // bug: see docs/architecture/decisions.md.
     expect(result.tokens.map((t) => t.text)).toEqual([
       'It',
       'was',
@@ -106,12 +106,12 @@ describe('parsePdf', () => {
   })
 
   it('rejects a PDF with no real text layer (a scan) with a clear message', async () => {
-    await expect(
-      parsePdf(fileFrom(`${FIXTURES}/scanned-blank.pdf`, 'scan.pdf')),
-    ).rejects.toThrow(ExtractionError)
-    await expect(
-      parsePdf(fileFrom(`${FIXTURES}/scanned-blank.pdf`, 'scan.pdf')),
-    ).rejects.toThrow(/no text layer/i)
+    await expect(parsePdf(fileFrom(`${FIXTURES}/scanned-blank.pdf`, 'scan.pdf'))).rejects.toThrow(
+      ExtractionError,
+    )
+    await expect(parsePdf(fileFrom(`${FIXTURES}/scanned-blank.pdf`, 'scan.pdf'))).rejects.toThrow(
+      /no text layer/i,
+    )
   })
 
   it('rejects a password-protected PDF with a clear message', async () => {
@@ -164,7 +164,13 @@ describe('parsePdf', () => {
 
   it('stores word boxes on the page as displayed when the page is rotated', async () => {
     const result = await parsePdf(fileFrom(`${FIXTURES}/rotated-page.pdf`, 'r.pdf'))
-    expect(result.tokens.slice(0, 5).map((t) => t.text)).toEqual(['The', 'quick', 'brown', 'fox', 'jumps'])
+    expect(result.tokens.slice(0, 5).map((t) => t.text)).toEqual([
+      'The',
+      'quick',
+      'brown',
+      'fox',
+      'jumps',
+    ])
     // The page is 612x792 turned on its side, so it is displayed 792 wide and 612 tall.
     for (const token of result.tokens) {
       const [x0, y0, x1, y1] = token.bbox as [number, number, number, number]

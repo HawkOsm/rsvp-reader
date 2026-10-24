@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ExtractionError } from '../../src/parse/errors'
-import { startGuarded } from '../../src/ocr/startup'
+import { ExtractionError } from '@/parse/errors'
+import { startGuarded } from '@/ocr/startup'
 
 function fakeWorker() {
   return { terminate: vi.fn(async () => {}) }
@@ -24,7 +24,7 @@ describe('startGuarded', () => {
     // tesseract.js never settles the promise in this case.
     const starting = startGuarded((onError) => {
       onError(new Error('fetch failed'))
-      return new Promise(() => {})
+      return new Promise<never>(() => {})
     })
     await expect(starting).rejects.toBeInstanceOf(ExtractionError)
     await expect(starting).rejects.toThrow(/fetch failed/)
@@ -33,13 +33,13 @@ describe('startGuarded', () => {
   it('accepts a plain string from the error handler', async () => {
     const starting = startGuarded((onError) => {
       onError('Error opening data file')
-      return new Promise(() => {})
+      return new Promise<never>(() => {})
     })
     await expect(starting).rejects.toThrow(/Error opening data file/)
   })
 
   it('gives up after the timeout instead of waiting for ever', async () => {
-    const starting = startGuarded(() => new Promise(() => {}), { timeoutMs: 5000 })
+    const starting = startGuarded(() => new Promise<never>(() => {}), { timeoutMs: 5000 })
     const assertion = expect(starting).rejects.toThrow(/too long/)
     await vi.advanceTimersByTimeAsync(5000)
     await assertion
@@ -54,7 +54,7 @@ describe('startGuarded', () => {
 
   it('stops waiting when cancelled', async () => {
     const controller = new AbortController()
-    const starting = startGuarded(() => new Promise(() => {}), { signal: controller.signal })
+    const starting = startGuarded(() => new Promise<never>(() => {}), { signal: controller.signal })
     controller.abort()
     await expect(starting).rejects.toMatchObject({ name: 'AbortError' })
   })

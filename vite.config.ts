@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -19,6 +20,8 @@ export default defineConfig({
   // Must match `devUrl` in src-tauri/tauri.conf.json, or `pnpm tauri dev`
   // waits forever on a port nothing is listening on.
   server: { port: 5180, strictPort: true },
+  // `@/x` is `src/x` — mirrors `paths` in tsconfig.app.json.
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   plugins: [
     react(),
     tailwindcss(),
