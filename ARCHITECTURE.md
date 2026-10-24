@@ -137,6 +137,8 @@ Things that are true everywhere and must stay true. Breaking one is a bug even i
 
 ## Where to go next
 
+- [docs/architecture/principles.md](docs/architecture/principles.md): the engineering
+  principles behind all of this, and what enforces each.
 - [docs/architecture/](docs/architecture/README.md): deep dives on the reader, formats, the PDF
   pipeline, storage, and the sync design.
 - [docs/architecture/decisions.md](docs/architecture/decisions.md): the decision log (why

@@ -1004,3 +1004,25 @@ being switched to; `tests/features/reader/useAutosaveProgress.test.tsx` pins it.
 
 The web server is started as `node node_modules/vite/bin/vite.js preview`, not through `pnpm`:
 through pnpm, Playwright's stop signal never reached Vite and the run never exited.
+
+## 2026-10-24: The principles of large cross-platform apps, scaled down
+
+Compared with how Discord and Facebook ship one app to every device, the repo already had one
+core with thin shells, layers, tests and versioned data. It lacked four things, now added, each
+with its own enforcement:
+
+- **Platform interface** (`src/platform/`). Native APIs had been called from five places, each
+  checking for itself. Lint now confines `@tauri-apps` and `@capacitor` to that folder. Two
+  behaviour fixes came with it: the Android status bar follows the theme (it was always dark),
+  and the service worker is web-only (in a native build it could serve old files after an
+  upgrade).
+- **Design system** (`src/components/`, colour utilities, docs/architecture/ui.md).
+- **Feature flags** (`src/lib/flags.ts`), so `main` is always releasable.
+- **A local error log** (`src/lib/error-log.ts`), never sent anywhere.
+
+`docs/architecture/principles.md` lists all ten principles and their mechanisms. Not done:
+GitHub branch protection, which needs the repository owner to turn it on; and moving the
+reader-only view state out of the shared store.
+
+**Rejected:** React Native for mobile (Discord's route). A rewrite of the UI for one maintainer,
+when the Capacitor shell already runs the same build.

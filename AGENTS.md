@@ -10,7 +10,8 @@ Dexie, zustand, MuPDF WASM, Tesseract). One web build is shipped as a PWA, a Tau
 and a Capacitor Android app. **There is no server, and there must never be a network call at
 runtime.**
 
-Read [ARCHITECTURE.md](ARCHITECTURE.md) before structural changes. The subsystem docs are in
+Read [ARCHITECTURE.md](ARCHITECTURE.md) and
+[docs/architecture/principles.md](docs/architecture/principles.md) before structural changes. The subsystem docs are in
 [docs/architecture/](docs/architecture/README.md).
 
 ## Commands
@@ -46,7 +47,10 @@ the build at three window sizes. For a UI change, also look at it in `pnpm dev` 
 6. **Pacing and ORP match the Python original** (`v-legacy` tag). Don't change their output
    unless that's the task.
 7. **Move files and change behaviour in separate commits.**
-8. A bug fix includes a test that fails without it. Put testable logic in pure functions
+8. **Never swallow an unexpected error.** Log it with `logError` (`src/lib/error-log.ts`), or
+   say in a comment why it is expected. Unfinished features go behind a flag
+   (`src/lib/flags.ts`) so `main` stays releasable.
+9. A bug fix includes a test that fails without it. Put testable logic in pure functions
    (`*.ts` next to the component) and test those.
 
 ## Don't touch
