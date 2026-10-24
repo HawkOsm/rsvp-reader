@@ -22,6 +22,11 @@
     "test:watch": "vitest",
     "e2e": "pnpm build && playwright test"
   },
+  "prettier": {
+    "semi": false,
+    "singleQuote": true,
+    "printWidth": 100
+  },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
     "@capacitor/app": "^8.1.1",
