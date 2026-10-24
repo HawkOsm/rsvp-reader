@@ -1,6 +1,6 @@
 # Third-party licenses
 
-This project (`src/`, `src-tauri/`) is GPL-3.0-or-later — see [LICENSE](LICENSE).
+This project (`src/`, `src-tauri/`) is GPL-3.0-or-later — see [LICENSE](../LICENSE).
 Every dependency's license has to permit being distributed as part of a
 GPL-3.0-or-later work. All of them do. Everything below is MIT/Apache-2.0/
 BSD/ISC/MPL-2.0/Zlib/Unicode-3.0 (or a dual license that includes one of
@@ -89,6 +89,6 @@ Run `cargo license` from `src-tauri/` for the full, current, per-crate list.
 
 ## Fonts and icons
 
-The app's own icon (`share/rsvp-reader.svg` and its generated PNG/ICO/ICNS
+The app's own icon (`assets/icon.svg` and its generated PNG/ICO/ICNS
 variants) is this project's own work, under the same GPL-3.0-or-later
 license as the rest of the repo — not third-party.

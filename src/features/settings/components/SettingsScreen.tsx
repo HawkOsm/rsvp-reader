@@ -134,7 +134,7 @@ export function SettingsScreen() {
             github.com/ArtifexSoftware/mupdf.js
           </a>
           ). Scanned pages are recognised with Tesseract (Apache License 2.0). The full list is in{' '}
-          <code>THIRD_PARTY.md</code> in the source.
+          <code>docs/THIRD_PARTY.md</code> in the source.
         </p>
       </section>
     </Page>

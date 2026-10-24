@@ -351,7 +351,7 @@ Changing the signing key later breaks Google sign-in for installed users. If you
 through Google Play, enroll in Play App Signing and register that key's SHA-1 too.
 
 **Licenses (decision 14):** the project is GPL-3.0-or-later. Whenever a library is added for
-auth or Drive access, check its license for compatibility and add it to `THIRD_PARTY.md` in the
+auth or Drive access, check its license for compatibility and add it to `docs/THIRD_PARTY.md` in the
 same change. Prefer plain `fetch` against the Drive REST API over a large SDK where possible.
 
 Notes can be developed in parallel with phase 4 locally (no sync), but their data model must be
@@ -374,7 +374,7 @@ fixed (IDs, anchors, versions) before phase 5 so nothing needs migrating.
 | 11  | Conflicts: show both versions with their source (device and time)                                                      |
 | 12  | Consent-screen review not planned; see section 12 for the Testing-mode token caveat                                    |
 | 13  | Dedicated stable Android release keystore, one OAuth client per shell                                                  |
-| 14  | License check and `THIRD_PARTY.md` entry for any added library                                                         |
+| 14  | License check and `docs/THIRD_PARTY.md` entry for any added library                                                    |
 | 15  | Sync log view for now                                                                                                  |
 
 Assumptions made while recording these (correct me if wrong):

@@ -65,7 +65,7 @@ function main() {
   }
 
   if (failed) {
-    console.error('\nBundle size budget exceeded — see tools/check-bundle-size.mjs')
+    console.error('\nBundle size budget exceeded — see scripts/check-bundle-size.mjs')
     process.exit(1)
   }
 }

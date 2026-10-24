@@ -37,7 +37,7 @@ For the desktop and Android shells, see the README's "Building it yourself".
 A change is done when **all of these pass locally**, in this order (CI runs the same):
 
 ```bash
-pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && node tools/check-bundle-size.mjs
+pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && node scripts/check-bundle-size.mjs
 ```
 
 ```bash
@@ -45,7 +45,7 @@ pnpm exec playwright test
 ```
 
 The second command runs the **smoke test** below automatically in Chromium, against the build, at
-three window sizes (desktop, a short window, a phone): `e2e/smoke.spec.ts`. The first time, run
+three window sizes (desktop, a short window, a phone): `tests/e2e/smoke.spec.ts`. The first time, run
 `pnpm exec playwright install chromium`. `pnpm e2e` builds and runs it in one go. Unit tests can't
 catch layout, worker or saving problems, and those are what broke most in the past.
 
@@ -83,7 +83,7 @@ If lint says an import is not allowed, the fix is to move code, not to silence t
 
 ## Tests
 
-- `e2e/` is the browser smoke test (Playwright). When a bug escapes the unit tests, add the
+- `tests/e2e/` is the browser smoke test (Playwright). When a bug escapes the unit tests, add the
   user-visible check there too.
 - `tests/` mirrors `src/`: `src/features/reader/book-nav.ts` is tested in
   `tests/features/reader/book-nav.test.ts`.
@@ -134,4 +134,4 @@ hand from the Actions tab.
 ## Licence
 
 Contributions are under GPL-3.0-or-later. New dependencies must be permissive or
-GPL-compatible, and must be listed in `THIRD_PARTY.md`.
+GPL-compatible, and must be listed in `docs/THIRD_PARTY.md`.

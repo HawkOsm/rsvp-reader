@@ -73,4 +73,4 @@ raw user space and are converted with the page's transform when drawn. All of th
 
 MuPDF is the one copyleft dependency. The app is GPL-3.0-or-later and combines with it under
 GPLv3 §13. Any new dependency must be permissive or GPL-compatible, and must be added to
-`THIRD_PARTY.md`.
+`docs/THIRD_PARTY.md`.

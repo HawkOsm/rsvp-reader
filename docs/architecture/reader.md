@@ -66,7 +66,7 @@ specification; keep them in step.
 
 ## Known fragile spots
 
-These broke most often in October 2026. Each one now has a browser test in `e2e/reader.spec.ts`;
+These broke most often in October 2026. Each one now has a browser test in `tests/e2e/reader.spec.ts`;
 each test was checked by breaking the code on purpose and confirming the test fails.
 
 - **The page overlay at small or short windows.** It was redesigned three times. The test sweeps

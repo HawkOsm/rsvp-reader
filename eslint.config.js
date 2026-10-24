@@ -84,16 +84,7 @@ const layers = [
 ]
 
 export default tseslint.config(
-  globalIgnores([
-    'dist',
-    'src-tauri/target',
-    'android',
-    '.venv',
-    '__pycache__',
-    'docs',
-    'share',
-    'tools',
-  ]),
+  globalIgnores(['dist', 'src-tauri/target', 'android', '.venv', '__pycache__', 'docs', 'share']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
