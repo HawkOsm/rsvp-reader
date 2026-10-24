@@ -18,7 +18,7 @@ desktop (Linux/Windows/macOS, via [Tauri](https://tauri.app)), and Android
 codebases — a PyQt6 desktop app, a vanilla-JS PWA, and a native Kotlin
 Android app — kept around, untouched, on the [`legacy`
 branch](https://github.com/HawkOsm/rsvp-reader/tree/legacy) and the
-`v-legacy` tag. `DECISIONS.md` in this repo is the running log of *why* the
+`v-legacy` tag. `docs/architecture/decisions.md` in this repo is the running log of _why_ the
 new codebase is built the way it is, including where it still falls short of
 the old one and exactly what's unverified.
 
@@ -38,7 +38,7 @@ the old one and exactly what's unverified.
 ## Where to get it
 
 - **Web (PWA)** — **[hawkosm.github.io/rsvp-reader](https://hawkosm.github.io/rsvp-reader/)**
-  once deployed (see `DECISIONS.md`'s Phase 6 log for the current, deliberately-not-yet-live
+  once deployed (see `docs/architecture/decisions.md`'s Phase 6 log for the current, deliberately-not-yet-live
   state of that cutover). Installable to the home screen on iOS/Android,
   and to the dock/taskbar on desktop; works offline after first load.
 - **Desktop (Linux/Windows/macOS)** — `.deb`/`.rpm`/AppImage/`.msi`/`.dmg`
@@ -77,7 +77,7 @@ pnpm tauri build
 
 Android, via [Capacitor](https://capacitorjs.com/docs/getting-started/environment-setup)
 (needs the Android SDK and a JDK Gradle actually supports — see
-`DECISIONS.md`'s Phase 8 log for a real gotcha there):
+`docs/architecture/decisions.md`'s Phase 8 log for a real gotcha there):
 
 ```bash
 pnpm build && npx cap sync android
@@ -89,27 +89,27 @@ cd android && ./gradlew assembleDebug
 Unchanged from the previous version — same keys, same behavior, ported
 directly.
 
-| Key | Action |
-| --- | --- |
-| `Space` | Play / pause |
-| `←` / `→` | Back / forward one word |
-| `Shift`+`←` / `→` | Back / forward ten words |
-| `↑` / `↓` | Speed up / down by 25 WPM |
-| `Home` / `End` | Jump to start / end |
-| `P` | Show / hide the page panel |
-| `B` | Book mode / back to RSVP |
-| `Esc` | Back to the library |
-| `Ctrl+L` | Library |
-| `Ctrl+O` | Add book |
+| Key               | Action                     |
+| ----------------- | -------------------------- |
+| `Space`           | Play / pause               |
+| `←` / `→`         | Back / forward one word    |
+| `Shift`+`←` / `→` | Back / forward ten words   |
+| `↑` / `↓`         | Speed up / down by 25 WPM  |
+| `Home` / `End`    | Jump to start / end        |
+| `P`               | Show / hide the page panel |
+| `B`               | Book mode / back to RSVP   |
+| `Esc`             | Back to the library        |
+| `Ctrl+L`          | Library                    |
+| `Ctrl+O`          | Add book                   |
 
 In book mode:
 
-| Key | Action |
-| --- | --- |
-| `Space` / `→` / `↓` | Onward a word/page |
-| `←` / `↑` | Back the same way |
-| `PgUp` / `PgDn` | Turn the page regardless |
-| `Home` / `End` | First / last page |
+| Key                 | Action                   |
+| ------------------- | ------------------------ |
+| `Space` / `→` / `↓` | Onward a word/page       |
+| `←` / `↑`           | Back the same way        |
+| `PgUp` / `PgDn`     | Turn the page regardless |
+| `Home` / `End`      | First / last page        |
 
 The progress bar is clickable and draggable — scrub it to jump anywhere in
 the document. WPM is live-adjustable while playing; the new rate takes
@@ -127,12 +127,12 @@ you're partway through asks whether to **Resume**, **Start over**, or
 
 Base delay is `60000 / WPM` milliseconds per word, adjusted by:
 
-| Condition | Effect |
-| --- | --- |
+| Condition                     | Effect                       |
+| ----------------------------- | ---------------------------- |
 | Word longer than 6 characters | `+30 ms` per extra character |
-| Ends in `,` `;` `:` `—` | × 1.5 |
-| Ends in `.` `!` `?` `…` | × 2.5 |
-| Last word of a paragraph | `+350 ms` flat |
+| Ends in `,` `;` `:` `—`       | × 1.5                        |
+| Ends in `.` `!` `?` `…`       | × 2.5                        |
+| Last word of a paragraph      | `+350 ms` flat               |
 
 Trailing quotes and brackets are looked past, so `said."` still counts as a
 sentence end. The constants live in `src/core/pacing.ts`.
@@ -140,7 +140,7 @@ sentence end. The constants live in `src/core/pacing.ts`.
 ## Where your data lives
 
 IndexedDB, in the browser/webview's own per-origin storage — no server, no
-account. Mirrors the old SQLite schema's shape (`DECISIONS.md`'s Phase 2 log
+account. Mirrors the old SQLite schema's shape (`docs/architecture/decisions.md`'s Phase 2 log
 has the exact differences and why): a `books` table, a `tokens` table (the
 whole word list per book, so a large PDF never re-parses), a `progress`
 table (word index, WPM, mode — separate so frequent saves don't touch the
@@ -150,28 +150,27 @@ this is new since the desktop version).
 
 If you already used the previous web version at this same URL: opening the
 new app upgrades your existing library in place, automatically — no export
-step needed. See `DECISIONS.md`'s Phase 10 log for exactly how, and how
+step needed. See `docs/architecture/decisions.md`'s Phase 10 log for exactly how, and how
 it's tested.
 
 ## Layout
 
-| Path | Purpose |
-| --- | --- |
-| `src/core/` | The engine: tokenizer, pacing, ORP, playback — no DOM, ported from `rsvp_engine.py`/`text_extract.py` |
-| `src/storage/` | Dexie (IndexedDB) library, mirroring the old SQLite schema |
-| `src/parse/` | TXT/PDF/EPUB parsers, running in a Web Worker |
-| `src/ui/` | React: screens, components, hooks |
-| `src-tauri/` | The desktop shell (Rust) |
-| `android/` | The Android shell (generated by Capacitor — don't hand-edit; re-run `npx cap sync android`) |
-| `tests/fixtures/` | Sample books (PDF/EPUB) used across the test suite |
-| `DECISIONS.md` | Why the codebase is built the way it is — the most detailed doc in this repo |
-| `THIRD_PARTY.md` | Dependency license audit |
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the code map, the layers and the rules that hold
+them, and [docs/architecture/](docs/architecture/README.md) for the subsystems in depth.
+
+| Path             | Purpose                                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------ |
+| `src/`           | The app: `app/` shell, `features/` (library, reader, settings), `core/` engine, backend    |
+| `src-tauri/`     | The desktop shell (Rust)                                                                   |
+| `android/`       | The Android shell (generated by Capacitor; don't hand-edit, re-run `npx cap sync android`) |
+| `tests/`         | Mirrors `src/`; sample books in `tests/fixtures/`                                          |
+| `docs/`          | Architecture deep dives and the decision log                                               |
+| `THIRD_PARTY.md` | Dependency licence audit                                                                   |
 
 ## Contributing
 
-Issues and pull requests are welcome. `pnpm lint`, `pnpm exec tsc -b`, and
-`pnpm test` should all stay clean — `pnpm build` too, before anything gets
-merged.
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the
+checks a change must pass, and a two-minute smoke test. AI agents: see [AGENTS.md](AGENTS.md).
 
 ## Licence
 
@@ -183,10 +182,10 @@ under GPL-3.0-or-later, with MuPDF's AGPL terms applying to the combination
 as GPLv3 section 13 says. In practice: every build you distribute (the
 installers, the APK, a hosted PWA) conveys MuPDF, so its source must be
 available to whoever receives it — this repository, and MuPDF's own, are that
-source. This project's *own* code could still be licensed more permissively;
-the *distributed app* could not be without Artifex's commercial MuPDF licence
+source. This project's _own_ code could still be licensed more permissively;
+the _distributed app_ could not be without Artifex's commercial MuPDF licence
 or a different PDF engine. Every other dependency is permissive — see
-`THIRD_PARTY.md` for the audit and `DECISIONS.md` for how this came about.
+`THIRD_PARTY.md` for the audit and `docs/architecture/decisions.md` for how this came about.
 
 You may use, study, share and modify this program freely. If you distribute
 a modified version, you must release your source under the same licence, so
