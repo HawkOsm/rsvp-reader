@@ -1004,3 +1004,13 @@ being switched to; `tests/features/reader/useAutosaveProgress.test.tsx` pins it.
 
 The web server is started as `node node_modules/vite/bin/vite.js preview`, not through `pnpm`:
 through pnpm, Playwright's stop signal never reached Vite and the run never exited.
+
+## 2026-10-24: Native builds checked on pull requests, from one definition
+
+Desktop and Android builds used to run only on a version tag, so a change that broke them (a Node
+or Gradle version, an SDK package) was found on release day. The build jobs moved out of
+`release.yml` into a reusable workflow, `build-apps.yml`, which both `release.yml` and the new
+`native-check.yml` call. A PR builds exactly what a release will.
+
+The check runs only when native files or dependencies change (the user's choice: the builds take
+several minutes, macOS the longest), and builds the unsigned debug APK because it gets no secrets.
