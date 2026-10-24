@@ -38,6 +38,8 @@ the build at three window sizes. For a UI change, also look at it in `pnpm dev` 
    enforces this; **never disable `no-restricted-imports`**. Move the code instead.
 2. **`core/` stays pure**: no DOM, React, I/O or timers except the injected ones.
 3. **Only `src/pdf/document.ts` calls MuPDF.** Everything else goes through `pdfClient`.
+   **Only `src/platform/` imports `@tauri-apps` or `@capacitor`.** Everything else asks
+   `getPlatform()`; add a method to the `Platform` interface rather than checking the platform.
 4. **Schema changes add a Dexie version** with an upgrade and a test against the old version.
    Never edit an existing version, and never re-parse books in a migration.
 5. **Branch on `book.layout.kind`**, never on whether a field happens to be present.

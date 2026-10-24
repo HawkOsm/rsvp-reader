@@ -43,6 +43,7 @@ src/
   components/         UI shared by features (Button, WpmInput)
   lib/                shared pure helpers (theme, keyboard, book-layout geometry)
   stores/             the zustand app store (persisted settings + reading mode)
+  platform/           the device: web, Tauri, Capacitor behind one interface
   core/               engine, pacing, ORP, tokenizer, page spec — pure TypeScript
   parse/              format registry and parsers (text, markdown, EPUB, PDF → tokens)
   pdf/                the only code that touches MuPDF; one long-lived PDF worker
@@ -73,8 +74,9 @@ app                      composes features; nothing imports it
 features/<name>          never imports another feature
   │    └─ api/           the only UI code that may import the backend
   │
-components · lib · stores        shared; never import a feature or app
+components · lib · stores · platform   shared; never import a feature or app
   │                └─ stores/api/   the store's door to settings storage
+  │                         platform/ is the only code that imports @tauri-apps or @capacitor
   │
 parse · pdf · ocr · storage      the "backend"; never import UI code
   │
@@ -119,17 +121,19 @@ Things that are true everywhere and must stay true. Breaking one is a bug even i
    database (`tests/storage/legacy-migration.test.ts`, `book-record.test.ts`).
 9. **The page overlay never covers the word** (`features/reader/page-overlay.ts`). If there is
    no room for it, it isn't shown.
+10. **No code outside `platform/` asks which device it is on.** It asks the platform to do
+    something, and each platform does it its own way (or does nothing).
 
 ## Cross-cutting concerns
 
-| Concern        | Where                                                                                                                                                                         |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Errors         | `parse/errors.ts` (`ExtractionError`, `NoTextLayerError`), revived across worker boundaries by `parse/worker-errors.ts`; render crashes are caught by `app/ErrorBoundary.tsx` |
-| Workers        | `parse/parse.worker.ts` (one per non-PDF file, then terminated); `pdf/pdf.worker.ts` (one, long-lived, idle-shutdown)                                                         |
-| Settings       | `stores/app-store.ts`, persisted through `stores/api/settings.ts`                                                                                                             |
-| Theme          | `lib/theme.ts` sets CSS variables; components use `var(--color-…)` via Tailwind                                                                                               |
-| Platform shims | `app/hooks/useAndroidBackButton.ts`, `useNativeAppearance.ts`, `features/library/tauri-open.ts`                                                                               |
-| Offline        | `vite-plugin-pwa` precaches the shell and MuPDF's WASM; OCR data is cached on first use                                                                                       |
+| Concern  | Where                                                                                                                                                                                                  |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Errors   | `parse/errors.ts` (`ExtractionError`, `NoTextLayerError`), revived across worker boundaries by `parse/worker-errors.ts`; render crashes are caught by `app/ErrorBoundary.tsx`                          |
+| Workers  | `parse/parse.worker.ts` (one per non-PDF file, then terminated); `pdf/pdf.worker.ts` (one, long-lived, idle-shutdown)                                                                                  |
+| Settings | `stores/app-store.ts`, persisted through `stores/api/settings.ts`                                                                                                                                      |
+| Theme    | `lib/theme.ts` sets CSS variables; components use `var(--color-…)` via Tailwind                                                                                                                        |
+| Platform | `platform/`: one `Platform` interface (launch file, back button, status bar, splash, keep screen on, self-update) with web, Tauri and Capacitor implementations; `getPlatform()` picks one at start-up |
+| Offline  | `vite-plugin-pwa` precaches the shell and MuPDF's WASM; OCR data is cached on first use                                                                                                                |
 
 ## Where to go next
 

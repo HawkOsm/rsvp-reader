@@ -17,7 +17,7 @@ import {
 } from '@/features/library/api/library'
 import { OcrDialog } from './OcrDialog'
 import { ResumeDialog } from './ResumeDialog'
-import { pendingOpenFile } from '@/features/library/tauri-open'
+import { getPlatform } from '@/platform'
 import { Button } from '@/components/Button'
 
 interface PendingResume {
@@ -101,9 +101,11 @@ export function LibraryScreen() {
   )
 
   useEffect(() => {
-    void pendingOpenFile().then((file) => {
-      if (file) void addFile(file)
-    })
+    void getPlatform()
+      .then((platform) => platform.takeLaunchFile())
+      .then((file) => {
+        if (file) void addFile(file)
+      })
     // Only on mount: a CLI-launch argument is only ever relevant once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
