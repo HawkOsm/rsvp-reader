@@ -29,9 +29,9 @@ const PAPER_VARS = {
  * opt back in (`pointer-events-auto`).
  */
 export function PageOverlay({ box, page, plain, children }: PageOverlayProps) {
-  // Paper is shaped like the book's page, as large as fits the box, in its corner.
-  const sheetWidth = plain ? box.width : Math.min(box.width, box.height * aspectOf(page))
-  const sheetHeight = plain ? box.height : sheetWidth / aspectOf(page)
+  // Shaped like the book's page, as large as fits the box, in its corner.
+  const sheetWidth = Math.min(box.width, box.height * aspectOf(page))
+  const sheetHeight = sheetWidth / aspectOf(page)
   return (
     <div
       role="region"
@@ -41,14 +41,10 @@ export function PageOverlay({ box, page, plain, children }: PageOverlayProps) {
       style={{ top: box.top, left: box.left, width: box.width, height: box.height }}
     >
       <div
-        className={
-          plain
-            ? 'h-full w-full overflow-hidden'
-            : 'absolute right-0 top-0 overflow-hidden rounded-sm border shadow-xl'
-        }
+        className={`absolute right-0 top-0 overflow-hidden ${plain ? '' : 'rounded-sm border shadow-xl'}`}
         style={
           plain
-            ? undefined
+            ? { width: sheetWidth, height: sheetHeight }
             : {
                 ...PAPER_VARS,
                 width: sheetWidth,
