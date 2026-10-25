@@ -15,11 +15,13 @@ import {
   resetProgress,
   type BookRecord,
 } from '@/features/library/api/library'
+import { bookToContinue, percentRead } from '@/features/library/progress'
 import { BookCover } from './BookCover'
 import { OcrDialog } from './OcrDialog'
 import { ResumeDialog } from './ResumeDialog'
 import { getPlatform } from '@/platform'
 import { Button } from '@/components/Button'
+import { Icon } from '@/components/Icon'
 import { Page } from '@/components/Page'
 import { logError } from '@/lib/error-log'
 
@@ -31,6 +33,8 @@ interface PendingResume {
 export function LibraryScreen() {
   const navigate = useNavigate()
   const [books, setBooks] = useState<BookRecord[]>([])
+  /** Each book's saved word index, by book id. */
+  const [wordIndexes, setWordIndexes] = useState<Record<number, number>>({})
   const [importing, setImporting] = useState<{ fraction: number; message?: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pendingResume, setPendingResume] = useState<PendingResume | null>(null)
@@ -44,7 +48,15 @@ export function LibraryScreen() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const refresh = useCallback(async () => {
-    setBooks(await listBooks())
+    const list = await listBooks()
+    const entries = await Promise.all(
+      list.map(async (book) => {
+        const progress = await getProgress(book.id as number)
+        return [book.id as number, progress?.wordIndex ?? 0] as const
+      }),
+    )
+    setWordIndexes(Object.fromEntries(entries))
+    setBooks(list)
   }, [])
 
   useEffect(() => {
@@ -151,19 +163,30 @@ export function LibraryScreen() {
     await refresh()
   }
 
+  const percentOf = (book: BookRecord) =>
+    percentRead(book.totalWords, wordIndexes[book.id as number])
+  const continuing = bookToContinue(books, (id) => wordIndexes[id])
+
   return (
     <Page
       title="RSVP Reader"
       actions={
         <>
-          <Button onClick={() => navigate('/settings')} variant="link">
+          <Button
+            onClick={() => navigate('/settings')}
+            variant="link"
+            className="flex items-center gap-1.5 px-2 py-2"
+          >
+            <Icon name="settings" size={16} />
             Settings
           </Button>
           <Button
             onClick={() => fileInputRef.current?.click()}
             variant="primary"
             disabled={importing !== null}
+            className="flex items-center gap-1.5 rounded-lg! px-4! py-2!"
           >
+            <Icon name="plus" size={16} />
             Add book
           </Button>
         </>
@@ -202,10 +225,40 @@ export function LibraryScreen() {
 
       {error && <div className="rounded border border-accent p-3 text-sm text-accent">{error}</div>}
 
+      {continuing && (
+        <section aria-labelledby="continue-heading" className="flex flex-col gap-3">
+          <h2 id="continue-heading" className="text-sm font-semibold">
+            Continue reading
+          </h2>
+          <div className="flex max-w-xl gap-4 rounded-xl border border-border bg-bg-raised p-4">
+            <div className="w-20 shrink-0">
+              <BookCover book={continuing} />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              <span className="line-clamp-2 font-serif text-lg">{continuing.title}</span>
+              <div className="mt-auto flex flex-col gap-1.5">
+                <ProgressBar percent={percentOf(continuing)} />
+                <span className="text-xs text-text-dim">
+                  {percentOf(continuing).toFixed(0)}% read
+                </span>
+              </div>
+              <Button
+                variant="primary"
+                onClick={() => navigate(`/reader/${continuing.id}`)}
+                className="flex items-center gap-1.5 self-start rounded-lg! px-4! py-2!"
+              >
+                <Icon name="play" size={12} />
+                Resume
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
+
       {books.length === 0 && !importing ? (
         <p className="text-sm text-text-dim">No books yet — add one, or drag a file in.</p>
       ) : (
-        <ul className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-x-4 gap-y-6">
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-x-5 gap-y-7">
           {books.map((book) => (
             <li
               key={book.id}
@@ -213,17 +266,16 @@ export function LibraryScreen() {
               className="group flex cursor-pointer flex-col gap-2"
               data-testid="book-row"
             >
-              <div className="transition-transform group-hover:-translate-y-1">
+              <div className="shadow-lg shadow-black/25 transition-transform group-hover:-translate-y-1">
                 <BookCover book={book} />
               </div>
+              <ProgressBar percent={percentOf(book)} />
               <div className="flex flex-col gap-1 text-sm">
                 <span className="line-clamp-2 font-medium" title={book.title}>
                   {book.title}
                 </span>
                 <div className="flex items-center gap-2 text-xs text-text-dim">
-                  <span data-testid="book-progress">
-                    <BookProgress book={book} />
-                  </span>
+                  <span data-testid="book-progress">{percentOf(book).toFixed(0)}%</span>
                   <span>
                     {book.lastOpenedAt ? new Date(book.lastOpenedAt).toLocaleDateString() : '—'}
                   </span>
@@ -287,22 +339,10 @@ export function LibraryScreen() {
   )
 }
 
-function BookProgress({ book }: { book: BookRecord }) {
-  const [percent, setPercent] = useState<number | null>(null)
-  useEffect(() => {
-    let cancelled = false
-    void getProgress(book.id as number).then((progress) => {
-      if (cancelled) return
-      if (!progress || book.totalWords <= 0) {
-        setPercent(0)
-        return
-      }
-      setPercent(Math.min(100, (progress.wordIndex / book.totalWords) * 100))
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [book.id, book.totalWords])
-
-  return <span>{percent === null ? '…' : `${percent.toFixed(0)}%`}</span>
+function ProgressBar({ percent }: { percent: number }) {
+  return (
+    <div className="h-1 rounded-full bg-border" aria-hidden>
+      <div className="h-1 rounded-full bg-accent" style={{ width: `${percent}%` }} />
+    </div>
+  )
 }
