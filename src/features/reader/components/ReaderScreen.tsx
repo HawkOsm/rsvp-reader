@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { createEngine } from '@/core/engine'
 import { BookControls } from './BookControls'
 import { BookmarkButton } from './BookmarkButton'
-import { ContentsPanel } from './ContentsPanel'
+import { ChapterName, ContentsPanel } from './ContentsPanel'
 import { DisplayPanel } from './DisplayPanel'
 import { Button } from '@/components/Button'
 import { Icon } from '@/components/Icon'
@@ -85,9 +85,13 @@ function ReaderBody({ book }: { book: BookRecord }) {
   const areaRef = useRef<HTMLDivElement>(null)
   const overlay = usePageOverlay(areaRef)
   const wide = useMediaQuery(WIDE)
-  // Beside the page on a wide screen, and over it (so closed at first) on a phone.
-  const [contentsOpen, setContentsOpen] = useState(wide)
+  // In book mode on a wide screen, beside the page and open at first. Over
+  // the reading area otherwise (on a phone, or by the RSVP word), closed at
+  // first and closed again once a chapter is picked.
+  const contentsBeside = wide && mode === 'book'
+  const [contentsOpen, setContentsOpen] = useState(contentsBeside)
   const hasContents = book.chapters.length > 0
+  useEffect(() => setContentsOpen(contentsBeside), [contentsBeside])
 
   useReaderKeyboardShortcuts(layout)
   useAutosaveProgress(bookId, mode)
@@ -100,7 +104,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
 
   return (
     <div className="flex h-screen flex-col bg-bg text-text">
-      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border px-4 py-2 text-sm">
+      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-border px-2 py-2 text-sm sm:gap-3 sm:px-4">
         <div>
           <Button
             variant="link"
@@ -111,22 +115,13 @@ function ReaderBody({ book }: { book: BookRecord }) {
             <span className="sr-only sm:not-sr-only">Library</span>
           </Button>
         </div>
-        <span className="max-w-[40vw] truncate font-serif text-[15px]">{book.title}</span>
-        <div className="flex items-center justify-end gap-2">
-          {mode === 'book' && hasContents && (
-            <button
-              type="button"
-              aria-label="Contents"
-              aria-expanded={contentsOpen}
-              title="Chapters"
-              onClick={() => setContentsOpen(!contentsOpen)}
-              className={`flex h-9 w-9 items-center justify-center rounded-lg hover:bg-bg-hover ${
-                contentsOpen ? 'text-text' : 'text-text-dim hover:text-text'
-              }`}
-            >
-              <Icon name="contents" size={17} />
-            </button>
-          )}
+        <span className="flex min-w-0 flex-col items-center">
+          <span className="max-w-[40vw] truncate font-serif text-[15px] font-medium">
+            {book.title}
+          </span>
+          {hasContents && <ChapterName chapters={book.chapters} />}
+        </span>
+        <div className="flex items-center justify-end gap-0.5 sm:gap-2">
           <div
             role="group"
             aria-label="Reading mode"
@@ -150,6 +145,20 @@ function ReaderBody({ book }: { book: BookRecord }) {
               </button>
             ))}
           </div>
+          {hasContents && (
+            <button
+              type="button"
+              aria-label="Contents"
+              aria-expanded={contentsOpen}
+              title="Chapters"
+              onClick={() => setContentsOpen(!contentsOpen)}
+              className={`flex h-9 w-9 items-center justify-center rounded-lg hover:bg-bg-hover ${
+                contentsOpen ? 'text-text' : 'text-text-dim hover:text-text'
+              }`}
+            >
+              <Icon name="contents" size={17} />
+            </button>
+          )}
           {mode === 'rsvp' && (
             <Button
               className="flex items-center gap-1.5"
@@ -177,11 +186,11 @@ function ReaderBody({ book }: { book: BookRecord }) {
             <RsvpCanvas />
           </div>
         )}
-        {mode === 'book' && hasContents && contentsOpen && (
-          <div className={wide ? 'min-h-0' : 'absolute inset-y-0 left-0 z-20 shadow-xl'}>
+        {hasContents && contentsOpen && (
+          <div className={contentsBeside ? 'min-h-0' : 'absolute inset-y-0 left-0 z-20 shadow-xl'}>
             <ContentsPanel
               chapters={book.chapters}
-              onPicked={wide ? undefined : () => setContentsOpen(false)}
+              onPicked={contentsBeside ? undefined : () => setContentsOpen(false)}
             />
           </div>
         )}

@@ -60,12 +60,10 @@ export const TransportBar = memo(function TransportBar({
         <div className="flex justify-between gap-4 text-xs text-text-dim tabular-nums">
           <span data-testid="word-counter">{counterParts.join(' · ')}</span>
           <span className="text-right" data-testid="time-left">
-            {chapterLeft !== null && (
-              <span className="text-text">
-                {timeLeftLabel(chapterLeft, wpm)} left in chapter ·{' '}
-              </span>
-            )}
             {timeLeftLabel(total - index - 1, wpm)} left
+            {chapterLeft !== null && (
+              <> in book · {timeLeftLabel(chapterLeft, wpm)} left in chapter</>
+            )}
           </span>
         </div>
       </div>

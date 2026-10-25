@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { createEngine } from '@/core/engine'
 import { makeToken } from '@/core/types'
-import { ContentsPanel } from '@/features/reader/components/ContentsPanel'
+import { ChapterName, ContentsPanel } from '@/features/reader/components/ContentsPanel'
 import { EngineProvider } from '@/features/reader/engine-context'
 
 const chapters = [
@@ -44,5 +44,17 @@ describe('ContentsPanel', () => {
     expect(engine.index).toBe(5)
     expect(current()).toEqual(['Chapter 2'])
     expect(onPicked).toHaveBeenCalled()
+  })
+
+  it('names the chapter being read, and nothing before the first', () => {
+    const engine = createEngine(Array.from({ length: 8 }, (_, i) => makeToken(`w${i}`)))
+    render(
+      <EngineProvider value={engine}>
+        <ChapterName chapters={chapters} />
+      </EngineProvider>,
+    )
+    expect(screen.queryByTestId('chapter-name')).not.toBeInTheDocument()
+    act(() => engine.seek(6))
+    expect(screen.getByTestId('chapter-name')).toHaveTextContent('Chapter 2')
   })
 })

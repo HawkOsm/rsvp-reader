@@ -24,9 +24,9 @@ export function ContentsPanel({ chapters, onPicked }: ContentsPanelProps) {
   return (
     <nav
       aria-label="Contents"
-      className="flex h-full w-64 max-w-[80vw] flex-col gap-1 overflow-y-auto border-r border-border bg-bg-raised p-3"
+      className="flex h-full w-64 max-w-[80vw] flex-col gap-0.5 overflow-y-auto border-r border-border bg-bg-raised px-3 py-5"
     >
-      <h2 className="px-2 pb-1 text-[11px] font-semibold tracking-wider text-text-dim uppercase">
+      <h2 className="px-2.5 pb-2 text-[11px] font-semibold tracking-wider text-text-dim uppercase">
         Contents
       </h2>
       {chapters.map((chapter, i) => (
@@ -39,9 +39,9 @@ export function ContentsPanel({ chapters, onPicked }: ContentsPanelProps) {
             engine.seek(chapter.startTokenIndex)
             onPicked?.()
           }}
-          className={`rounded-lg px-2 py-1.5 text-left text-sm ${
+          className={`flex min-h-9 items-center rounded-lg px-2.5 text-left text-sm ${
             i === current
-              ? 'bg-bg-hover font-medium text-text'
+              ? 'bg-bg-hover font-semibold text-text'
               : 'text-text-dim hover:bg-bg-hover hover:text-text'
           }`}
         >
@@ -49,5 +49,18 @@ export function ContentsPanel({ chapters, onPicked }: ContentsPanelProps) {
         </button>
       ))}
     </nav>
+  )
+}
+
+/** The name of the chapter being read, for under the book's title; nothing
+ * before the first chapter. */
+export function ChapterName({ chapters }: { chapters: BookChapter[] }) {
+  const index = useEngineIndex()
+  const chapter = chapters[chapterAt(chapters, index)]
+  if (!chapter) return null
+  return (
+    <span data-testid="chapter-name" className="max-w-[40vw] truncate text-xs text-text-dim">
+      {chapter.title}
+    </span>
   )
 }

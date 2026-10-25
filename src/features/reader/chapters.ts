@@ -17,8 +17,7 @@ export function chapterAt(chapters: readonly Chapter[], index: number): number {
 }
 
 /** Where to draw a tick on the progress bar for each chapter start, as a
- * fraction of the bar (the same scale as the slider: 0 is the first word,
- * 1 the last). A chapter starting on the first word gets none: the bar's
+ * fraction of the bar (0 is the first word, 1 the last). A chapter starting on the first word gets none: the bar's
  * own end is there. */
 export function chapterTicks(chapters: readonly Chapter[], count: number): number[] {
   if (count < 2) return []

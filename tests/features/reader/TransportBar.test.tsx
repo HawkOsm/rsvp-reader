@@ -38,9 +38,13 @@ describe('TransportBar, for a book with chapters', () => {
     ])
     expect(screen.getAllByTestId('chapter-tick')).toHaveLength(1)
     // 499 words at 100 wpm, then the whole book's 1,000.
-    expect(screen.getByTestId('time-left')).toHaveTextContent('5 min left in chapter · 10 min left')
+    expect(screen.getByTestId('time-left')).toHaveTextContent(
+      '10 min left in book · 5 min left in chapter',
+    )
     act(() => engine.seek(500))
-    expect(screen.getByTestId('time-left')).toHaveTextContent('5 min left in chapter · 5 min left')
+    expect(screen.getByTestId('time-left')).toHaveTextContent(
+      '5 min left in book · 5 min left in chapter',
+    )
   })
 
   it('shows neither for a book without chapters', () => {
