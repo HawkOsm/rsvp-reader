@@ -26,10 +26,11 @@ beforeEach(async () => {
   vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
 })
 
-/** The book's tile in the grid: its title also shows under "Continue reading". */
+/** The book's tile in the grid. Its title shows more than once: on a
+ * cover without an image, and under "Continue reading". */
 async function findRow(title: string) {
   const rows = await screen.findAllByTestId('book-row')
-  const row = rows.find((r) => within(r).queryByText(title))
+  const row = rows.find((r) => within(r).queryAllByText(title).length > 0)
   if (!row) throw new Error(`no row for ${title}`)
   return row
 }
@@ -75,7 +76,7 @@ describe('LibraryScreen', () => {
 
     const user = userEvent.setup()
     renderLibrary()
-    await user.click(await screen.findByText('Fresh Book'))
+    await user.click(await findRow('Fresh Book'))
 
     expect(await screen.findByTestId('reader-screen')).toBeInTheDocument()
   })
@@ -93,7 +94,7 @@ describe('LibraryScreen', () => {
 
     const user = userEvent.setup()
     renderLibrary()
-    await user.click(within(await findRow('Partly Read')).getByText('Partly Read'))
+    await user.click(await findRow('Partly Read'))
 
     expect(await screen.findByRole('dialog', { name: /resume reading/i })).toBeInTheDocument()
     expect(screen.getByText(/40% through/i)).toBeInTheDocument()
@@ -118,7 +119,7 @@ describe('LibraryScreen', () => {
 
     const user = userEvent.setup()
     renderLibrary()
-    await user.click(within(await findRow('Partly Read 2')).getByText('Partly Read 2'))
+    await user.click(await findRow('Partly Read 2'))
     await screen.findByRole('dialog')
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
@@ -155,10 +156,10 @@ describe('LibraryScreen', () => {
 
     const user = userEvent.setup()
     renderLibrary()
-    await screen.findByText('To Remove')
+    await findRow('To Remove')
     await user.click(screen.getByRole('button', { name: 'Remove' }))
 
-    await waitFor(() => expect(screen.queryByText('To Remove')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryAllByText('To Remove')).toHaveLength(0))
   })
 
   it('offers the book in progress under "Continue reading", and Resume opens it', async () => {
@@ -182,6 +183,32 @@ describe('LibraryScreen', () => {
     await user.click(within(section).getByRole('button', { name: 'Resume' }))
     expect(await screen.findByTestId('reader-screen')).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('the sidebar sections and the search box narrow the grid', async () => {
+    const db = getDb()
+    await addBook(db, { title: 'Unread Novel', source: 'local', fingerprint: 's0', ...TEXT_BOOK })
+    const started = await addBook(db, {
+      title: 'Started Essay',
+      source: 'local',
+      fingerprint: 's1',
+      ...TEXT_BOOK,
+    })
+    await db.books.update(started.id as number, { totalWords: 100 })
+    await saveProgress(db, started.id as number, { wordIndex: 30, wpm: 300, mode: 'rsvp' })
+
+    const user = userEvent.setup()
+    renderLibrary()
+    await findRow('Unread Novel')
+    const titlesShown = () =>
+      screen.getAllByTestId('book-row').map((row) => row.querySelector('[title]')?.textContent)
+
+    await user.click(screen.getByRole('button', { name: /^Reading/ }))
+    expect(titlesShown()).toEqual(['Started Essay'])
+
+    await user.click(screen.getByRole('button', { name: /^All books/ }))
+    await user.type(screen.getByRole('searchbox', { name: 'Search books' }), 'novel')
+    expect(titlesShown()).toEqual(['Unread Novel'])
   })
 
   it('links to the Settings screen', async () => {
@@ -209,7 +236,7 @@ describe('LibraryScreen', () => {
     expect(normal).not.toHaveTextContent('OCR')
   })
 
-  it('shows a stored cover, and the title’s initial for a book without one', async () => {
+  it('shows a stored cover, and a title card for a book without one', async () => {
     const db = getDb()
     const withCover = await addBook(db, {
       title: 'Covered',

@@ -28,14 +28,15 @@ To add a colour, add it to all four CSS blocks, the `@theme inline` block, and e
 
 ## Components
 
-| Component                 | For                                                                   |
-| ------------------------- | --------------------------------------------------------------------- |
-| `Page`                    | a full screen with a title row (`back`, `title`, `actions`)           |
-| `Centered`                | a full screen with one message: loading, or an error                  |
-| `Dialog`, `DialogActions` | every modal question. Closes on Escape and on the backdrop            |
-| `Button`                  | `default`, `primary` (the one action), `link`, `danger`               |
-| `Field`, `CONTROL`        | a label with its control; `CONTROL` is the look of inputs and selects |
-| `WpmInput`                | the words-per-minute box (commits on blur or Enter, not per key)      |
+| Component                 | For                                                                      |
+| ------------------------- | ------------------------------------------------------------------------ |
+| `Page`                    | a full screen with a title row (`back`, `title`, `actions`, `sidebar`)   |
+| `Icon`                    | the stroke icons buttons and links use; decorative, the control is named |
+| `Centered`                | a full screen with one message: loading, or an error                     |
+| `Dialog`, `DialogActions` | every modal question. Closes on Escape and on the backdrop               |
+| `Button`                  | `default`, `primary` (the one action), `link`, `danger`                  |
+| `Field`, `CONTROL`        | a label with its control; `CONTROL` is the look of inputs and selects    |
+| `WpmInput`                | the words-per-minute box (commits on blur or Enter, not per key)         |
 
 The reader is the exception: its chrome (header, transport bar, page overlay) is built around
 the word and lives in `features/reader/components/`.

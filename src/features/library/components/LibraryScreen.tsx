@@ -13,10 +13,20 @@ import {
   removeBook,
   requestPersistence,
   resetProgress,
+  storageUsage,
   type BookRecord,
 } from '@/features/library/api/library'
 import { bookToContinue, percentRead } from '@/features/library/progress'
+import {
+  SORTS,
+  SECTIONS,
+  sectionCounts,
+  shelve,
+  type Section,
+  type SortKey,
+} from '@/features/library/shelf'
 import { BookCover } from './BookCover'
+import { LibrarySidebar } from './LibrarySidebar'
 import { OcrDialog } from './OcrDialog'
 import { ResumeDialog } from './ResumeDialog'
 import { getPlatform } from '@/platform'
@@ -35,6 +45,10 @@ export function LibraryScreen() {
   const [books, setBooks] = useState<BookRecord[]>([])
   /** Each book's saved word index, by book id. */
   const [wordIndexes, setWordIndexes] = useState<Record<number, number>>({})
+  const [section, setSection] = useState<Section>('all')
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState<SortKey>('recent')
+  const [usageBytes, setUsageBytes] = useState<number | null>(null)
   const [importing, setImporting] = useState<{ fraction: number; message?: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pendingResume, setPendingResume] = useState<PendingResume | null>(null)
@@ -57,6 +71,9 @@ export function LibraryScreen() {
     )
     setWordIndexes(Object.fromEntries(entries))
     setBooks(list)
+    storageUsage()
+      .then((usage) => setUsageBytes(usage?.usageBytes ?? null))
+      .catch((err) => logError('storage usage', err))
   }, [])
 
   useEffect(() => {
@@ -165,21 +182,53 @@ export function LibraryScreen() {
 
   const percentOf = (book: BookRecord) =>
     percentRead(book.totalWords, wordIndexes[book.id as number])
-  const continuing = bookToContinue(books, (id) => wordIndexes[id])
+  const continuing =
+    section === 'all' && query.trim() === ''
+      ? bookToContinue(books, (id) => wordIndexes[id])
+      : undefined
+  const shown = shelve(books, percentOf, { section, query, sort })
+  const sectionLabel = SECTIONS.find((s) => s.value === section)?.label
 
   return (
     <Page
-      title="RSVP Reader"
+      title={sectionLabel}
+      sidebar={
+        <LibrarySidebar
+          section={section}
+          counts={sectionCounts(books.map(percentOf))}
+          onSection={setSection}
+          usageBytes={usageBytes}
+          onSettings={() => navigate('/settings')}
+        />
+      }
       actions={
         <>
-          <Button
-            onClick={() => navigate('/settings')}
-            variant="link"
-            className="flex items-center gap-1.5 px-2 py-2"
-          >
-            <Icon name="settings" size={16} />
-            Settings
-          </Button>
+          <label className="flex h-10 w-60 max-w-full items-center gap-2 rounded-lg border border-border bg-bg-raised px-3 text-text-dim">
+            <Icon name="search" size={16} />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search titles"
+              aria-label="Search books"
+              className="min-w-0 flex-1 bg-transparent text-sm text-text outline-none placeholder:text-text-dim"
+            />
+          </label>
+          <label className="flex h-10 items-center gap-1.5 rounded-lg border border-border bg-bg-raised px-3 text-sm text-text-dim">
+            Sort
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortKey)}
+              aria-label="Sort books"
+              className="bg-transparent text-text outline-none"
+            >
+              {SORTS.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
           <Button
             onClick={() => fileInputRef.current?.click()}
             variant="primary"
@@ -259,7 +308,10 @@ export function LibraryScreen() {
         <p className="text-sm text-text-dim">No books yet — add one, or drag a file in.</p>
       ) : (
         <ul className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-x-5 gap-y-7">
-          {books.map((book) => (
+          {shown.length === 0 && (
+            <li className="col-span-full text-sm text-text-dim">No books match.</li>
+          )}
+          {shown.map((book) => (
             <li
               key={book.id}
               onClick={() => void openBook(book)}
@@ -299,6 +351,21 @@ export function LibraryScreen() {
               </div>
             </li>
           ))}
+          <li>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importing !== null}
+              className="flex aspect-[2/3] w-full flex-col items-center justify-center gap-2 rounded border-2 border-dashed border-guide p-4 text-xs leading-relaxed text-text-dim hover:border-text-dim hover:text-text disabled:opacity-40"
+            >
+              <Icon name="plus" size={22} />
+              <span>
+                Drop a file here
+                <br />
+                EPUB · PDF · TXT · MD
+              </span>
+            </button>
+          </li>
         </ul>
       )}
 

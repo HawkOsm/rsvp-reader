@@ -86,7 +86,7 @@ describe('a PDF with no text', () => {
       .mockResolvedValueOnce(book)
     renderLibrary()
     await addFile('scan.pdf')
-    await userEvent.selectOptions(await screen.findByRole('combobox'), 'tur')
+    await userEvent.selectOptions(await screen.findByRole('combobox', { name: 'Language' }), 'tur')
     await userEvent.click(screen.getByRole('button', { name: 'Recognise text' }))
 
     expect(await screen.findByTestId('reader-screen')).toBeInTheDocument()

@@ -1,5 +1,5 @@
 import * as library from '@/storage/library'
-import { requestPersistence as askPersistence } from '@/storage/quota'
+import { requestPersistence as askPersistence, storageUsage } from '@/storage/quota'
 import { getDb, type BookRecord } from '@/storage/schema'
 
 // What the library screen asks of storage, with the database kept out of
@@ -16,3 +16,6 @@ export const resetProgress = (bookId: number) => library.resetProgress(getDb(), 
 
 /** Ask the browser to keep the library from being cleared. */
 export const requestPersistence = askPersistence
+
+/** How much of the browser's storage the library takes, when it says. */
+export { storageUsage }
