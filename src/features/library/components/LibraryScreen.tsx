@@ -35,7 +35,7 @@ import {
   type SortKey,
 } from '@/features/library/shelf'
 import { BookCover } from './BookCover'
-import { BookTile, ProgressBar } from './BookTile'
+import { BookListRow, BookTile, ProgressBar } from './BookTile'
 import { LibrarySidebar } from './LibrarySidebar'
 import { NewShelfDialog } from './NewShelfDialog'
 import { OcrDialog } from './OcrDialog'
@@ -45,6 +45,12 @@ import { Button } from '@/components/Button'
 import { Icon } from '@/components/Icon'
 import { Page } from '@/components/Page'
 import { logError } from '@/lib/error-log'
+import { useAppStore, type LibraryView } from '@/stores/app-store'
+
+const VIEWS: { value: LibraryView; label: string; icon: 'grid' | 'list' }[] = [
+  { value: 'grid', label: 'Grid view', icon: 'grid' },
+  { value: 'list', label: 'List view', icon: 'list' },
+]
 
 interface PendingResume {
   book: BookRecord
@@ -64,6 +70,8 @@ export function LibraryScreen() {
   const [bookmarks, setBookmarks] = useState<BookmarkRecord[]>([])
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortKey>('recent')
+  const view = useAppStore((s) => s.libraryView)
+  const setView = useAppStore((s) => s.setLibraryView)
   const [usageBytes, setUsageBytes] = useState<number | null>(null)
   const [importing, setImporting] = useState<{ fraction: number; message?: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -225,6 +233,7 @@ export function LibraryScreen() {
     sort,
     shelfBookIds: shelf?.bookIds,
   })
+  const Item = view === 'grid' ? BookTile : BookListRow
   const title = shelf ? shelf.name : SECTIONS.find((s) => s.value === section)?.label
 
   return (
@@ -277,6 +286,27 @@ export function LibraryScreen() {
               ))}
             </select>
           </label>
+          <div
+            role="group"
+            aria-label="View"
+            className="flex h-10 items-center rounded-lg border border-border bg-bg-raised p-0.5"
+          >
+            {VIEWS.map(({ value, label, icon }) => (
+              <button
+                key={value}
+                type="button"
+                aria-label={label}
+                aria-pressed={view === value}
+                title={label}
+                onClick={() => setView(value)}
+                className={`flex h-full w-9 items-center justify-center rounded-md ${
+                  view === value ? 'bg-bg-hover text-text' : 'text-text-dim hover:text-text'
+                }`}
+              >
+                <Icon name={icon} size={16} />
+              </button>
+            ))}
+          </div>
           <Button
             onClick={() => fileInputRef.current?.click()}
             variant="primary"
@@ -355,12 +385,18 @@ export function LibraryScreen() {
       {books.length === 0 && !importing ? (
         <p className="text-sm text-text-dim">No books yet — add one, or drag a file in.</p>
       ) : (
-        <ul className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-x-5 gap-y-7">
+        <ul
+          className={
+            view === 'grid'
+              ? 'grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-x-5 gap-y-7'
+              : 'flex flex-col gap-1'
+          }
+        >
           {shown.length === 0 && (
             <li className="col-span-full text-sm text-text-dim">No books match.</li>
           )}
           {shown.map((book) => (
-            <BookTile
+            <Item
               key={book.id}
               book={book}
               percent={percentOf(book)}
@@ -371,21 +407,23 @@ export function LibraryScreen() {
               onRemove={() => void onRemove(book)}
             />
           ))}
-          <li>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={importing !== null}
-              className="flex aspect-[2/3] w-full flex-col items-center justify-center gap-2 rounded border-2 border-dashed border-guide p-4 text-xs leading-relaxed text-text-dim hover:border-text-dim hover:text-text disabled:opacity-40"
-            >
-              <Icon name="plus" size={22} />
-              <span>
-                Drop a file here
-                <br />
-                EPUB · PDF · TXT · MD
-              </span>
-            </button>
-          </li>
+          {view === 'grid' && (
+            <li>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing !== null}
+                className="flex aspect-[2/3] w-full flex-col items-center justify-center gap-2 rounded border-2 border-dashed border-guide p-4 text-xs leading-relaxed text-text-dim hover:border-text-dim hover:text-text disabled:opacity-40"
+              >
+                <Icon name="plus" size={22} />
+                <span>
+                  Drop a file here
+                  <br />
+                  EPUB · PDF · TXT · MD
+                </span>
+              </button>
+            </li>
+          )}
         </ul>
       )}
 

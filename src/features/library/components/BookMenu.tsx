@@ -12,13 +12,23 @@ export interface BookMenuProps {
   onShelf: (shelfId: number, on: boolean) => void
   onReset: () => void
   onRemove: () => void
+  /** `span` (the default) stretches the menu across the nearest positioned
+   * parent; `right` makes it a fixed width, its right edge on that parent's. */
+  align?: 'span' | 'right'
 }
 
 /** A book tile's "⋯" button and what it opens: its shelves, Reset and
  * Remove. Clicks inside never reach the tile, which would open the book.
  * The menu spans the nearest positioned parent, so put it in the tile's
  * info row: that keeps it inside a narrow tile on a phone. */
-export function BookMenu({ bookId, shelves, onShelf, onReset, onRemove }: BookMenuProps) {
+export function BookMenu({
+  bookId,
+  shelves,
+  onShelf,
+  onReset,
+  onRemove,
+  align = 'span',
+}: BookMenuProps) {
   const [open, setOpen] = useState(false)
   const [shelving, setShelving] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -60,7 +70,7 @@ export function BookMenu({ bookId, shelves, onShelf, onReset, onRemove }: BookMe
         <div
           role="group"
           aria-label="Book actions"
-          className="absolute inset-x-0 bottom-full z-20 mb-1 flex min-w-40 flex-col gap-0.5 rounded-lg border border-border bg-bg-raised p-1 text-text shadow-lg shadow-black/25"
+          className={`absolute bottom-full z-20 mb-1 flex min-w-40 flex-col ${align === 'span' ? 'inset-x-0' : 'right-0 w-52'} gap-0.5 rounded-lg border border-border bg-bg-raised p-1 text-text shadow-lg shadow-black/25`}
         >
           <button
             type="button"

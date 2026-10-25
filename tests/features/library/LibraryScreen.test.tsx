@@ -6,6 +6,7 @@ import { addBookmark } from '@/storage/bookmarks'
 import { addBook, getProgress, saveProgress } from '@/storage/library'
 import { getDb } from '@/storage/schema'
 import { LibraryScreen } from '@/features/library/components/LibraryScreen'
+import { useAppStore } from '@/stores/app-store'
 import { TEXT_BOOK } from '../../storage/fixtures'
 
 async function clearDb() {
@@ -30,6 +31,7 @@ function ReaderStub() {
 
 beforeEach(async () => {
   await clearDb()
+  useAppStore.setState({ libraryView: 'grid' })
   // jsdom's createObjectURL cannot read the Node Blob tests/setup.ts swaps in.
   vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:cover')
   vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
@@ -292,6 +294,38 @@ describe('LibraryScreen', () => {
       await within(again).findByRole('button', { name: 'Remove bookmark in Walden' }),
     )
     await within(again).findByText(/Bookmark a word in the reader/)
+  })
+
+  it('switches to a list of rows and back, and remembers the choice', async () => {
+    const db = getDb()
+    const book = await addBook(db, {
+      title: 'Listed',
+      source: 'local',
+      fingerprint: 'l',
+      ...TEXT_BOOK,
+    })
+    await db.books.update(book.id as number, { totalWords: 100 })
+    await saveProgress(db, book.id as number, { wordIndex: 70, wpm: 300, mode: 'rsvp' })
+
+    const user = userEvent.setup()
+    renderLibrary()
+    await findRow('Listed')
+    expect(screen.getByRole('button', { name: /Drop a file here/ })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'List view' }))
+    expect(screen.getByRole('button', { name: 'List view' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(useAppStore.getState().libraryView).toBe('list')
+    expect(screen.queryByRole('button', { name: /Drop a file here/ })).not.toBeInTheDocument()
+    const row = await findRow('Listed')
+    expect(within(row).getByTestId('book-progress')).toHaveTextContent('70%')
+    await user.click(within(row).getByRole('button', { name: 'Book actions' }))
+    expect(within(row).getByRole('button', { name: 'Remove' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Grid view' }))
+    expect(useAppStore.getState().libraryView).toBe('grid')
   })
 
   it('links to the Settings screen', async () => {

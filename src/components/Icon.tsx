@@ -40,6 +40,15 @@ const PATHS = {
   bookmark: <path d="M6 3h12v18l-6-4.5L6 21z" />,
   close: <path d="M6 6l12 12M18 6L6 18" />,
   contents: <path d="M4 6h1M9 6h11M4 12h1M9 12h11M4 18h1M9 18h11" />,
+  grid: (
+    <>
+      <rect x="4" y="4" width="6.5" height="6.5" rx="1" />
+      <rect x="13.5" y="4" width="6.5" height="6.5" rx="1" />
+      <rect x="4" y="13.5" width="6.5" height="6.5" rx="1" />
+      <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1" />
+    </>
+  ),
+  list: <path d="M4 6h16M4 12h16M4 18h16" />,
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
   play: <path d="M8 4.5l12 7.5-12 7.5z" fill="currentColor" />,
   pause: (

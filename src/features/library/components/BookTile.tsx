@@ -63,6 +63,63 @@ export function BookTile({
   )
 }
 
+/** A book in the library list: one row, with a small cover. */
+export function BookListRow({
+  book,
+  percent,
+  shelves,
+  onOpen,
+  onShelf,
+  onReset,
+  onRemove,
+}: BookTileProps) {
+  return (
+    <li
+      onClick={onOpen}
+      className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-bg-hover sm:gap-4"
+      data-testid="book-row"
+    >
+      <div className="w-10 shrink-0">
+        <BookCover book={book} />
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <span className="truncate text-sm font-medium" title={book.title}>
+          {book.title}
+        </span>
+        <div className="flex items-center gap-3">
+          <div className="max-w-64 flex-1">
+            <ProgressBar percent={percent} />
+          </div>
+          <span className="w-9 text-xs text-text-dim tabular-nums" data-testid="book-progress">
+            {percent.toFixed(0)}%
+          </span>
+          {book.ocr && (
+            <span
+              className="rounded border border-border px-1 text-xs text-text-dim"
+              title="The text was recognised from page images, so expect the odd mistake"
+            >
+              OCR
+            </span>
+          )}
+        </div>
+      </div>
+      <span className="hidden w-24 text-xs text-text-dim sm:block">
+        {book.lastOpenedAt ? new Date(book.lastOpenedAt).toLocaleDateString() : '—'}
+      </span>
+      <div className="relative">
+        <BookMenu
+          bookId={book.id as number}
+          shelves={shelves}
+          onShelf={onShelf}
+          onReset={onReset}
+          onRemove={onRemove}
+          align="right"
+        />
+      </div>
+    </li>
+  )
+}
+
 export function ProgressBar({ percent }: { percent: number }) {
   return (
     <div className="h-1 rounded-full bg-border" aria-hidden>
