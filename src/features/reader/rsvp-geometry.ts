@@ -10,10 +10,20 @@ export const RSVP_MIN_HEIGHT = 200
 export const GUIDE_START = 0.75
 export const GUIDE_LENGTH = 14
 
-/** How far above and below the centre line the word and its ticks can reach.
- * (A long word is shrunk to fit the width, never made taller.) */
+/** The size of the sentence line drawn under the word. */
+export function contextFontSize(fontSizePx: number): number {
+  return Math.max(13, Math.round(fontSizePx * 0.3))
+}
+
+/** Space between the guide line under the word and the sentence line. */
+export const CONTEXT_GAP = 18
+
+/** How far above and below the centre line the word, its guides and the
+ * sentence line under it can reach. Kept symmetric, so the page overlay
+ * reserves the same either side. (A long word is shrunk to fit the width,
+ * never made taller.) */
 export function wordZoneHalfHeight(fontSizePx: number): number {
-  return fontSizePx * GUIDE_START + GUIDE_LENGTH
+  return fontSizePx * GUIDE_START + GUIDE_LENGTH + CONTEXT_GAP + contextFontSize(fontSizePx)
 }
 
 /** The word is drawn on this line: the middle of the canvas, which is at

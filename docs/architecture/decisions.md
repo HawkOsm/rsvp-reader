@@ -1063,3 +1063,14 @@ missing rootfile or an empty spine rather than a "Malformed XML" error.
 
 **Rejected:** parsing the chapters on the main thread and only unzipping in the worker. A novel's
 worth of HTML would block the UI, and the worker would need a second message round trip.
+
+## 2026-10-25: the RSVP word gets a sentence line, and the overlay keeps clear of it
+
+The RSVP canvas now draws the words around the current one, faintly, on a line under the guides,
+with the current word centred under the focus letter, so a reader who loses the thread can see
+where they are without opening the page. It stops at paragraph ends (`features/reader/context.ts`).
+`wordZoneHalfHeight` includes that line, on both sides, so the page overlay never covers it. On a
+short screen the overlay is now hidden a little sooner.
+
+**Rejected:** a DOM line under the canvas. It would move the word's centre line, which
+`page-overlay.ts` and the browser tests rely on, whenever the line wrapped.
