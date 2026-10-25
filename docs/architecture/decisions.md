@@ -1074,3 +1074,16 @@ short screen the overlay is now hidden a little sooner.
 
 **Rejected:** a DOM line under the canvas. It would move the word's centre line, which
 `page-overlay.ts` and the browser tests rely on, whenever the line wrapped.
+
+## 2026-10-25: shelves are their own table, holding book ids
+
+Schema v6 adds `shelves` (`++id`): a name, a colour and `bookIds`. Membership lives on the shelf,
+not the book row, so a book row never changes when it is shelved, there is nothing to migrate
+(every existing book is on no shelf), and the library loads all shelves in one read. `removeBook`
+takes the book off every shelf in the same transaction, since a later book can reuse the id.
+A shelf's colour is one of five colour tokens (`accent` and the new `shelf-*` tokens), stored by
+token name, so each theme draws it in its own shade.
+
+**Rejected:** a `shelfIds` multi-entry index on the book row. It would need an upgrade over every
+book and makes shelving a book rewrite its row; the library never has enough shelves for an index
+to matter.

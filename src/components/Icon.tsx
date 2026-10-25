@@ -30,6 +30,14 @@ const PATHS = {
       <circle cx="17" cy="18" r="2" />
     </>
   ),
+  more: (
+    <>
+      <circle cx="5" cy="12" r="1.3" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.3" fill="currentColor" />
+      <circle cx="19" cy="12" r="1.3" fill="currentColor" />
+    </>
+  ),
+  check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
   play: <path d="M8 4.5l12 7.5-12 7.5z" fill="currentColor" />,
   pause: (
     <>

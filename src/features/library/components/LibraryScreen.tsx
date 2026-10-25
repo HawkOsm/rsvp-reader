@@ -7,26 +7,33 @@ import {
   type OcrLanguage,
 } from '@/features/library/api/files'
 import {
+  createShelf,
   getProgress,
   importLocalFile,
+  listShelves,
   listBooks,
   removeBook,
   requestPersistence,
   resetProgress,
+  setOnShelf,
   storageUsage,
   type BookRecord,
+  type ShelfRecord,
 } from '@/features/library/api/library'
 import { bookToContinue, percentRead } from '@/features/library/progress'
 import {
   SORTS,
   SECTIONS,
+  nextShelfColor,
   sectionCounts,
   shelve,
   type Section,
   type SortKey,
 } from '@/features/library/shelf'
 import { BookCover } from './BookCover'
+import { BookMenu } from './BookMenu'
 import { LibrarySidebar } from './LibrarySidebar'
+import { NewShelfDialog } from './NewShelfDialog'
 import { OcrDialog } from './OcrDialog'
 import { ResumeDialog } from './ResumeDialog'
 import { getPlatform } from '@/platform'
@@ -46,6 +53,10 @@ export function LibraryScreen() {
   /** Each book's saved word index, by book id. */
   const [wordIndexes, setWordIndexes] = useState<Record<number, number>>({})
   const [section, setSection] = useState<Section>('all')
+  const [shelves, setShelves] = useState<ShelfRecord[]>([])
+  /** The shelf picked in the sidebar; it replaces the section while set. */
+  const [shelfId, setShelfId] = useState<number | null>(null)
+  const [makingShelf, setMakingShelf] = useState(false)
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortKey>('recent')
   const [usageBytes, setUsageBytes] = useState<number | null>(null)
@@ -62,7 +73,7 @@ export function LibraryScreen() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const refresh = useCallback(async () => {
-    const list = await listBooks()
+    const [list, shelfList] = await Promise.all([listBooks(), listShelves()])
     const entries = await Promise.all(
       list.map(async (book) => {
         const progress = await getProgress(book.id as number)
@@ -71,6 +82,7 @@ export function LibraryScreen() {
     )
     setWordIndexes(Object.fromEntries(entries))
     setBooks(list)
+    setShelves(shelfList)
     storageUsage()
       .then((usage) => setUsageBytes(usage?.usageBytes ?? null))
       .catch((err) => logError('storage usage', err))
@@ -168,35 +180,58 @@ export function LibraryScreen() {
     }
   }
 
-  async function onRemove(book: BookRecord, e: React.MouseEvent) {
-    e.stopPropagation()
+  async function onRemove(book: BookRecord) {
     await removeBook(book.id as number)
     await refresh()
   }
 
-  async function onResetProgress(book: BookRecord, e: React.MouseEvent) {
-    e.stopPropagation()
+  async function onResetProgress(book: BookRecord) {
     await resetProgress(book.id as number)
     await refresh()
   }
 
+  async function onShelveBook(book: BookRecord, shelf: number, on: boolean) {
+    await setOnShelf(shelf, book.id as number, on)
+    await refresh()
+  }
+
+  async function onCreateShelf(name: string, color: ShelfRecord['color']) {
+    setMakingShelf(false)
+    const shelf = await createShelf(name, color)
+    await refresh()
+    setShelfId(shelf.id as number)
+  }
+
   const percentOf = (book: BookRecord) =>
     percentRead(book.totalWords, wordIndexes[book.id as number])
+  const shelf = shelves.find((s) => s.id === shelfId)
   const continuing =
-    section === 'all' && query.trim() === ''
+    section === 'all' && !shelf && query.trim() === ''
       ? bookToContinue(books, (id) => wordIndexes[id])
       : undefined
-  const shown = shelve(books, percentOf, { section, query, sort })
-  const sectionLabel = SECTIONS.find((s) => s.value === section)?.label
+  const shown = shelve(books, percentOf, {
+    section: shelf ? 'all' : section,
+    query,
+    sort,
+    shelfBookIds: shelf?.bookIds,
+  })
+  const title = shelf ? shelf.name : SECTIONS.find((s) => s.value === section)?.label
 
   return (
     <Page
-      title={sectionLabel}
+      title={title}
       sidebar={
         <LibrarySidebar
-          section={section}
+          section={shelf ? null : section}
           counts={sectionCounts(books.map(percentOf))}
-          onSection={setSection}
+          onSection={(next) => {
+            setShelfId(null)
+            setSection(next)
+          }}
+          shelves={shelves}
+          shelfId={shelf ? shelfId : null}
+          onShelf={setShelfId}
+          onNewShelf={() => setMakingShelf(true)}
           usageBytes={usageBytes}
           onSettings={() => navigate('/settings')}
         />
@@ -326,7 +361,7 @@ export function LibraryScreen() {
                 <span className="line-clamp-2 font-medium" title={book.title}>
                   {book.title}
                 </span>
-                <div className="flex items-center gap-2 text-xs text-text-dim">
+                <div className="relative flex items-center gap-2 text-xs text-text-dim">
                   <span data-testid="book-progress">{percentOf(book).toFixed(0)}%</span>
                   <span>
                     {book.lastOpenedAt ? new Date(book.lastOpenedAt).toLocaleDateString() : '—'}
@@ -339,14 +374,15 @@ export function LibraryScreen() {
                       OCR
                     </span>
                   )}
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={(e) => void onResetProgress(book, e)} variant="link" small>
-                    Reset
-                  </Button>
-                  <Button onClick={(e) => void onRemove(book, e)} variant="danger" small>
-                    Remove
-                  </Button>
+                  <span className="ml-auto">
+                    <BookMenu
+                      bookId={book.id as number}
+                      shelves={shelves}
+                      onShelf={(id, on) => void onShelveBook(book, id, on)}
+                      onReset={() => void onResetProgress(book)}
+                      onRemove={() => void onRemove(book)}
+                    />
+                  </span>
                 </div>
               </div>
             </li>
@@ -367,6 +403,14 @@ export function LibraryScreen() {
             </button>
           </li>
         </ul>
+      )}
+
+      {makingShelf && (
+        <NewShelfDialog
+          color={nextShelfColor(shelves.map((s) => s.color))}
+          onCreate={(name, color) => void onCreateShelf(name, color)}
+          onCancel={() => setMakingShelf(false)}
+        />
       )}
 
       {ocrOffer && (

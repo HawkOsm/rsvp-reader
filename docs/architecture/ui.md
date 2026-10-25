@@ -7,16 +7,17 @@ fix is made once. `src/components/` is the design system.
 
 Colours are **tokens**, never hex values or raw variables in a component:
 
-| Token       | Use                                    | Utility examples               |
-| ----------- | -------------------------------------- | ------------------------------ |
-| `bg`        | the page                               | `bg-bg`, `text-bg` (on accent) |
-| `bg-raised` | panels, dialogs, controls              | `bg-bg-raised`                 |
-| `bg-hover`  | hovered rows                           | `hover:bg-bg-hover`            |
-| `border`    | every border                           | `border-border`                |
-| `text`      | body text                              | `text-text`                    |
-| `text-dim`  | secondary text, hints, links           | `text-text-dim`                |
-| `accent`    | the one action, the ORP letter, danger | `bg-accent`, `accent-accent`   |
-| `guide`     | the RSVP guide ticks and lines         | (canvas only)                  |
+| Token       | Use                                                           | Utility examples               |
+| ----------- | ------------------------------------------------------------- | ------------------------------ |
+| `bg`        | the page                                                      | `bg-bg`, `text-bg` (on accent) |
+| `bg-raised` | panels, dialogs, controls                                     | `bg-bg-raised`                 |
+| `bg-hover`  | hovered rows                                                  | `hover:bg-bg-hover`            |
+| `border`    | every border                                                  | `border-border`                |
+| `text`      | body text                                                     | `text-text`                    |
+| `text-dim`  | secondary text, hints, links                                  | `text-text-dim`                |
+| `accent`    | the one action, the ORP letter, danger                        | `bg-accent`, `accent-accent`   |
+| `guide`     | the RSVP guide ticks and lines                                | (canvas only)                  |
+| `shelf-*`   | shelf dots: `blue`, `green`, `amber`, `violet` (and `accent`) | `bg-shelf-blue`                |
 
 They are defined in `src/index.css` (dark, light, paper, and light-following-the-system), registered
 with Tailwind by its `@theme inline` block, and copied into `src/lib/theme.ts` for the canvas,

@@ -13,8 +13,9 @@ account.
 | `settings` | `key`    | one row per preference (the app store's `Settings`)                          |
 | `files`    | `bookId` | the original bytes, for paged books only, so pages draw offline              |
 | `covers`   | `bookId` | the library grid's cover image; not backed up, it comes back from the file   |
+| `shelves`  | `id`     | `ShelfRecord`: a name, a colour token and the ids of the books on it         |
 
-The accessors (`library.ts`, `files.ts`, `covers.ts`, `settings.ts`) take the `db` as their first argument,
+The accessors (`library.ts`, `files.ts`, `covers.ts`, `settings.ts`, `shelves.ts`) take the `db` as their first argument,
 so tests run them on a fresh database each time (`getDb(name)` with fake-indexeddb). The UI never
 sees `db`: the `api/` folders call `getDb()` and pass it in.
 
@@ -39,7 +40,8 @@ interrupted import may be missing its file. Both get read again.
 
 Versions so far: **v1** is the old web app's exact raw-IndexedDB layout (same database name, so
 existing users upgrade in place), **v2** is this app's tables, **v3** changes `pages` to
-`formatId` + `layout`, **v4** gives every book a frozen page size, and **v5** adds the `covers` table.
+`formatId` + `layout`, **v4** gives every book a frozen page size, **v5** adds the `covers` table, and **v6** adds the
+`shelves` table.
 
 Rules for changing the schema:
 
@@ -57,5 +59,6 @@ Rules for changing the schema:
 
 - `backup.ts` (`exportBackup` / `importBackup`) is implemented and tested but **not wired into
   the UI**.
+- Backups leave out shelves.
 - `BookSource` still lists `'gutendex'`, even though Gutendex import has been removed. Kept so
   old rows still type-check.

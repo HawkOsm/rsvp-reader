@@ -140,7 +140,8 @@ describe('LibraryScreen', () => {
 
     const user = userEvent.setup()
     renderLibrary()
-    await findRow('To Reset')
+    const row = await findRow('To Reset')
+    await user.click(within(row).getByRole('button', { name: 'Book actions' }))
     await user.click(screen.getByRole('button', { name: 'Reset' }))
 
     expect(screen.queryByTestId('reader-screen')).not.toBeInTheDocument()
@@ -156,7 +157,8 @@ describe('LibraryScreen', () => {
 
     const user = userEvent.setup()
     renderLibrary()
-    await findRow('To Remove')
+    const row = await findRow('To Remove')
+    await user.click(within(row).getByRole('button', { name: 'Book actions' }))
     await user.click(screen.getByRole('button', { name: 'Remove' }))
 
     await waitFor(() => expect(screen.queryAllByText('To Remove')).toHaveLength(0))
@@ -209,6 +211,47 @@ describe('LibraryScreen', () => {
     await user.click(screen.getByRole('button', { name: /^All books/ }))
     await user.type(screen.getByRole('searchbox', { name: 'Search books' }), 'novel')
     expect(titlesShown()).toEqual(['Unread Novel'])
+  })
+
+  it('makes a shelf, puts a book on it from the tile menu, and filters by it', async () => {
+    const db = getDb()
+    await addBook(db, { title: 'Walden', source: 'local', fingerprint: 'w', ...TEXT_BOOK })
+    await addBook(db, { title: 'Dracula', source: 'local', fingerprint: 'd', ...TEXT_BOOK })
+
+    const user = userEvent.setup()
+    renderLibrary()
+    await findRow('Walden')
+    const titlesShown = () =>
+      screen.getAllByTestId('book-row').map((row) => row.querySelector('[title]')?.textContent)
+
+    await user.click(screen.getByRole('button', { name: 'New shelf' }))
+    const dialog = screen.getByRole('dialog', { name: 'New shelf' })
+    await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'Nature')
+    await user.click(within(dialog).getByRole('button', { name: 'Create shelf' }))
+
+    // The new shelf is picked, and has nothing on it yet.
+    const shelvesNav = () => screen.getByRole('navigation', { name: 'Shelves' })
+    const shelfButton = await within(shelvesNav()).findByRole('button', { name: /^Nature/ })
+    expect(shelfButton).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Nature')
+    expect(screen.queryAllByTestId('book-row')).toHaveLength(0)
+
+    await user.click(screen.getByRole('button', { name: /^All books/ }))
+    const row = await findRow('Walden')
+    await user.click(within(row).getByRole('button', { name: 'Book actions' }))
+    await user.click(within(row).getByRole('button', { name: 'Add to shelf' }))
+    await user.click(within(row).getByRole('button', { name: 'Nature' }))
+    await waitFor(() =>
+      expect(within(row).getByRole('button', { name: 'Nature' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      ),
+    )
+    expect(screen.queryByTestId('reader-screen')).not.toBeInTheDocument()
+
+    await user.click(within(shelvesNav()).getByRole('button', { name: /^Nature/ }))
+    expect(titlesShown()).toEqual(['Walden'])
+    expect(within(shelvesNav()).getByRole('button', { name: /^Nature/ })).toHaveTextContent('1')
   })
 
   it('links to the Settings screen', async () => {

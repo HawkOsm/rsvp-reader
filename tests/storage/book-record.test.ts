@@ -97,6 +97,31 @@ describe('the version 5 upgrade', () => {
   })
 })
 
+describe('the version 6 upgrade', () => {
+  it('adds an empty shelves table and keeps what a version 5 database holds', async () => {
+    const name = `v5-test-${Math.random().toString(36).slice(2)}`
+    const old = new Dexie(name)
+    old.version(5).stores({
+      books: '++id, source, sourceId, fingerprint, addedAt, lastOpenedAt',
+      tokens: 'bookId',
+      progress: 'bookId, updatedAt',
+      settings: 'key',
+      files: 'bookId',
+      covers: 'bookId',
+    })
+    await old.table('books').put({ id: 1, title: 'Kept', ...base, fingerprint: 'k' })
+    await old.table('covers').put({ bookId: 1, blob: new Blob(['jpg']) })
+    old.close()
+
+    const db = getDb(name)
+    expect(await db.books.get(1)).toMatchObject({ title: 'Kept' })
+    expect(await db.covers.get(1)).toBeDefined()
+    expect(await db.shelves.count()).toBe(0)
+    const id = await db.shelves.add({ name: 'S', color: 'accent', bookIds: [1], createdAt: 1 })
+    expect(await db.shelves.get(id)).toMatchObject({ bookIds: [1] })
+  })
+})
+
 describe('importing an old backup', () => {
   it('upgrades books written before formatId/layout existed', async () => {
     const backup: Backup = {

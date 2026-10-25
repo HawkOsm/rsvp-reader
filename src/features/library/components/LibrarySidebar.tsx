@@ -1,10 +1,21 @@
 import { Icon } from '@/components/Icon'
-import { SECTIONS, type Section } from '@/features/library/shelf'
+import type { ShelfRecord } from '@/features/library/api/library'
+import { SECTIONS, SHELF_DOT, type Section } from '@/features/library/shelf'
+
+const ROW = 'flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-sm'
+const rowState = (on: boolean) =>
+  on ? 'bg-bg-hover font-medium text-text' : 'text-text-dim hover:bg-bg-hover hover:text-text'
 
 export interface LibrarySidebarProps {
-  section: Section
+  /** The section picked, or null while a shelf is. */
+  section: Section | null
   counts: Record<Section, number>
   onSection: (section: Section) => void
+  shelves: ShelfRecord[]
+  /** The shelf picked, if one is. */
+  shelfId: number | null
+  onShelf: (shelfId: number) => void
+  onNewShelf: () => void
   /** Bytes the browser says the library uses, when it says. */
   usageBytes: number | null
   onSettings: () => void
@@ -16,6 +27,10 @@ export function LibrarySidebar({
   section,
   counts,
   onSection,
+  shelves,
+  shelfId,
+  onShelf,
+  onNewShelf,
   usageBytes,
   onSettings,
 }: LibrarySidebarProps) {
@@ -41,16 +56,38 @@ export function LibrarySidebar({
             type="button"
             aria-pressed={section === value}
             onClick={() => onSection(value)}
-            className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-sm ${
-              section === value
-                ? 'bg-bg-hover font-medium text-text'
-                : 'text-text-dim hover:bg-bg-hover hover:text-text'
-            }`}
+            className={`${ROW} ${rowState(section === value)}`}
           >
             <span className="flex-1">{label}</span>
             <span className="text-xs text-text-dim">{counts[value]}</span>
           </button>
         ))}
+      </nav>
+
+      <nav aria-labelledby="shelves-heading" className="flex flex-col gap-1">
+        <h2
+          id="shelves-heading"
+          className="px-3 text-[11px] font-semibold tracking-wider text-text-dim uppercase"
+        >
+          Shelves
+        </h2>
+        {shelves.map((shelf) => (
+          <button
+            key={shelf.id}
+            type="button"
+            aria-pressed={shelfId === shelf.id}
+            onClick={() => onShelf(shelf.id as number)}
+            className={`${ROW} ${rowState(shelfId === shelf.id)}`}
+          >
+            <span aria-hidden className={`h-2 w-2 rounded-full ${SHELF_DOT[shelf.color]}`} />
+            <span className="flex-1 truncate">{shelf.name}</span>
+            <span className="text-xs text-text-dim">{shelf.bookIds.length}</span>
+          </button>
+        ))}
+        <button type="button" onClick={onNewShelf} className={`${ROW} ${rowState(false)}`}>
+          <Icon name="plus" size={14} />
+          New shelf
+        </button>
       </nav>
 
       <div className="mt-auto flex flex-col gap-2">

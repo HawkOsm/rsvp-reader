@@ -94,6 +94,26 @@ export interface CoverRecord {
   blob: Blob
 }
 
+/** The colours a shelf's dot can take: colour tokens, see docs/architecture/ui.md. */
+export const SHELF_COLORS = [
+  'accent',
+  'shelf-blue',
+  'shelf-green',
+  'shelf-amber',
+  'shelf-violet',
+] as const
+export type ShelfColor = (typeof SHELF_COLORS)[number]
+
+/** A named set of books, kept by the reader. The shelf holds the book ids,
+ * so a book on no shelf costs nothing and a book row never changes. */
+export interface ShelfRecord {
+  id?: number
+  name: string
+  color: ShelfColor
+  bookIds: number[]
+  createdAt: number
+}
+
 export interface FileRecord {
   bookId: number
   blob: Blob
@@ -131,6 +151,7 @@ export class RsvpDatabase extends Dexie {
   settings!: Table<SettingRecord, string>
   files!: Table<FileRecord, number>
   covers!: Table<CoverRecord, number>
+  shelves!: Table<ShelfRecord, number>
 
   constructor(name = 'rsvp-reader') {
     super(name)
@@ -191,6 +212,9 @@ export class RsvpDatabase extends Dexie {
     // Cover images for the library grid. A new table only: covers are made
     // when the library next shows a book, never here.
     this.version(5).stores({ covers: 'bookId' })
+
+    // Shelves. A new table only: every existing book starts on no shelf.
+    this.version(6).stores({ shelves: '++id' })
   }
 }
 
