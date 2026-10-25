@@ -29,6 +29,18 @@
   --color-guide: #c7cbd1;
 }
 
+:root[data-theme='paper'] {
+  --color-bg: #f5efe3;
+  --color-bg-raised: #fbf7ef;
+  --color-bg-hover: #ebe2d1;
+  --color-border: #e0d6c3;
+  --color-text: #2b2620;
+  --color-text-dim: #675e51;
+  --color-accent: #c2410c;
+  --color-accent-dim: #f0cfae;
+  --color-guide: #cfc3ad;
+}
+
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
     --color-bg: #fafafa;

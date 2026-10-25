@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createEngine } from '@/core/engine'
 import { BookControls } from './BookControls'
+import { DisplayPanel } from './DisplayPanel'
 import { Button } from '@/components/Button'
 import { Icon } from '@/components/Icon'
 import { Centered } from '@/components/Page'
@@ -143,6 +144,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
               <span className="hidden sm:inline">{panelOpen && overlay ? 'Page ‹' : 'Page ›'}</span>
             </Button>
           )}
+          <DisplayPanel />
         </div>
       </header>
 

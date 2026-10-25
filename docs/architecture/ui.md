@@ -18,12 +18,12 @@ Colours are **tokens**, never hex values or raw variables in a component:
 | `accent`    | the one action, the ORP letter, danger | `bg-accent`, `accent-accent`   |
 | `guide`     | the RSVP guide ticks and lines         | (canvas only)                  |
 
-They are defined in `src/index.css` (dark, light, and light-following-the-system), registered
+They are defined in `src/index.css` (dark, light, paper, and light-following-the-system), registered
 with Tailwind by its `@theme inline` block, and copied into `src/lib/theme.ts` for the canvas,
 which needs plain colours. `tests/lib/theme-css.test.ts` fails if the copies differ. Lint rejects
 `[var(--color-…)]` in class names: use the utility.
 
-To add a colour, add it to all three CSS blocks, the `@theme inline` block, and both palettes in
+To add a colour, add it to all four CSS blocks, the `@theme inline` block, and every palette in
 `theme.ts`.
 
 ## Components

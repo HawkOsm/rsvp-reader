@@ -1,4 +1,4 @@
-export type ThemeMode = 'dark' | 'light' | 'system'
+export type ThemeMode = 'dark' | 'light' | 'paper' | 'system'
 
 export interface Palette {
   bg: string
@@ -38,8 +38,22 @@ const LIGHT_PALETTE: Palette = {
   guide: '#c7cbd1',
 }
 
+// Warm off-white for long reading, like a printed page.
+const PAPER_PALETTE: Palette = {
+  bg: '#f5efe3',
+  bgRaised: '#fbf7ef',
+  bgHover: '#ebe2d1',
+  border: '#e0d6c3',
+  text: '#2b2620',
+  textDim: '#675e51',
+  accent: '#c2410c',
+  accentDim: '#f0cfae',
+  guide: '#cfc3ad',
+}
+
 export function resolvePalette(mode: ThemeMode): Palette {
   if (mode === 'light') return LIGHT_PALETTE
+  if (mode === 'paper') return PAPER_PALETTE
   if (mode === 'dark') return DARK_PALETTE
   const prefersLight =
     typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: light)').matches

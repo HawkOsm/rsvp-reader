@@ -6,13 +6,8 @@ import { WpmInput } from '@/components/WpmInput'
 import { ErrorLogSection } from './ErrorLogSection'
 import { ExperimentalFlags } from './ExperimentalFlags'
 import { useAppStore } from '@/stores/app-store'
-import { DARK_PALETTE } from '@/lib/theme'
-
-const FONT_CHOICES = [
-  { label: 'Inter (default)', value: 'Inter, "Noto Sans", "Liberation Sans", Arial, sans-serif' },
-  { label: 'Georgia (serif)', value: 'Georgia, "Times New Roman", serif' },
-  { label: 'System UI', value: 'system-ui, sans-serif' },
-]
+import { FONT_CHOICES, MAX_FONT_SIZE, MIN_FONT_SIZE } from '@/lib/fonts'
+import { DARK_PALETTE, type ThemeMode } from '@/lib/theme'
 
 export function SettingsScreen() {
   const navigate = useNavigate()
@@ -42,12 +37,13 @@ export function SettingsScreen() {
         <Field label="Theme">
           <select
             value={theme}
-            onChange={(e) => setTheme(e.target.value as 'dark' | 'light' | 'system')}
+            onChange={(e) => setTheme(e.target.value as ThemeMode)}
             className={CONTROL}
           >
             <option value="system">System</option>
             <option value="dark">Dark</option>
             <option value="light">Light</option>
+            <option value="paper">Paper</option>
           </select>
         </Field>
 
@@ -76,8 +72,8 @@ export function SettingsScreen() {
         <Field label={`Font size (${fontSize}px)`}>
           <input
             type="range"
-            min={28}
-            max={96}
+            min={MIN_FONT_SIZE}
+            max={MAX_FONT_SIZE}
             value={fontSize}
             onChange={(e) => setFontSize(Number(e.target.value))}
           />
