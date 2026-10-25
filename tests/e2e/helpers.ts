@@ -5,6 +5,8 @@ import { expect, type Page } from '@playwright/test'
 
 export const PDF = 'tests/fixtures/two-column-text.pdf'
 export const PDF_TITLE = 'Two-Column Excerpt'
+export const EPUB = 'tests/fixtures/austen-pride-and-prejudice.epub'
+export const EPUB_TITLE = 'Pride and Prejudice'
 export const TEXT = {
   name: 'short-story.txt',
   mimeType: 'text/plain',
