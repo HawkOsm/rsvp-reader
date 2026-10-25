@@ -152,7 +152,7 @@ describe('LibraryScreen', () => {
     const user = userEvent.setup()
     renderLibrary()
     const row = await findRow('To Reset')
-    await user.click(within(row).getByRole('button', { name: 'Book actions' }))
+    await user.click(within(row).getByRole('button', { name: 'More options' }))
     await user.click(screen.getByRole('button', { name: 'Reset' }))
 
     expect(screen.queryByTestId('reader-screen')).not.toBeInTheDocument()
@@ -169,7 +169,7 @@ describe('LibraryScreen', () => {
     const user = userEvent.setup()
     renderLibrary()
     const row = await findRow('To Remove')
-    await user.click(within(row).getByRole('button', { name: 'Book actions' }))
+    await user.click(within(row).getByRole('button', { name: 'More options' }))
     await user.click(screen.getByRole('button', { name: 'Remove' }))
 
     await waitFor(() => expect(screen.queryAllByText('To Remove')).toHaveLength(0))
@@ -216,8 +216,18 @@ describe('LibraryScreen', () => {
     const titlesShown = () =>
       screen.getAllByTestId('book-row').map((row) => row.querySelector('[title]')?.textContent)
 
-    await user.click(screen.getByRole('button', { name: /^Reading/ }))
+    await user.click(screen.getByRole('button', { name: /^Reading now/ }))
     expect(titlesShown()).toEqual(['Started Essay'])
+
+    // The chips narrow whichever section is picked.
+    await user.click(screen.getByRole('button', { name: /^All books/ }))
+    await user.click(
+      within(screen.getByRole('group', { name: 'Filter' })).getByRole('button', { name: 'New' }),
+    )
+    expect(titlesShown()).toEqual(['Unread Novel'])
+    await user.click(
+      within(screen.getByRole('group', { name: 'Filter' })).getByRole('button', { name: 'All' }),
+    )
 
     await user.click(screen.getByRole('button', { name: /^All books/ }))
     await user.type(screen.getByRole('searchbox', { name: 'Search books' }), 'novel')
@@ -244,12 +254,12 @@ describe('LibraryScreen', () => {
     const shelvesNav = () => screen.getByRole('navigation', { name: 'Shelves' })
     const shelfButton = await within(shelvesNav()).findByRole('button', { name: /^Nature/ })
     expect(shelfButton).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Nature')
+    expect(screen.getByRole('heading', { level: 2, name: 'Nature' })).toBeInTheDocument()
     expect(screen.queryAllByTestId('book-row')).toHaveLength(0)
 
     await user.click(screen.getByRole('button', { name: /^All books/ }))
     const row = await findRow('Walden')
-    await user.click(within(row).getByRole('button', { name: 'Book actions' }))
+    await user.click(within(row).getByRole('button', { name: 'More options' }))
     await user.click(within(row).getByRole('button', { name: 'Add to shelf' }))
     await user.click(within(row).getByRole('button', { name: 'Nature' }))
     await waitFor(() =>
@@ -280,8 +290,9 @@ describe('LibraryScreen', () => {
 
     const user = userEvent.setup()
     const { unmount } = renderLibrary()
-    const list = await screen.findByRole('region', { name: 'Bookmarks' })
-    await within(list).findByText('40% · I went to the woods')
+    await user.click(await screen.findByRole('button', { name: /^Bookmarks/ }))
+    const list = await screen.findByRole('list', { name: 'Bookmarks' })
+    await within(list).findByText('40% · “I went to the woods…”')
     expect(list).not.toHaveTextContent('a book that is gone')
 
     await user.click(within(list).getByRole('button', { name: /^Walden/ }))
@@ -289,11 +300,9 @@ describe('LibraryScreen', () => {
     unmount()
 
     renderLibrary()
-    const again = await screen.findByRole('region', { name: 'Bookmarks' })
-    await user.click(
-      await within(again).findByRole('button', { name: 'Remove bookmark in Walden' }),
-    )
-    await within(again).findByText(/Bookmark a word in the reader/)
+    await user.click(await screen.findByRole('button', { name: /^Bookmarks/ }))
+    await user.click(await screen.findByRole('button', { name: 'Remove bookmark in Walden' }))
+    await screen.findByText(/No bookmarks yet/)
   })
 
   it('switches to a list of rows and back, and remembers the choice', async () => {
@@ -321,7 +330,7 @@ describe('LibraryScreen', () => {
     expect(screen.queryByRole('button', { name: /Drop a file here/ })).not.toBeInTheDocument()
     const row = await findRow('Listed')
     expect(within(row).getByTestId('book-progress')).toHaveTextContent('70%')
-    await user.click(within(row).getByRole('button', { name: 'Book actions' }))
+    await user.click(within(row).getByRole('button', { name: 'More options' }))
     expect(within(row).getByRole('button', { name: 'Remove' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Grid view' }))
@@ -413,11 +422,12 @@ describe('LibraryScreen on a phone', () => {
     await user.click(within(tabs).getByRole('button', { name: 'Shelves' }))
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Shelves')
     expect(screen.queryAllByTestId('book-row')).toHaveLength(0)
+    expect(screen.queryByRole('group', { name: 'Filter' })).not.toBeInTheDocument()
     // The tab bar is the way to settings here, so the menu has none of its own.
     expect(screen.getAllByRole('button', { name: 'Settings' })).toHaveLength(1)
 
-    await user.click(screen.getByRole('button', { name: /^Reading/ }))
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Reading')
+    await user.click(screen.getByRole('button', { name: /^Reading now/ }))
+    expect(screen.getByRole('heading', { level: 2, name: 'Reading now' })).toBeInTheDocument()
     expect(screen.getAllByTestId('book-row')).toHaveLength(1)
     expect(within(tabs).getByRole('button', { name: 'Library' })).toHaveAttribute(
       'aria-current',

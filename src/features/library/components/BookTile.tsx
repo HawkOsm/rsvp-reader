@@ -1,4 +1,5 @@
 import type { BookRecord, ShelfRecord } from '@/features/library/api/library'
+import { statusLabel } from '@/features/library/shelf'
 import { BookCover } from './BookCover'
 import { BookMenu } from './BookMenu'
 
@@ -26,20 +27,31 @@ export function BookTile({
   return (
     <li
       onClick={onOpen}
-      className="group flex cursor-pointer flex-col gap-2"
+      className="group flex min-w-0 cursor-pointer flex-col gap-2.5"
       data-testid="book-row"
     >
       <div className="shadow-lg shadow-black/25 transition-transform group-hover:-translate-y-1">
         <BookCover book={book} />
       </div>
       <ProgressBar percent={percent} />
-      <div className="flex flex-col gap-1 text-sm">
-        <span className="line-clamp-2 font-medium" title={book.title}>
-          {book.title}
-        </span>
-        <div className="relative flex items-center gap-2 text-xs text-text-dim">
-          <span data-testid="book-progress">{percent.toFixed(0)}%</span>
-          <span>{book.lastOpenedAt ? new Date(book.lastOpenedAt).toLocaleDateString() : '—'}</span>
+      <div className="flex flex-col gap-0.5">
+        <div className="relative flex items-start gap-1.5">
+          <span
+            className="min-w-0 flex-1 truncate text-xs leading-snug font-medium sm:line-clamp-2 sm:text-[13px] sm:whitespace-normal"
+            title={book.title}
+          >
+            {book.title}
+          </span>
+          <BookMenu
+            bookId={book.id as number}
+            shelves={shelves}
+            onShelf={onShelf}
+            onReset={onReset}
+            onRemove={onRemove}
+          />
+        </div>
+        <span className="flex items-center gap-1.5 text-[11px] text-text-dim sm:text-xs">
+          <span data-testid="book-progress">{statusLabel(percent)}</span>
           {book.ocr && (
             <span
               className="rounded border border-border px-1"
@@ -48,16 +60,7 @@ export function BookTile({
               OCR
             </span>
           )}
-          <span className="ml-auto">
-            <BookMenu
-              bookId={book.id as number}
-              shelves={shelves}
-              onShelf={onShelf}
-              onReset={onReset}
-              onRemove={onRemove}
-            />
-          </span>
-        </div>
+        </span>
       </div>
     </li>
   )
@@ -90,8 +93,8 @@ export function BookListRow({
           <div className="max-w-64 flex-1">
             <ProgressBar percent={percent} />
           </div>
-          <span className="w-9 text-xs text-text-dim tabular-nums" data-testid="book-progress">
-            {percent.toFixed(0)}%
+          <span className="w-14 text-xs text-text-dim tabular-nums" data-testid="book-progress">
+            {statusLabel(percent)}
           </span>
           {book.ocr && (
             <span
@@ -120,10 +123,14 @@ export function BookListRow({
   )
 }
 
+/** How far into a book; a finished one's bar goes grey. */
 export function ProgressBar({ percent }: { percent: number }) {
   return (
     <div className="h-1 rounded-full bg-border" aria-hidden>
-      <div className="h-1 rounded-full bg-accent" style={{ width: `${percent}%` }} />
+      <div
+        className={`h-1 rounded-full ${percent >= 100 ? 'bg-text-dim' : 'bg-accent'}`}
+        style={{ width: `${percent}%` }}
+      />
     </div>
   )
 }

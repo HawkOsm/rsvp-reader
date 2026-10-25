@@ -26,17 +26,19 @@ import {
 import { bookmarkRows } from '@/features/library/bookmarks'
 import { bookToContinue, percentRead } from '@/features/library/progress'
 import {
+  FILTERS,
   SORTS,
   SECTIONS,
   nextShelfColor,
   sectionCounts,
   shelve,
-  type Section,
+  type Filter,
   type SortKey,
 } from '@/features/library/shelf'
 import { BookCover } from './BookCover'
 import { BookListRow, BookTile, ProgressBar } from './BookTile'
-import { LibrarySidebar } from './LibrarySidebar'
+import { BookmarkList } from './BookmarkList'
+import { LibrarySidebar, type Place } from './LibrarySidebar'
 import { NewShelfDialog } from './NewShelfDialog'
 import { OcrDialog } from './OcrDialog'
 import { ResumeDialog } from './ResumeDialog'
@@ -68,10 +70,11 @@ export function LibraryScreen() {
   const [books, setBooks] = useState<BookRecord[]>([])
   /** Each book's saved word index, by book id. */
   const [wordIndexes, setWordIndexes] = useState<Record<number, number>>({})
-  const [section, setSection] = useState<Section>('all')
+  const [place, setPlace] = useState<Place>({ kind: 'section', section: 'all' })
+  const [filter, setFilter] = useState<Filter>('all')
   const [shelves, setShelves] = useState<ShelfRecord[]>([])
-  /** The shelf picked in the sidebar; it replaces the section while set. */
-  const [shelfId, setShelfId] = useState<number | null>(null)
+  /** A phone keeps the search box folded behind a button. */
+  const [searchOpen, setSearchOpen] = useState(false)
   const [makingShelf, setMakingShelf] = useState(false)
   const [bookmarks, setBookmarks] = useState<BookmarkRecord[]>([])
   const [query, setQuery] = useState('')
@@ -223,46 +226,64 @@ export function LibraryScreen() {
     setMakingShelf(false)
     const shelf = await createShelf(name, color)
     await refresh()
-    setShelfId(shelf.id as number)
+    setPlace({ kind: 'shelf', shelfId: shelf.id as number })
   }
 
   const percentOf = (book: BookRecord) =>
     percentRead(book.totalWords, wordIndexes[book.id as number])
-  const shelf = shelves.find((s) => s.id === shelfId)
+  const shelf = place.kind === 'shelf' ? shelves.find((s) => s.id === place.shelfId) : undefined
+  const section = place.kind === 'section' ? place.section : 'all'
+  const percents = books.map(percentOf)
+  const counts = sectionCounts(percents)
   const continuing =
-    section === 'all' && !shelf && query.trim() === ''
+    place.kind === 'section' && section === 'all' && filter === 'all' && query.trim() === ''
       ? bookToContinue(books, (id) => wordIndexes[id])
       : undefined
   const shown = shelve(books, percentOf, {
-    section: shelf ? 'all' : section,
+    section,
     query,
     sort,
-    shelfBookIds: shelf?.bookIds,
+    filter,
+    // A shelf that has just gone shows nothing rather than everything.
+    shelfBookIds: place.kind === 'shelf' ? (shelf?.bookIds ?? []) : undefined,
   })
   const Item = view === 'grid' ? BookTile : BookListRow
-  const title = shelf ? shelf.name : SECTIONS.find((s) => s.value === section)?.label
+  const heading =
+    place.kind === 'bookmarks'
+      ? 'Bookmarks'
+      : place.kind === 'shelf'
+        ? (shelf?.name ?? '')
+        : SECTIONS.find((s) => s.value === section)?.label
+  const marks = bookmarkRows(bookmarks, books)
+  const subtitle = `${books.length} ${books.length === 1 ? 'book' : 'books'} · ${counts.reading} in progress`
+
+  const searchBox = (
+    <label className="flex h-10 w-60 max-w-full items-center gap-2 rounded-[10px] border border-border bg-bg-raised px-3 text-text-dim">
+      <Icon name="search" size={16} />
+      <input
+        type="search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search titles"
+        aria-label="Search books"
+        autoFocus={!wide}
+        className="min-w-0 flex-1 bg-transparent text-sm text-text outline-none placeholder:text-text-dim"
+      />
+    </label>
+  )
 
   // On a phone, picking from the side menu goes back to the books it picked.
-  const toBooks = () => phoneShelves && setSearch({})
   const sidebar = (
     <LibrarySidebar
-      section={shelf ? null : section}
-      counts={sectionCounts(books.map(percentOf))}
-      onSection={(next) => {
-        setShelfId(null)
-        setSection(next)
-        toBooks()
+      place={place}
+      onPlace={(next) => {
+        setPlace(next)
+        if (phoneShelves) setSearch({})
       }}
+      counts={counts}
+      bookmarkCount={marks.length}
       shelves={shelves}
-      shelfId={shelf ? shelfId : null}
-      onShelf={(id) => {
-        setShelfId(id)
-        toBooks()
-      }}
       onNewShelf={() => setMakingShelf(true)}
-      bookmarks={bookmarkRows(bookmarks, books)}
-      onBookmark={(mark) => navigate(`/reader/${mark.bookId}?at=${mark.wordIndex}`)}
-      onRemoveBookmark={(mark) => void removeBookmark(mark.id).then(refresh)}
       usageBytes={usageBytes}
       onSettings={wide ? () => navigate('/settings') : undefined}
     />
@@ -270,7 +291,8 @@ export function LibraryScreen() {
 
   return (
     <Page
-      title={phoneShelves ? 'Shelves' : title}
+      title={phoneShelves ? 'Shelves' : 'Library'}
+      subtitle={!phoneShelves && wide && subtitle}
       sidebar={wide && sidebar}
       tabBar={
         !wide && (
@@ -284,20 +306,31 @@ export function LibraryScreen() {
         )
       }
       actions={
-        !phoneShelves && (
+        phoneShelves ? undefined : !wide ? (
           <>
-            <label className="flex h-10 w-60 max-w-full items-center gap-2 rounded-lg border border-border bg-bg-raised px-3 text-text-dim">
-              <Icon name="search" size={16} />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search titles"
-                aria-label="Search books"
-                className="min-w-0 flex-1 bg-transparent text-sm text-text outline-none placeholder:text-text-dim"
-              />
-            </label>
-            <label className="flex h-10 items-center gap-1.5 rounded-lg border border-border bg-bg-raised px-3 text-sm text-text-dim">
+            <button
+              type="button"
+              aria-label="Search"
+              aria-expanded={searchOpen}
+              onClick={() => setSearchOpen(!searchOpen)}
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-bg-raised text-text"
+            >
+              <Icon name="search" size={18} />
+            </button>
+            <button
+              type="button"
+              aria-label="Add a book"
+              disabled={importing !== null}
+              onClick={() => fileInputRef.current?.click()}
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-bg disabled:opacity-40"
+            >
+              <Icon name="plus" size={18} />
+            </button>
+          </>
+        ) : (
+          <>
+            {searchBox}
+            <label className="flex h-10 items-center gap-1.5 rounded-[10px] border border-border bg-bg-raised px-3 text-sm text-text-dim">
               Sort
               <select
                 value={sort}
@@ -315,7 +348,7 @@ export function LibraryScreen() {
             <div
               role="group"
               aria-label="View"
-              className="flex h-10 items-center rounded-lg border border-border bg-bg-raised p-0.5"
+              className="flex h-10 items-center rounded-[10px] border border-border bg-bg-raised p-0.5"
             >
               {VIEWS.map(({ value, label, icon }) => (
                 <button
@@ -337,7 +370,7 @@ export function LibraryScreen() {
               onClick={() => fileInputRef.current?.click()}
               variant="primary"
               disabled={importing !== null}
-              className="flex items-center gap-1.5 rounded-lg! px-4! py-2!"
+              className="flex h-10 items-center gap-1.5 rounded-[10px]! px-4! font-semibold!"
             >
               <Icon name="plus" size={16} />
               Add book
@@ -365,6 +398,7 @@ export function LibraryScreen() {
         sidebar
       ) : (
         <>
+          {!wide && searchOpen && searchBox}
           {dragOver && (
             <div className="rounded border-2 border-dashed border-accent p-6 text-center text-sm text-text-dim">
               Drop to add
@@ -415,13 +449,46 @@ export function LibraryScreen() {
             </section>
           )}
 
-          {books.length === 0 && !importing ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="mr-2 text-[15px] font-semibold">{heading}</h2>
+            {place.kind !== 'bookmarks' && (
+              <div
+                role="group"
+                aria-label="Filter"
+                className="-mx-6 flex gap-1.5 overflow-x-auto px-6 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0"
+              >
+                {FILTERS.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={filter === value}
+                    onClick={() => setFilter(value)}
+                    className={`h-8 shrink-0 rounded-full border px-3 text-[13px] ${
+                      filter === value
+                        ? 'border-text bg-text font-semibold text-bg'
+                        : 'border-border text-text-dim hover:text-text'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {place.kind === 'bookmarks' ? (
+            <BookmarkList
+              bookmarks={marks}
+              onOpen={(mark) => navigate(`/reader/${mark.bookId}?at=${mark.wordIndex}`)}
+              onRemove={(mark) => void removeBookmark(mark.id).then(refresh)}
+            />
+          ) : books.length === 0 && !importing ? (
             <p className="text-sm text-text-dim">No books yet — add one, or drag a file in.</p>
           ) : (
             <ul
               className={
                 view === 'grid'
-                  ? 'grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-x-5 gap-y-7'
+                  ? 'grid grid-cols-3 gap-x-3.5 gap-y-5 sm:grid-cols-[repeat(auto-fill,minmax(9.25rem,1fr))] sm:gap-x-5 sm:gap-y-7'
                   : 'flex flex-col gap-1'
               }
             >
@@ -440,7 +507,7 @@ export function LibraryScreen() {
                   onRemove={() => void onRemove(book)}
                 />
               ))}
-              {view === 'grid' && (
+              {view === 'grid' && wide && (
                 <li>
                   <button
                     type="button"

@@ -49,10 +49,10 @@ const PATHS = {
     </>
   ),
   list: <path d="M4 6h16M4 12h16M4 18h16" />,
-  shelves: (
+  clock: (
     <>
-      <path d="M5 4v16M9 4v16M14 5l4 15" />
-      <path d="M3 20h18" />
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
     </>
   ),
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,

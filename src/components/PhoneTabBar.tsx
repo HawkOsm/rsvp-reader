@@ -4,7 +4,7 @@ export type PhoneTab = 'library' | 'shelves' | 'settings'
 
 const TABS: { value: PhoneTab; label: string; icon: IconName }[] = [
   { value: 'library', label: 'Library', icon: 'book' },
-  { value: 'shelves', label: 'Shelves', icon: 'shelves' },
+  { value: 'shelves', label: 'Shelves', icon: 'bookmark' },
   { value: 'settings', label: 'Settings', icon: 'settings' },
 ]
 
@@ -20,7 +20,7 @@ export function PhoneTabBar({
   return (
     <nav
       aria-label="Tabs"
-      className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-bg-raised pb-[env(safe-area-inset-bottom)]"
+      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 border-t border-border bg-bg-raised px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
     >
       {TABS.map(({ value, label, icon }) => (
         <button
@@ -28,11 +28,11 @@ export function PhoneTabBar({
           type="button"
           aria-current={active === value ? 'page' : undefined}
           onClick={() => onSelect(value)}
-          className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] ${
-            active === value ? 'font-medium text-accent' : 'text-text-dim'
+          className={`flex min-h-12 flex-col items-center justify-center gap-1 text-[11px] ${
+            active === value ? 'font-semibold text-text' : 'text-text-dim'
           }`}
         >
-          <Icon name={icon} size={20} />
+          <Icon name={icon} size={22} />
           {label}
         </button>
       ))}

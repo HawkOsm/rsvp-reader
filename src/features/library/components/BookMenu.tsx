@@ -59,17 +59,17 @@ export function BookMenu({
     <div ref={rootRef} onClick={(e) => e.stopPropagation()}>
       <button
         type="button"
-        aria-label="Book actions"
+        aria-label="More options"
         aria-expanded={open}
         onClick={() => (open ? close() : setOpen(true))}
-        className="flex h-7 w-7 items-center justify-center rounded-md text-text-dim hover:bg-bg-hover hover:text-text"
+        className="-mt-1 -mr-1.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-dim hover:bg-bg-hover hover:text-text"
       >
         <Icon name="more" size={16} />
       </button>
       {open && (
         <div
           role="group"
-          aria-label="Book actions"
+          aria-label="Book options"
           className={`absolute bottom-full z-20 mb-1 flex min-w-40 flex-col ${align === 'span' ? 'inset-x-0' : 'right-0 w-52'} gap-0.5 rounded-lg border border-border bg-bg-raised p-1 text-text shadow-lg shadow-black/25`}
         >
           <button

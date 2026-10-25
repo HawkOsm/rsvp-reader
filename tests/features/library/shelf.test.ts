@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { nextShelfColor, sectionCounts, sectionOf, shelve } from '@/features/library/shelf'
+import {
+  nextShelfColor,
+  sectionCounts,
+  sectionOf,
+  shelve,
+  statusLabel,
+} from '@/features/library/shelf'
 
 const books = [
   { title: 'Walden', p: 30 },
@@ -94,5 +100,36 @@ describe('nextShelfColor', () => {
     const all = ['accent', 'shelf-blue', 'shelf-green', 'shelf-amber', 'shelf-violet'] as const
     expect(nextShelfColor(all)).toBe('accent')
     expect(nextShelfColor([...all, 'accent'])).toBe('shelf-blue')
+  })
+})
+
+describe('shelve, through a filter chip', () => {
+  const list = [
+    { title: 'Walden', p: 30, formatId: 'epub' },
+    { title: 'Notes', p: 0, formatId: 'pdf' },
+    { title: 'Dracula', p: 100, formatId: 'epub' },
+  ]
+  const on = { section: 'all', query: '', sort: 'recent' } as const
+
+  it('narrows by how much is read', () => {
+    expect(titles(shelve(list, percent, { ...on, filter: 'new' }))).toEqual(['Notes'])
+    expect(titles(shelve(list, percent, { ...on, filter: 'finished' }))).toEqual(['Dracula'])
+  })
+
+  it('narrows by format, inside the sidebar’s section', () => {
+    expect(titles(shelve(list, percent, { ...on, filter: 'epub' }))).toEqual(['Walden', 'Dracula'])
+    expect(titles(shelve(list, percent, { ...on, section: 'reading', filter: 'epub' }))).toEqual([
+      'Walden',
+    ])
+    expect(titles(shelve(list, percent, { ...on, filter: 'pdf' }))).toEqual(['Notes'])
+  })
+})
+
+describe('statusLabel', () => {
+  it('says New, Finished, or the percent read, rounded down', () => {
+    expect(statusLabel(0)).toBe('New')
+    expect(statusLabel(47.9)).toBe('47%')
+    expect(statusLabel(99.7)).toBe('99%')
+    expect(statusLabel(100)).toBe('Finished')
   })
 })

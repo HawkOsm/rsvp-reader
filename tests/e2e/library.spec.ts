@@ -23,14 +23,15 @@ test('a bookmark made in the reader is listed in the library, and opens there', 
   await expect(page.getByRole('button', { name: 'Remove bookmark' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Library' }).click()
-  // On a phone the side menu, bookmarks and all, is the Shelves tab.
+  // On a phone the side menu is the Shelves tab.
   if (test.info().project.name === 'phone') {
     await page
       .getByRole('navigation', { name: 'Tabs' })
       .getByRole('button', { name: 'Shelves' })
       .click()
   }
-  const marks = page.getByRole('region', { name: 'Bookmarks' })
+  await page.getByRole('button', { name: /^Bookmarks/ }).click()
+  const marks = page.getByRole('list', { name: 'Bookmarks' })
   await expect(marks).toContainText('counterrevolutionaries institutionalised')
 
   // A long excerpt is cut short, never widening the page.
