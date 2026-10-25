@@ -61,6 +61,15 @@ describe('useLoadedBook', () => {
     expect(useAppStore.getState().mode).toBe('book')
   })
 
+  it('opens at the word a bookmark link names, keeping the saved speed and mode', async () => {
+    const id = await seedBook('at')
+    await saveProgress(db, id, { wordIndex: 0, wpm: 450, mode: 'book' })
+    const { result } = renderHook(() => useLoadedBook(String(id), '1'))
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    expect(result.current).toMatchObject({ loaded: { startIndex: 1, startWpm: 450 } })
+    expect(useAppStore.getState().mode).toBe('book')
+  })
+
   it('marks the book as opened', async () => {
     const id = await seedBook('opened')
     const { result } = renderHook(() => useLoadedBook(String(id)))

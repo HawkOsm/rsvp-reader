@@ -10,7 +10,9 @@ import {
   createShelf,
   getProgress,
   importLocalFile,
+  listBookmarks,
   listShelves,
+  removeBookmark,
   listBooks,
   removeBook,
   requestPersistence,
@@ -18,8 +20,10 @@ import {
   setOnShelf,
   storageUsage,
   type BookRecord,
+  type BookmarkRecord,
   type ShelfRecord,
 } from '@/features/library/api/library'
+import { bookmarkRows } from '@/features/library/bookmarks'
 import { bookToContinue, percentRead } from '@/features/library/progress'
 import {
   SORTS,
@@ -57,6 +61,7 @@ export function LibraryScreen() {
   /** The shelf picked in the sidebar; it replaces the section while set. */
   const [shelfId, setShelfId] = useState<number | null>(null)
   const [makingShelf, setMakingShelf] = useState(false)
+  const [bookmarks, setBookmarks] = useState<BookmarkRecord[]>([])
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortKey>('recent')
   const [usageBytes, setUsageBytes] = useState<number | null>(null)
@@ -73,7 +78,11 @@ export function LibraryScreen() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const refresh = useCallback(async () => {
-    const [list, shelfList] = await Promise.all([listBooks(), listShelves()])
+    const [list, shelfList, marks] = await Promise.all([
+      listBooks(),
+      listShelves(),
+      listBookmarks(),
+    ])
     const entries = await Promise.all(
       list.map(async (book) => {
         const progress = await getProgress(book.id as number)
@@ -83,6 +92,7 @@ export function LibraryScreen() {
     setWordIndexes(Object.fromEntries(entries))
     setBooks(list)
     setShelves(shelfList)
+    setBookmarks(marks)
     storageUsage()
       .then((usage) => setUsageBytes(usage?.usageBytes ?? null))
       .catch((err) => logError('storage usage', err))
@@ -232,6 +242,9 @@ export function LibraryScreen() {
           shelfId={shelf ? shelfId : null}
           onShelf={setShelfId}
           onNewShelf={() => setMakingShelf(true)}
+          bookmarks={bookmarkRows(bookmarks, books)}
+          onBookmark={(mark) => navigate(`/reader/${mark.bookId}?at=${mark.wordIndex}`)}
+          onRemoveBookmark={(mark) => void removeBookmark(mark.id).then(refresh)}
           usageBytes={usageBytes}
           onSettings={() => navigate('/settings')}
         />

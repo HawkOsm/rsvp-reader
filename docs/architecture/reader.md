@@ -6,12 +6,14 @@
 
 ```
 ReaderScreen
- ├─ useLoadedBook(bookId)        loads book + tokens + progress through api/book.ts
+ ├─ useLoadedBook(bookId, at)    loads book + tokens + progress through api/book.ts; a
+ │                               bookmark link's ?at=<word> overrides where it starts
  ├─ createEngine(tokens)         one engine per opened book, destroyed on unmount
  └─ <EngineProvider>             engine-context.tsx: components subscribe to one value each
      ├─ RsvpCanvas               the word, drawn on a canvas, ORP letter pinned
      ├─ PagePanel                paged → PdfPagePanel/PdfPageView, reflow → TextReflowPanel
      │   └─ inside PageOverlay   in RSVP mode, the page shown over the reading area
+     ├─ BookmarkButton           marks the current word (the library lists the marks)
      ├─ TransportBar / BookControls   play, seek, WPM / page turn, scale, spread
      └─ ReaderHints              the shortcut strip
 ```

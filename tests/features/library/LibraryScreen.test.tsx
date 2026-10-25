@@ -1,7 +1,8 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { addBookmark } from '@/storage/bookmarks'
 import { addBook, getProgress, saveProgress } from '@/storage/library'
 import { getDb } from '@/storage/schema'
 import { LibraryScreen } from '@/features/library/components/LibraryScreen'
@@ -16,7 +17,15 @@ async function clearDb() {
     db.settings.clear(),
     db.files.clear(),
     db.covers.clear(),
+    db.shelves.clear(),
+    db.bookmarks.clear(),
   ])
+}
+
+/** Stands in for the reader, showing the address it was opened at. */
+function ReaderStub() {
+  const location = useLocation()
+  return <div data-testid="reader-screen">{location.pathname + location.search}</div>
 }
 
 beforeEach(async () => {
@@ -40,7 +49,7 @@ function renderLibrary() {
     <MemoryRouter initialEntries={['/']}>
       <Routes>
         <Route path="/" element={<LibraryScreen />} />
-        <Route path="/reader/:bookId" element={<div data-testid="reader-screen">reader</div>} />
+        <Route path="/reader/:bookId" element={<ReaderStub />} />
         <Route path="/settings" element={<div data-testid="settings-screen">settings</div>} />
       </Routes>
     </MemoryRouter>,
@@ -252,6 +261,37 @@ describe('LibraryScreen', () => {
     await user.click(within(shelvesNav()).getByRole('button', { name: /^Nature/ }))
     expect(titlesShown()).toEqual(['Walden'])
     expect(within(shelvesNav()).getByRole('button', { name: /^Nature/ })).toHaveTextContent('1')
+  })
+
+  it('lists bookmarks across books, opens one at its word, and removes one', async () => {
+    const db = getDb()
+    const book = await addBook(db, {
+      title: 'Walden',
+      source: 'local',
+      fingerprint: 'bm',
+      ...TEXT_BOOK,
+    })
+    const id = book.id as number
+    await db.books.update(id, { totalWords: 100 })
+    await addBookmark(db, id, 40, 'I went to the woods')
+    await addBookmark(db, 12345, 1, 'a book that is gone')
+
+    const user = userEvent.setup()
+    const { unmount } = renderLibrary()
+    const list = await screen.findByRole('region', { name: 'Bookmarks' })
+    await within(list).findByText('40% · I went to the woods')
+    expect(list).not.toHaveTextContent('a book that is gone')
+
+    await user.click(within(list).getByRole('button', { name: /^Walden/ }))
+    expect(await screen.findByTestId('reader-screen')).toHaveTextContent(`/reader/${id}?at=40`)
+    unmount()
+
+    renderLibrary()
+    const again = await screen.findByRole('region', { name: 'Bookmarks' })
+    await user.click(
+      await within(again).findByRole('button', { name: 'Remove bookmark in Walden' }),
+    )
+    await within(again).findByText(/Bookmark a word in the reader/)
   })
 
   it('links to the Settings screen', async () => {

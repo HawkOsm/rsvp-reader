@@ -1087,3 +1087,15 @@ token name, so each theme draws it in its own shade.
 **Rejected:** a `shelfIds` multi-entry index on the book row. It would need an upgrade over every
 book and makes shelving a book rewrite its row; the library never has enough shelves for an index
 to matter.
+
+## 2026-10-25: bookmarks keep a few words, and open the reader with `?at=`
+
+Schema v7 adds `bookmarks` (`++id, bookId`): a book id, a word index and an excerpt, the eight
+words from the mark. The excerpt is stored so the library's bookmark list never has to load a
+book's tokens to say where a mark is. A new table only, so nothing is migrated. `removeBook`
+deletes a book's bookmarks with it.
+
+The library opens a bookmark at `/reader/:id?at=<word>`; `useLoadedBook` starts there instead of
+at the saved progress when the index is inside the book (`startIndexFor`), and keeps the saved
+speed and mode. The reader header's bookmark button marks the current word, or unmarks it if it
+is already marked.

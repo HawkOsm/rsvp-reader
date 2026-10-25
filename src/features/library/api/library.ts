@@ -1,3 +1,4 @@
+import * as bookmarks from '@/storage/bookmarks'
 import * as library from '@/storage/library'
 import { requestPersistence as askPersistence, storageUsage } from '@/storage/quota'
 import * as shelves from '@/storage/shelves'
@@ -21,10 +22,13 @@ export const requestPersistence = askPersistence
 /** How much of the browser's storage the library takes, when it says. */
 export { storageUsage }
 
-export type { ShelfColor, ShelfRecord } from '@/storage/schema'
+export type { BookmarkRecord, ShelfColor, ShelfRecord } from '@/storage/schema'
 export { SHELF_COLORS } from '@/storage/schema'
 export const listShelves = () => shelves.listShelves(getDb())
 export const createShelf = (name: string, color: ShelfColor) =>
   shelves.createShelf(getDb(), name, color)
 export const setOnShelf = (shelfId: number, bookId: number, on: boolean) =>
   shelves.setOnShelf(getDb(), shelfId, bookId, on)
+
+export const listBookmarks = () => bookmarks.listBookmarks(getDb())
+export const removeBookmark = (bookmarkId: number) => bookmarks.removeBookmark(getDb(), bookmarkId)

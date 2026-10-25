@@ -1,7 +1,9 @@
 import { Icon } from '@/components/Icon'
 import type { ShelfRecord } from '@/features/library/api/library'
+import type { BookmarkRow } from '@/features/library/bookmarks'
 import { SECTIONS, SHELF_DOT, type Section } from '@/features/library/shelf'
 
+const HEADING = 'px-3 text-[11px] font-semibold tracking-wider text-text-dim uppercase'
 const ROW = 'flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-sm'
 const rowState = (on: boolean) =>
   on ? 'bg-bg-hover font-medium text-text' : 'text-text-dim hover:bg-bg-hover hover:text-text'
@@ -16,6 +18,9 @@ export interface LibrarySidebarProps {
   shelfId: number | null
   onShelf: (shelfId: number) => void
   onNewShelf: () => void
+  bookmarks: BookmarkRow[]
+  onBookmark: (mark: BookmarkRow) => void
+  onRemoveBookmark: (mark: BookmarkRow) => void
   /** Bytes the browser says the library uses, when it says. */
   usageBytes: number | null
   onSettings: () => void
@@ -31,6 +36,9 @@ export function LibrarySidebar({
   shelfId,
   onShelf,
   onNewShelf,
+  bookmarks,
+  onBookmark,
+  onRemoveBookmark,
   usageBytes,
   onSettings,
 }: LibrarySidebarProps) {
@@ -65,10 +73,7 @@ export function LibrarySidebar({
       </nav>
 
       <nav aria-labelledby="shelves-heading" className="flex flex-col gap-1">
-        <h2
-          id="shelves-heading"
-          className="px-3 text-[11px] font-semibold tracking-wider text-text-dim uppercase"
-        >
+        <h2 id="shelves-heading" className={HEADING}>
           Shelves
         </h2>
         {shelves.map((shelf) => (
@@ -89,6 +94,41 @@ export function LibrarySidebar({
           New shelf
         </button>
       </nav>
+
+      <section aria-labelledby="bookmarks-heading" className="flex flex-col gap-1">
+        <h2 id="bookmarks-heading" className={HEADING}>
+          Bookmarks
+        </h2>
+        {bookmarks.length === 0 && (
+          <p className="px-3 text-xs text-text-dim">
+            Bookmark a word in the reader to find it here.
+          </p>
+        )}
+        <ul className="flex max-h-72 flex-col gap-0.5 overflow-y-auto">
+          {bookmarks.map((mark) => (
+            <li key={mark.id} className="group flex items-start rounded-lg hover:bg-bg-hover">
+              <button
+                type="button"
+                onClick={() => onBookmark(mark)}
+                className="flex min-w-0 flex-1 flex-col px-3 py-1.5 text-left"
+              >
+                <span className="truncate text-sm text-text">{mark.title}</span>
+                <span className="truncate text-xs text-text-dim">
+                  {mark.percent.toFixed(0)}% · {mark.excerpt}
+                </span>
+              </button>
+              <button
+                type="button"
+                aria-label={`Remove bookmark in ${mark.title}`}
+                onClick={() => onRemoveBookmark(mark)}
+                className="m-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-dim hover:text-accent"
+              >
+                <Icon name="close" size={13} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <div className="mt-auto flex flex-col gap-2">
         {usageBytes !== null && (

@@ -114,6 +114,17 @@ export interface ShelfRecord {
   createdAt: number
 }
 
+/** A word the reader marked, to come back to. */
+export interface BookmarkRecord {
+  id?: number
+  bookId: number
+  wordIndex: number
+  /** The first few words from the mark, so the list says where it is
+   * without loading the book's tokens. */
+  excerpt: string
+  createdAt: number
+}
+
 export interface FileRecord {
   bookId: number
   blob: Blob
@@ -152,6 +163,7 @@ export class RsvpDatabase extends Dexie {
   files!: Table<FileRecord, number>
   covers!: Table<CoverRecord, number>
   shelves!: Table<ShelfRecord, number>
+  bookmarks!: Table<BookmarkRecord, number>
 
   constructor(name = 'rsvp-reader') {
     super(name)
@@ -215,6 +227,9 @@ export class RsvpDatabase extends Dexie {
 
     // Shelves. A new table only: every existing book starts on no shelf.
     this.version(6).stores({ shelves: '++id' })
+
+    // Bookmarks. A new table only: no book has any yet.
+    this.version(7).stores({ bookmarks: '++id, bookId' })
   }
 }
 

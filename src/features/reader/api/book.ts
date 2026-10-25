@@ -1,3 +1,4 @@
+import * as bookmarks from '@/storage/bookmarks'
 import * as library from '@/storage/library'
 import { loadFile } from '@/storage/files'
 import { getDb, type BookRecord, type ProgressRecord, type ReadingMode } from '@/storage/schema'
@@ -33,3 +34,9 @@ export async function loadBook(bookId: number): Promise<LoadedBookData> {
 export async function getBookFile(bookId: number): Promise<Blob | undefined> {
   return (await loadFile(getDb(), bookId))?.blob
 }
+
+export type { BookmarkRecord } from '@/storage/schema'
+export const bookmarksOf = (bookId: number) => bookmarks.bookmarksOf(getDb(), bookId)
+export const addBookmark = (bookId: number, wordIndex: number, excerpt: string) =>
+  bookmarks.addBookmark(getDb(), bookId, wordIndex, excerpt)
+export const removeBookmark = (bookmarkId: number) => bookmarks.removeBookmark(getDb(), bookmarkId)

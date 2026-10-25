@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { createEngine } from '@/core/engine'
 import { BookControls } from './BookControls'
+import { BookmarkButton } from './BookmarkButton'
 import { DisplayPanel } from './DisplayPanel'
 import { Button } from '@/components/Button'
 import { Icon } from '@/components/Icon'
@@ -30,7 +31,8 @@ const MODES = [
 export function ReaderScreen() {
   const { bookId } = useParams<{ bookId: string }>()
   const navigate = useNavigate()
-  const state = useLoadedBook(bookId)
+  const [search] = useSearchParams()
+  const state = useLoadedBook(bookId, search.get('at'))
 
   if (state.status === 'error') {
     return (
@@ -144,6 +146,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
               <span className="hidden sm:inline">{panelOpen && overlay ? 'Page ‹' : 'Page ›'}</span>
             </Button>
           )}
+          <BookmarkButton bookId={bookId} />
           <DisplayPanel />
         </div>
       </header>

@@ -53,14 +53,15 @@ export async function getBook(db: RsvpDatabase, bookId: number): Promise<BookRec
 }
 
 export async function removeBook(db: RsvpDatabase, bookId: number): Promise<void> {
-  const tables = [db.books, db.tokens, db.progress, db.files, db.covers, db.shelves]
+  const tables = [db.books, db.tokens, db.progress, db.files, db.covers, db.shelves, db.bookmarks]
   await db.transaction('rw', tables, async () => {
     await db.books.delete(bookId)
     await db.tokens.delete(bookId)
     await db.progress.delete(bookId)
     await db.files.delete(bookId)
     await db.covers.delete(bookId)
-    // A later book can take this id, and must not inherit its shelves.
+    await db.bookmarks.where('bookId').equals(bookId).delete()
+    // A later book can take this id, and must not inherit its shelves or bookmarks.
     await db.shelves.toCollection().modify((shelf) => {
       shelf.bookIds = shelf.bookIds.filter((id) => id !== bookId)
     })

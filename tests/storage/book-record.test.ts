@@ -122,6 +122,34 @@ describe('the version 6 upgrade', () => {
   })
 })
 
+describe('the version 7 upgrade', () => {
+  it('adds an empty bookmarks table and keeps what a version 6 database holds', async () => {
+    const name = `v6-test-${Math.random().toString(36).slice(2)}`
+    const old = new Dexie(name)
+    old.version(6).stores({
+      books: '++id, source, sourceId, fingerprint, addedAt, lastOpenedAt',
+      tokens: 'bookId',
+      progress: 'bookId, updatedAt',
+      settings: 'key',
+      files: 'bookId',
+      covers: 'bookId',
+      shelves: '++id',
+    })
+    await old.table('books').put({ id: 1, title: 'Kept', ...base, fingerprint: 'k' })
+    await old
+      .table('shelves')
+      .put({ id: 1, name: 'S', color: 'accent', bookIds: [1], createdAt: 1 })
+    old.close()
+
+    const db = getDb(name)
+    expect(await db.books.get(1)).toMatchObject({ title: 'Kept' })
+    expect(await db.shelves.get(1)).toMatchObject({ bookIds: [1] })
+    expect(await db.bookmarks.count()).toBe(0)
+    await db.bookmarks.add({ bookId: 1, wordIndex: 4, excerpt: 'x', createdAt: 1 })
+    expect(await db.bookmarks.where('bookId').equals(1).count()).toBe(1)
+  })
+})
+
 describe('importing an old backup', () => {
   it('upgrades books written before formatId/layout existed', async () => {
     const backup: Backup = {
