@@ -3,6 +3,7 @@ import type { PageSpec } from '@/core/page-spec'
 import type { ContentLayout, FormatId, Token } from '@/core/types'
 import { fingerprintOf } from './fingerprint'
 import type { BookRecord, BookSource, ProgressRecord, ReadingMode, RsvpDatabase } from './schema'
+import { recordChange, syncTables } from './sync-log'
 
 // Ported from db.py's Database class — same operations, backed by Dexie
 // instead of SQLite. See docs/architecture/decisions.md for how the table shapes differ
@@ -16,6 +17,7 @@ export interface AddBookInput {
   layout: ContentLayout
   page: PageSpec
   ocr?: true
+  syncId?: string
 }
 
 /** Add a book, or return the existing row if it's already in the library. */
@@ -32,6 +34,7 @@ export async function addBook(db: RsvpDatabase, input: AddBookInput): Promise<Bo
     layout: input.layout,
     page: input.page,
     ...(input.ocr && { ocr: true as const }),
+    ...(input.syncId && { syncId: input.syncId }),
     addedAt: Date.now(),
     lastOpenedAt: null,
   })
@@ -52,15 +55,32 @@ export async function getBook(db: RsvpDatabase, bookId: number): Promise<BookRec
   return db.books.get(bookId)
 }
 
+/** Remove a book, and tell other devices to remove it too. */
 export async function removeBook(db: RsvpDatabase, bookId: number): Promise<void> {
-  const tables = [db.books, db.tokens, db.progress, db.files, db.covers]
-  await db.transaction('rw', tables, async () => {
-    await db.books.delete(bookId)
-    await db.tokens.delete(bookId)
-    await db.progress.delete(bookId)
-    await db.files.delete(bookId)
-    await db.covers.delete(bookId)
+  await db.transaction('rw', [...bookTables(db), ...syncTables(db)], async () => {
+    const book = await db.books.get(bookId)
+    await deleteBookRows(db, bookId)
+    if (book?.syncId) await recordChange(db, { kind: 'book', book: book.syncId, value: null })
   })
+}
+
+/** Every table that holds part of a book. */
+export const bookTables = (db: RsvpDatabase) => [
+  db.books,
+  db.tokens,
+  db.progress,
+  db.files,
+  db.covers,
+]
+
+/** Delete a book's rows, recording nothing: for a removal that came from
+ * another device. Call it inside a transaction over `bookTables(db)`. */
+export async function deleteBookRows(db: RsvpDatabase, bookId: number): Promise<void> {
+  await db.books.delete(bookId)
+  await db.tokens.delete(bookId)
+  await db.progress.delete(bookId)
+  await db.files.delete(bookId)
+  await db.covers.delete(bookId)
 }
 
 export async function touchOpened(db: RsvpDatabase, bookId: number): Promise<void> {
@@ -87,9 +107,14 @@ export async function saveTokens(
   tokens: Token[],
   fingerprint: string,
 ): Promise<void> {
-  await db.transaction('rw', db.tokens, db.books, async () => {
+  await db.transaction('rw', [db.tokens, db.books, ...syncTables(db)], async () => {
     await db.tokens.put({ bookId, tokens })
     await db.books.update(bookId, { totalWords: tokens.length, fingerprint })
+    const book = await db.books.get(bookId)
+    if (book?.syncId) {
+      const value = { title: book.title, formatId: book.formatId, totalWords: tokens.length }
+      await recordChange(db, { kind: 'book', book: book.syncId, value })
+    }
   })
 }
 
@@ -111,7 +136,17 @@ export async function saveProgress(
   bookId: number,
   input: SaveProgressInput,
 ): Promise<void> {
-  await db.progress.put({ bookId, ...input, updatedAt: Date.now() })
+  await db.transaction('rw', [db.progress, db.books, ...syncTables(db)], async () => {
+    await db.progress.put({ bookId, ...input, updatedAt: Date.now() })
+    await recordProgress(db, bookId, input)
+  })
+}
+
+async function recordProgress(db: RsvpDatabase, bookId: number, input: SaveProgressInput) {
+  const book = await db.books.get(bookId)
+  if (!book?.syncId) return
+  const value = { wordIndex: input.wordIndex, wpm: input.wpm, mode: input.mode }
+  await recordChange(db, { kind: 'progress', book: book.syncId, value })
 }
 
 export async function getProgress(
@@ -123,12 +158,14 @@ export async function getProgress(
 
 /** Reset the word index to the start, keeping the WPM/mode the reader had. */
 export async function resetProgress(db: RsvpDatabase, bookId: number): Promise<void> {
-  const existing = await db.progress.get(bookId)
-  await db.progress.put({
-    bookId,
-    wordIndex: 0,
-    wpm: existing?.wpm ?? DEFAULT_WPM,
-    mode: existing?.mode ?? 'rsvp',
-    updatedAt: Date.now(),
+  await db.transaction('rw', [db.progress, db.books, ...syncTables(db)], async () => {
+    const existing = await db.progress.get(bookId)
+    const input = {
+      wordIndex: 0,
+      wpm: existing?.wpm ?? DEFAULT_WPM,
+      mode: existing?.mode ?? 'rsvp',
+    }
+    await db.progress.put({ bookId, ...input, updatedAt: Date.now() })
+    await recordProgress(db, bookId, input)
   })
 }

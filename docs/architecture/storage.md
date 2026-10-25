@@ -5,14 +5,19 @@ account.
 
 ## Tables (`storage/schema.ts`)
 
-| Table      | Key      | Holds                                                                        |
-| ---------- | -------- | ---------------------------------------------------------------------------- |
-| `books`    | `id`     | `BookRecord`: title, fingerprint, `formatId`, `layout`, `page`, `ocr`, dates |
-| `tokens`   | `bookId` | the whole packed word list, so a large PDF is never parsed again             |
-| `progress` | `bookId` | word index, WPM, mode; separate so frequent saves don't touch the book list  |
-| `settings` | `key`    | one row per preference (the app store's `Settings`)                          |
-| `files`    | `bookId` | the original bytes, for paged books only, so pages draw offline              |
-| `covers`   | `bookId` | the library grid's cover image; not backed up, it comes back from the file   |
+| Table           | Key      | Holds                                                                        |
+| --------------- | -------- | ---------------------------------------------------------------------------- |
+| `books`         | `id`     | `BookRecord`: title, fingerprint, `formatId`, `layout`, `page`, `ocr`, dates |
+| `tokens`        | `bookId` | the whole packed word list, so a large PDF is never parsed again             |
+| `progress`      | `bookId` | word index, WPM, mode; separate so frequent saves don't touch the book list  |
+| `settings`      | `key`    | one row per preference (the app store's `Settings`)                          |
+| `files`         | `bookId` | the original bytes, for paged books only, so pages draw offline              |
+| `covers`        | `bookId` | the library grid's cover image; not backed up, it comes back from the file   |
+| `syncRegisters` | `key`    | the newest known version of each synced value; `pending` until sent          |
+| `syncState`     | `id`     | one row: this device's id, clock, next sequence number, cursors              |
+
+Saving progress, a synced setting, a book's words, or removing a book also records the change for
+sync (`sync-log.ts`), in the same transaction. This happens whether or not sync is connected.
 
 The accessors (`library.ts`, `files.ts`, `covers.ts`, `settings.ts`) take the `db` as their first argument,
 so tests run them on a fresh database each time (`getDb(name)` with fake-indexeddb). The UI never
@@ -24,7 +29,8 @@ sees `db`: the `api/` folders call `getDb()` and pass it in.
    if it's paged), return it without reading anything.
 2. Otherwise parse it (`parseFileInWorker`), or OCR it if the user chose that.
 3. `addBook`, which inserts a row or returns the existing one for that fingerprint; then update
-   the row with the new reading.
+   the row with the new reading. The row gets its `syncId` (`sync-id.ts`): a hash of the file for
+   a paged book, of its words for a reflowed one.
 4. `saveTokens`, and `saveFile` for paged books. An EPUB that names a cover image has it saved
    with `saveCover`.
 
@@ -39,7 +45,9 @@ interrupted import may be missing its file. Both get read again.
 
 Versions so far: **v1** is the old web app's exact raw-IndexedDB layout (same database name, so
 existing users upgrade in place), **v2** is this app's tables, **v3** changes `pages` to
-`formatId` + `layout`, **v4** gives every book a frozen page size, and **v5** adds the `covers` table.
+`formatId` + `layout`, **v4** gives every book a frozen page size, **v5** adds the `covers`
+table, and **v6** adds the sync tables and indexes `books.syncId`. v6 has no upgrade: hashing can't run inside an IndexedDB
+transaction, so `ensureSyncIds` (`src/sync/identity.ts`) fills in older books' ids when sync runs.
 
 Rules for changing the schema:
 

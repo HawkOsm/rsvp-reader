@@ -2,6 +2,7 @@ import { ocrPdfFile, type OcrLanguage } from '@/ocr'
 import { parseFileInWorker } from '@/parse/client'
 import { fingerprintOf } from '@/storage/fingerprint'
 import { saveCover } from '@/storage/covers'
+import { syncIdOf } from '@/storage/sync-id'
 import { loadFile, saveFile } from '@/storage/files'
 import { addBook, saveTokens, tokensAreFresh } from '@/storage/library'
 import { getDb, type BookRecord, type RsvpDatabase } from '@/storage/schema'
@@ -35,6 +36,7 @@ export async function importLocalFile(
   const result = options.ocr
     ? await ocrPdfFile(file, { ...options, language: options.ocr.language })
     : await parseFileInWorker(file, options)
+  const syncId = await syncIdOf(result.layout, { file, tokens: result.tokens })
 
   const book = await addBook(db, {
     title: result.title,
@@ -44,6 +46,7 @@ export async function importLocalFile(
     layout: result.layout,
     page: result.page,
     ocr: result.ocr,
+    syncId,
   })
   const bookId = book.id as number
   if (existing) {
@@ -55,6 +58,7 @@ export async function importLocalFile(
       layout: result.layout,
       page: result.page,
       ocr: result.ocr,
+      ...(syncId && { syncId }),
     })
   }
   await saveTokens(db, bookId, result.tokens, fingerprint)

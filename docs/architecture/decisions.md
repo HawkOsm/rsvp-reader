@@ -1063,3 +1063,24 @@ missing rootfile or an empty spine rather than a "Malformed XML" error.
 
 **Rejected:** parsing the chapters on the main thread and only unzipping in the worker. A novel's
 worth of HTML would block the UI, and the worker would need a second message round trip.
+
+## 2026-10-25: Sync phase 1, as registers
+
+Phase 1 of docs/architecture/sync.md is built: the clock, the merge, the change log, book ids, an
+in-memory transport and `syncOnce`, tested with two simulated devices. Nothing in the app calls
+it, so no flag is needed yet; the one visible effect is that saving progress, a synced setting or
+a book now also writes a row to `syncRegisters`, in the same transaction.
+
+Every value phase 1 syncs is "newest wins", so the log is a set of registers, one per book or
+setting, each with the clock of its last local change, rather than an append-only outbox. The
+queue stays bounded however often progress is saved. A change takes its clock when it is saved,
+not sent, so an offline change can't win by arriving late. Sequence numbers are given at send
+time, and a device that crashed mid-send reads its own log back rather than reuse one.
+
+Reflowed books are hashed from their words, not their file: they keep no file, and a book added
+before sync has to be given the same id later from what it keeps. Schema v6 has no upgrade
+function, because hashing can't run inside an IndexedDB transaction; `ensureSyncIds` fills ids
+in at the start of each sync run.
+
+**Rejected:** a Drive transport now. It needs a Google OAuth client, which only the owner can
+make, and it ends invariant 1 for anyone who connects, which deserves its own change.
