@@ -1,6 +1,7 @@
 import { ocrPdfFile, type OcrLanguage } from '@/ocr'
 import { parseFileInWorker } from '@/parse/client'
 import { fingerprintOf } from '@/storage/fingerprint'
+import { saveCover } from '@/storage/covers'
 import { loadFile, saveFile } from '@/storage/files'
 import { addBook, saveTokens, tokensAreFresh } from '@/storage/library'
 import { getDb, type BookRecord, type RsvpDatabase } from '@/storage/schema'
@@ -60,6 +61,7 @@ export async function importLocalFile(
   if (result.layout.kind === 'paged') {
     await saveFile(db, bookId, file)
   }
+  if (result.cover) await saveCover(db, bookId, result.cover)
 
   const updated = await db.books.get(bookId)
   if (!updated) throw new Error('importLocalFile: book vanished after import')

@@ -87,6 +87,13 @@ export interface SettingRecord {
   value: unknown
 }
 
+/** A book's cover image, for the library grid. Backups leave it out: a PDF's
+ * is drawn again from its file, an EPUB's comes back when it is re-added. */
+export interface CoverRecord {
+  bookId: number
+  blob: Blob
+}
+
 export interface FileRecord {
   bookId: number
   blob: Blob
@@ -123,6 +130,7 @@ export class RsvpDatabase extends Dexie {
   progress!: Table<ProgressRecord, number>
   settings!: Table<SettingRecord, string>
   files!: Table<FileRecord, number>
+  covers!: Table<CoverRecord, number>
 
   constructor(name = 'rsvp-reader') {
     super(name)
@@ -179,6 +187,10 @@ export class RsvpDatabase extends Dexie {
             book.page ??= DEFAULT_PAGE
           }),
       )
+
+    // Cover images for the library grid. A new table only: covers are made
+    // when the library next shows a book, never here.
+    this.version(5).stores({ covers: 'bookId' })
   }
 }
 

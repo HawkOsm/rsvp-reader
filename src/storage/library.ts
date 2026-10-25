@@ -53,11 +53,13 @@ export async function getBook(db: RsvpDatabase, bookId: number): Promise<BookRec
 }
 
 export async function removeBook(db: RsvpDatabase, bookId: number): Promise<void> {
-  await db.transaction('rw', db.books, db.tokens, db.progress, db.files, async () => {
+  const tables = [db.books, db.tokens, db.progress, db.files, db.covers]
+  await db.transaction('rw', tables, async () => {
     await db.books.delete(bookId)
     await db.tokens.delete(bookId)
     await db.progress.delete(bookId)
     await db.files.delete(bookId)
+    await db.covers.delete(bookId)
   })
 }
 

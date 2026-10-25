@@ -26,6 +26,8 @@ export function SettingsScreen() {
   const setFontSize = useAppStore((s) => s.setFontSize)
   const orpColor = useAppStore((s) => s.orpColor)
   const setOrpColor = useAppStore((s) => s.setOrpColor)
+  const showHints = useAppStore((s) => s.showHints)
+  const setShowHints = useAppStore((s) => s.setShowHints)
 
   return (
     <Page
@@ -96,6 +98,15 @@ export function SettingsScreen() {
               className="h-6 w-10"
             />
           )}
+        </label>
+
+        <label className="flex items-center gap-3 text-sm">
+          <input
+            type="checkbox"
+            checked={showHints}
+            onChange={(e) => setShowHints(e.target.checked)}
+          />
+          Show keyboard hints in the reader
         </label>
       </section>
 

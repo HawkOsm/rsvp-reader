@@ -19,6 +19,9 @@ export interface ParseResult {
   /** The words were recognised from page images, not read from a text
    * layer, so expect the odd mistake. */
   ocr?: true
+  /** The book's own cover image (EPUBs that name one). PDFs get theirs
+   * drawn from the first page later, by the library. */
+  cover?: Blob
   /** EPUBs only — lets the UI offer a chapter jump. */
   chapters?: ParsedChapter[]
 }

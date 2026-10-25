@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ExtractionError } from '@/parse/errors'
 import { parseEpub } from '@/parse/epub'
 
@@ -10,6 +10,10 @@ function fixtureFile(name: string): File {
 }
 
 describe('parseEpub', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('extracts a real Gutenberg EPUB with title, author, tokens and chapters', async () => {
     const result = await parseEpub(fixtureFile('austen-pride-and-prejudice.epub'))
 
@@ -28,6 +32,9 @@ describe('parseEpub', () => {
     // leak into the chapter title (see content.ts's .caption stripping).
     expect(chapterTitles.some((t) => t.includes('will like it'))).toBe(false)
 
+    expect(result.cover?.type).toBe('image/jpeg')
+    expect(result.cover?.size).toBeGreaterThan(1000)
+
     // Chapter start indices are strictly increasing and land on real tokens.
     const starts = result.chapters?.map((c) => c.startTokenIndex) ?? []
     for (let i = 1; i < starts.length; i++) {
@@ -36,6 +43,13 @@ describe('parseEpub', () => {
     for (const start of starts) {
       expect(start).toBeLessThan(result.tokens.length)
     }
+  })
+
+  it('parses without DOMParser, which a web worker does not have', async () => {
+    vi.stubGlobal('DOMParser', undefined)
+    const result = await parseEpub(fixtureFile('austen-pride-and-prejudice.epub'))
+    expect(result.title).toBe('Pride and Prejudice')
+    expect(result.tokens.length).toBeGreaterThan(120_000)
   })
 
   it('reports progress once per spine document', async () => {

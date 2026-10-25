@@ -39,6 +39,7 @@
     "@tesseract.js-data/tur": "^1.0.0",
     "dexie": "^4.4.6",
     "jszip": "^3.10.2",
+    "linkedom": "^0.18.14",
     "mupdf": "^1.28.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

@@ -69,6 +69,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
   const mode = useAppStore((s) => s.mode)
   const setMode = useAppStore((s) => s.setMode)
   const panelOpen = useAppStore((s) => s.panelOpen)
+  const showHints = useAppStore((s) => s.showHints)
   const setPanelOpen = useAppStore((s) => s.setPanelOpen)
   const areaRef = useRef<HTMLDivElement>(null)
   const overlay = usePageOverlay(areaRef)
@@ -142,7 +143,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
       ) : (
         <TransportBar layout={layout} />
       )}
-      <ReaderHints mode={mode} layout={layout} />
+      {showHints && <ReaderHints mode={mode} layout={layout} />}
     </div>
   )
 }

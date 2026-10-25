@@ -19,6 +19,8 @@ export interface Settings {
   bookLayout: PageSpread
   /** Book mode page size — the PDF scale, 1 = 100%. `null` until first fitted. */
   bookScale: number | null
+  /** The reader's keyboard cheat-sheet under the controls. */
+  showHints: boolean
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -30,6 +32,7 @@ const DEFAULT_SETTINGS: Settings = {
   panelOpen: false,
   bookLayout: 'spread',
   bookScale: null,
+  showHints: true,
 }
 
 interface AppState extends Settings {
@@ -52,6 +55,7 @@ interface AppState extends Settings {
   setFontSize: (fontSize: number) => void
   setOrpColor: (color: string | null) => void
   setPanelOpen: (open: boolean) => void
+  setShowHints: (show: boolean) => void
   setBookLayout: (layout: PageSpread) => void
   setBookScale: (scale: number) => void
   stepBookScale: (delta: number) => void
@@ -103,6 +107,7 @@ export const useAppStore = create<AppState>((set, get) => {
     setFontSize: setter('fontSize'),
     setOrpColor: setter('orpColor'),
     setPanelOpen: setter('panelOpen'),
+    setShowHints: setter('showHints'),
     // The layout picks a fit; it lands once the new page sizes are known.
     setBookLayout: (bookLayout) => {
       setter('bookLayout')(bookLayout)

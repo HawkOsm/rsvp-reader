@@ -136,7 +136,7 @@ describe('touchOpened', () => {
 })
 
 describe('removeBook', () => {
-  it('cascades to tokens, progress and files', async () => {
+  it('cascades to tokens, progress, files and cover', async () => {
     const book = await addBook(db, { title: 'T', source: 'local', fingerprint: 'f5', ...TEXT_BOOK })
     const bookId = book.id as number
     await saveTokens(db, bookId, [makeToken('x')], 'f5')
@@ -147,6 +147,7 @@ describe('removeBook', () => {
       fileName: 'x.txt',
       mimeType: 'text/plain',
     })
+    await db.covers.put({ bookId, blob: new Blob(['jpg']) })
 
     await removeBook(db, bookId)
 
@@ -154,5 +155,6 @@ describe('removeBook', () => {
     expect(await db.tokens.get(bookId)).toBeUndefined()
     expect(await db.progress.get(bookId)).toBeUndefined()
     expect(await db.files.get(bookId)).toBeUndefined()
+    expect(await db.covers.get(bookId)).toBeUndefined()
   })
 })

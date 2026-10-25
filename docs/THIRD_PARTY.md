@@ -64,6 +64,7 @@ since that needs a maintained allow-list to compare against first).
 | @tauri-apps/plugin-window-state | 2.5.0   | MIT OR Apache-2.0                                                             |
 | dexie                           | 4.4.6   | Apache-2.0                                                                    |
 | jszip                           | 3.10.2  | MIT OR GPL-3.0-or-later (used under the MIT term)                             |
+| linkedom                        | 0.18.14 | ISC                                                                           |
 | mupdf                           | 1.28.1  | **AGPL-3.0-or-later** (see above)                                             |
 | tesseract.js                    | 7.0.0   | Apache-2.0                                                                    |
 | tesseract.js-core               | 7.0.0   | Apache-2.0                                                                    |

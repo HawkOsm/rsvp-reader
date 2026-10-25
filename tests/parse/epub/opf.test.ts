@@ -63,4 +63,42 @@ describe('parseOpf', () => {
     expect(result.title).toBe('Untitled')
     expect(result.author).toBeUndefined()
   })
+
+  it('finds an EPUB 3 cover by its manifest property', () => {
+    const opf = OPF_XML.replace(
+      '<item id="ch1"',
+      '<item id="img" href="images/cover.png" media-type="image/png" properties="cover-image"/><item id="ch1"',
+    )
+    expect(parseOpf(opf).cover).toEqual({ href: 'images/cover.png', mediaType: 'image/png' })
+  })
+
+  it('finds an EPUB 2 cover through its <meta name="cover">', () => {
+    const opf = OPF_XML.replace(
+      '</metadata>',
+      '<meta name="cover" content="img"/></metadata>',
+    ).replace(
+      '<item id="ch1"',
+      '<item id="img" href="cover.jpg" media-type="image/jpeg"/><item id="ch1"',
+    )
+    expect(parseOpf(opf).cover).toEqual({ href: 'cover.jpg', mediaType: 'image/jpeg' })
+  })
+
+  it('has no cover when none is named', () => {
+    expect(parseOpf(OPF_XML).cover).toBeUndefined()
+  })
+
+  it('finds Dublin Core metadata under any prefix the OPF declares for it', () => {
+    const prefixed = `<?xml version="1.0"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="2.0">
+  <metadata xmlns:meta="http://purl.org/dc/elements/1.1/">
+    <meta:title>Odd Prefix</meta:title>
+    <meta:creator>A. Writer</meta:creator>
+  </metadata>
+  <manifest><item id="a" href="a.html" media-type="application/xhtml+xml"/></manifest>
+  <spine><itemref idref="a"/></spine>
+</package>`
+    const result = parseOpf(prefixed)
+    expect(result.title).toBe('Odd Prefix')
+    expect(result.author).toBe('A. Writer')
+  })
 })
