@@ -100,7 +100,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
             className="flex items-center gap-1 py-1.5 pr-2"
           >
             <Icon name="back" />
-            Library
+            <span className="sr-only sm:not-sr-only">Library</span>
           </Button>
         </div>
         <span className="max-w-[40vw] truncate font-serif text-[15px]">{book.title}</span>
@@ -124,7 +124,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
                 }`}
               >
                 <Icon name={icon} size={14} />
-                {label}
+                <span className="sr-only sm:not-sr-only">{label}</span>
               </button>
             ))}
           </div>
