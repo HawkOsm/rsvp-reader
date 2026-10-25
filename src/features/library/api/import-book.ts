@@ -43,6 +43,7 @@ export async function importLocalFile(
     formatId: result.formatId,
     layout: result.layout,
     page: result.page,
+    chapters: result.chapters,
     ocr: result.ocr,
   })
   const bookId = book.id as number
@@ -54,6 +55,7 @@ export async function importLocalFile(
       formatId: result.formatId,
       layout: result.layout,
       page: result.page,
+      chapters: result.chapters ?? [],
       ocr: result.ocr,
     })
   }

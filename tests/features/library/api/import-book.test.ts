@@ -88,6 +88,20 @@ describe('importLocalFile', () => {
     expect(await loadCover(getDb(), book.id as number)).toBeDefined()
   })
 
+  it('keeps an EPUB’s chapters, and gives a book without any an empty list', async () => {
+    const chapters = [
+      { title: 'Chapter 1', startTokenIndex: 0 },
+      { title: 'Chapter 2', startTokenIndex: 1 },
+    ]
+    parseFileInWorker.mockResolvedValueOnce({ ...text, formatId: 'epub', chapters })
+    const epub = await importLocalFile(fileOf('novel.epub'))
+    expect((await getDb().books.get(epub.id as number))?.chapters).toEqual(chapters)
+
+    parseFileInWorker.mockResolvedValueOnce(text)
+    const plain = await importLocalFile(fileOf('story.txt'))
+    expect(plain.chapters).toEqual([])
+  })
+
   it('passes progress and cancellation through to the parser', async () => {
     parseFileInWorker.mockResolvedValue(text)
     const onProgress = vi.fn()

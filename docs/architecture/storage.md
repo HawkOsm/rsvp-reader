@@ -42,7 +42,8 @@ interrupted import may be missing its file. Both get read again.
 Versions so far: **v1** is the old web app's exact raw-IndexedDB layout (same database name, so
 existing users upgrade in place), **v2** is this app's tables, **v3** changes `pages` to
 `formatId` + `layout`, **v4** gives every book a frozen page size, **v5** adds the `covers` table, **v6** adds the
-`shelves` table, and **v7** adds the `bookmarks` table.
+`shelves` table, **v7** adds the `bookmarks` table, and **v8** gives every book a `chapters`
+list (empty for books imported before it: they are not parsed again to find theirs).
 
 Rules for changing the schema:
 

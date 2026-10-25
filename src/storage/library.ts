@@ -2,7 +2,14 @@ import { DEFAULT_WPM } from '@/core/pacing'
 import type { PageSpec } from '@/core/page-spec'
 import type { ContentLayout, FormatId, Token } from '@/core/types'
 import { fingerprintOf } from './fingerprint'
-import type { BookRecord, BookSource, ProgressRecord, ReadingMode, RsvpDatabase } from './schema'
+import type {
+  BookChapter,
+  BookRecord,
+  BookSource,
+  ProgressRecord,
+  ReadingMode,
+  RsvpDatabase,
+} from './schema'
 
 // Ported from db.py's Database class — same operations, backed by Dexie
 // instead of SQLite. See docs/architecture/decisions.md for how the table shapes differ
@@ -15,6 +22,8 @@ export interface AddBookInput {
   formatId: FormatId
   layout: ContentLayout
   page: PageSpec
+  /** Left out for a format without chapters. */
+  chapters?: BookChapter[]
   ocr?: true
 }
 
@@ -31,6 +40,7 @@ export async function addBook(db: RsvpDatabase, input: AddBookInput): Promise<Bo
     formatId: input.formatId,
     layout: input.layout,
     page: input.page,
+    chapters: input.chapters ?? [],
     ...(input.ocr && { ocr: true as const }),
     addedAt: Date.now(),
     lastOpenedAt: null,

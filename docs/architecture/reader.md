@@ -14,7 +14,9 @@ ReaderScreen
      ├─ PagePanel                paged → PdfPagePanel/PdfPageView, reflow → TextReflowPanel
      │   └─ inside PageOverlay   in RSVP mode, the page shown over the reading area
      ├─ BookmarkButton           marks the current word (the library lists the marks)
-     ├─ TransportBar / BookControls   play, seek, WPM / page turn, scale, spread
+     ├─ ContentsPanel            book mode, a book with chapters: jump to one, current marked
+     ├─ TransportBar / BookControls   play, seek, WPM / page turn, scale, spread; chapter
+     │                               ticks on the bar and the time left in the chapter
      └─ ReaderHints              the shortcut strip
 ```
 
@@ -42,6 +44,10 @@ and are meant to match it word for word. Change them deliberately.
 - **Book**: pages. `book-nav.ts` is the pure paging maths (page ↔ token index, spreads, which
   word is at a point). `book-scroll.ts` does the DOM scrolling. Entering book mode pauses
   playback.
+
+Where the reader is among the chapters (`chapterAt`, the bar's ticks, words left in the chapter)
+is pure maths in `chapters.ts`. Chapters come from `book.chapters`, which is empty for a book
+without them, so nothing chapter-shaped is drawn for it.
 
 Page geometry shared with the store (scale limits, fit-to-page and fit-to-width) is in
 `src/lib/book-layout.ts`.

@@ -17,6 +17,39 @@ function renderWithEngine(words: string[], wpm = 300) {
   return engine
 }
 
+describe('TransportBar, for a book with chapters', () => {
+  function renderChapters(chapters: { title: string; startTokenIndex: number }[]) {
+    const engine = createEngine(
+      Array.from({ length: 1001 }, (_, i) => makeToken(`w${i}`)),
+      { wpm: 100 },
+    )
+    render(
+      <EngineProvider value={engine}>
+        <TransportBar layout={{ kind: 'reflow' }} chapters={chapters} />
+      </EngineProvider>,
+    )
+    return engine
+  }
+
+  it('ticks each chapter start and says the time left in this chapter', () => {
+    const engine = renderChapters([
+      { title: 'One', startTokenIndex: 0 },
+      { title: 'Two', startTokenIndex: 500 },
+    ])
+    expect(screen.getAllByTestId('chapter-tick')).toHaveLength(1)
+    // 499 words at 100 wpm, then the whole book's 1,000.
+    expect(screen.getByTestId('time-left')).toHaveTextContent('5 min left in chapter · 10 min left')
+    act(() => engine.seek(500))
+    expect(screen.getByTestId('time-left')).toHaveTextContent('5 min left in chapter · 5 min left')
+  })
+
+  it('shows neither for a book without chapters', () => {
+    renderChapters([])
+    expect(screen.queryAllByTestId('chapter-tick')).toHaveLength(0)
+    expect(screen.getByTestId('time-left')).toHaveTextContent(/^10 min left$/)
+  })
+})
+
 describe('TransportBar', () => {
   it('shows the word counter in "word N / total · P%" form', () => {
     renderWithEngine(['one', 'two', 'three', 'four'])

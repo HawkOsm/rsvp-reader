@@ -12,6 +12,12 @@ export const CACHE_VERSION = 1
  * Gutenberg search; kept so those rows still type-check. */
 export type BookSource = 'local' | 'gutendex'
 
+/** Where a chapter starts, as the parser found it (EPUB headings). */
+export interface BookChapter {
+  title: string
+  startTokenIndex: number
+}
+
 export interface BookRecord {
   id?: number
   title: string
@@ -29,6 +35,10 @@ export interface BookRecord {
   /** The size of the book's page, scanned once at import and never changed
    * (a PDF's first page; the default for anything without pages). */
   page: PageSpec
+  /** The book's chapters, in reading order. Empty for a format without
+   * them, and for any book imported before chapters were kept: those are
+   * never parsed again to find theirs. */
+  chapters: BookChapter[]
   /** `v<CACHE_VERSION>:<size>:<lastModified>` — no file path exists on
    * web, so this (not a path) is what decides whether cached tokens are
    * still good. */
@@ -42,8 +52,8 @@ export interface BookRecord {
 
 /** A book row as an older version wrote it: `pages` instead of `layout`, and
  * no `formatId`. Only ever read by `normalizeBookRecord`. */
-export type StoredBookRecord = Omit<BookRecord, 'formatId' | 'layout' | 'page'> &
-  Partial<Pick<BookRecord, 'formatId' | 'layout' | 'page'>> & { pages?: number }
+export type StoredBookRecord = Omit<BookRecord, 'formatId' | 'layout' | 'page' | 'chapters'> &
+  Partial<Pick<BookRecord, 'formatId' | 'layout' | 'page' | 'chapters'>> & { pages?: number }
 
 /** Bring a book row from any earlier version up to the current shape.
  * Shared by the Dexie upgrade and by backup import, so an old backup file
@@ -54,7 +64,7 @@ export type StoredBookRecord = Omit<BookRecord, 'formatId' | 'layout' | 'page'> 
  * an older version comes out as `'text'`: it reads identically (both
  * reflow), and nothing stored says otherwise. */
 export function normalizeBookRecord(raw: StoredBookRecord): BookRecord {
-  const { pages, formatId, layout, page, ...rest } = raw
+  const { pages, formatId, layout, page, chapters, ...rest } = raw
   const resolvedLayout: ContentLayout =
     layout ?? (pages !== undefined ? { kind: 'paged', pages } : { kind: 'reflow' })
   return {
@@ -62,6 +72,7 @@ export function normalizeBookRecord(raw: StoredBookRecord): BookRecord {
     formatId: formatId ?? (resolvedLayout.kind === 'paged' ? 'pdf' : 'text'),
     layout: resolvedLayout,
     page: page ?? DEFAULT_PAGE,
+    chapters: chapters ?? [],
   }
 }
 
@@ -230,6 +241,19 @@ export class RsvpDatabase extends Dexie {
 
     // Bookmarks. A new table only: no book has any yet.
     this.version(7).stores({ bookmarks: '++id, bookId' })
+
+    // Every book gets a chapter list. Older ones have none stored and get an
+    // empty one: finding theirs would mean parsing the book again.
+    this.version(8)
+      .stores({})
+      .upgrade((tx) =>
+        tx
+          .table<StoredBookRecord, number>('books')
+          .toCollection()
+          .modify((book) => {
+            book.chapters ??= []
+          }),
+      )
   }
 }
 

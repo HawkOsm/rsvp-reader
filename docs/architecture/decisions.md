@@ -1099,3 +1099,19 @@ The library opens a bookmark at `/reader/:id?at=<word>`; `useLoadedBook` starts 
 at the saved progress when the index is inside the book (`startIndexFor`), and keeps the saved
 speed and mode. The reader header's bookmark button marks the current word, or unmarks it if it
 is already marked.
+
+## 2026-10-25: a book's chapters are kept on its row, and old books get none
+
+The EPUB parser has always found chapters (`ParseResult.chapters`, one per heading), but the
+import threw them away. Schema v8 gives `BookRecord` a `chapters` list, saved at import; the
+upgrade sets it to `[]` on every existing row, and `normalizeBookRecord` does the same for old
+backups. Books imported before this keep an empty list for good: finding their chapters would
+mean parsing the book again, which a migration must never do. Re-adding the same file does not
+fill it in either, since the import returns a whole book without reading it.
+
+The list is required, not optional, so the UI asks "are there chapters?" (`length > 0`) rather
+than "is the field there?". It lives on the book row, not in its own table, because the reader
+already loads the row and a novel's chapter list is a few kilobytes.
+
+**Rejected:** a `chapters` table keyed by book id, like `tokens`. One more read and one more
+table to clear on removal, for data that is small and always wanted with the book.

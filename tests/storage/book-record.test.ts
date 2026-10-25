@@ -33,8 +33,13 @@ describe('normalizeBookRecord', () => {
       formatId: 'epub' as const,
       layout: { kind: 'reflow' as const },
       page: DEFAULT_PAGE,
+      chapters: [{ title: 'Chapter 1', startTokenIndex: 0 }],
     }
     expect(normalizeBookRecord(current)).toEqual(current)
+  })
+
+  it('gives a row from before chapters were kept an empty list', () => {
+    expect(normalizeBookRecord({ ...base, title: 'T' }).chapters).toEqual([])
   })
 
   it('trusts a stored layout over a stray `pages`', () => {
@@ -147,6 +152,56 @@ describe('the version 7 upgrade', () => {
     expect(await db.bookmarks.count()).toBe(0)
     await db.bookmarks.add({ bookId: 1, wordIndex: 4, excerpt: 'x', createdAt: 1 })
     expect(await db.bookmarks.where('bookId').equals(1).count()).toBe(1)
+  })
+})
+
+describe('the version 8 upgrade', () => {
+  it('gives every book a version 7 database holds an empty chapter list', async () => {
+    const name = `v7-test-${Math.random().toString(36).slice(2)}`
+    const old = new Dexie(name)
+    old.version(7).stores({
+      books: '++id, source, sourceId, fingerprint, addedAt, lastOpenedAt',
+      tokens: 'bookId',
+      progress: 'bookId, updatedAt',
+      settings: 'key',
+      files: 'bookId',
+      covers: 'bookId',
+      shelves: '++id',
+      bookmarks: '++id, bookId',
+    })
+    const epub = {
+      ...base,
+      formatId: 'epub',
+      layout: { kind: 'reflow' },
+      page: DEFAULT_PAGE,
+    }
+    await old.table('books').bulkPut([
+      { id: 1, title: 'Old EPUB', ...epub, fingerprint: 'e' },
+      {
+        id: 2,
+        title: 'Old PDF',
+        ...base,
+        fingerprint: 'p',
+        formatId: 'pdf',
+        page: DEFAULT_PAGE,
+        layout: { kind: 'paged', pages: 3 },
+      },
+    ])
+    await old.table('tokens').put({ bookId: 1, tokens: [{ text: 'kept' }] })
+    await old
+      .table('bookmarks')
+      .put({ id: 1, bookId: 1, wordIndex: 0, excerpt: 'kept', createdAt: 1 })
+    old.close()
+
+    const db = getDb(name)
+    expect(await db.books.get(1)).toMatchObject({ title: 'Old EPUB', chapters: [] })
+    expect(await db.books.get(2)).toMatchObject({
+      layout: { kind: 'paged', pages: 3 },
+      chapters: [],
+    })
+    // Nothing is parsed again: the tokens are the ones stored.
+    expect(await db.tokens.get(1)).toEqual({ bookId: 1, tokens: [{ text: 'kept' }] })
+    expect(await db.bookmarks.count()).toBe(1)
   })
 })
 

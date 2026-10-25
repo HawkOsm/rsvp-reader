@@ -1,13 +1,19 @@
 import * as bookmarks from '@/storage/bookmarks'
 import * as library from '@/storage/library'
 import { loadFile } from '@/storage/files'
-import { getDb, type BookRecord, type ProgressRecord, type ReadingMode } from '@/storage/schema'
+import {
+  getDb,
+  type BookChapter,
+  type BookRecord,
+  type ProgressRecord,
+  type ReadingMode,
+} from '@/storage/schema'
 import type { Token } from '@/core/types'
 
 // What the reader asks of storage: a book to open, and where to remember the
 // reader got to. Nothing here takes or returns a handle to the database.
 
-export type { BookRecord, ProgressRecord, ReadingMode }
+export type { BookChapter, BookRecord, ProgressRecord, ReadingMode }
 
 export const touchOpened = (bookId: number) => library.touchOpened(getDb(), bookId)
 export const saveProgress = (bookId: number, input: library.SaveProgressInput) =>

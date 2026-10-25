@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 import { MAX_WPM, MIN_WPM } from '@/core/pacing'
 import type { ContentLayout } from '@/core/types'
 import {
@@ -10,6 +10,8 @@ import {
 import { Icon } from '@/components/Icon'
 import { ScrubBar } from './ScrubBar'
 import { WpmInput } from '@/components/WpmInput'
+import type { BookChapter } from '@/features/reader/api/book'
+import { chapterTicks, wordsLeftInChapter } from '@/features/reader/chapters'
 import { timeLeftLabel } from '@/features/reader/time-left'
 
 /** The same step as the ↑/↓ shortcuts. */
@@ -22,10 +24,15 @@ const STEP =
 export interface TransportBarProps {
   /** A paged book gets a "page N / M" segment in the counter. */
   layout: ContentLayout
+  /** Ticks on the bar at each chapter start, and the time left in this one. */
+  chapters?: BookChapter[]
 }
 
 /** Play/pause, scrub bar, word counter and WPM control. */
-export const TransportBar = memo(function TransportBar({ layout }: TransportBarProps) {
+export const TransportBar = memo(function TransportBar({
+  layout,
+  chapters = [],
+}: TransportBarProps) {
   const engine = useEngine()
   const index = useEngineIndex()
   const playing = useEnginePlaying()
@@ -39,6 +46,9 @@ export const TransportBar = memo(function TransportBar({ layout }: TransportBarP
     `word ${(index + 1).toLocaleString()} / ${total.toLocaleString()}`,
     `${(fraction * 100).toFixed(1)}%`,
   ]
+  const chapterLeft = wordsLeftInChapter(chapters, index, total)
+  const ticks = useMemo(() => chapterTicks(chapters, total), [chapters, total])
+
   if (layout.kind === 'paged' && currentPage !== undefined && currentPage >= 0) {
     counterParts.push(`page ${currentPage + 1} / ${layout.pages}`)
   }
@@ -46,10 +56,17 @@ export const TransportBar = memo(function TransportBar({ layout }: TransportBarP
   return (
     <div className="flex w-full flex-col gap-3 px-6 pb-5">
       <div className="flex flex-col gap-1">
-        <ScrubBar />
+        <ScrubBar ticks={ticks} />
         <div className="flex justify-between gap-4 text-xs text-text-dim tabular-nums">
           <span data-testid="word-counter">{counterParts.join(' · ')}</span>
-          <span>{timeLeftLabel(total - index - 1, wpm)} left</span>
+          <span className="text-right" data-testid="time-left">
+            {chapterLeft !== null && (
+              <span className="text-text">
+                {timeLeftLabel(chapterLeft, wpm)} left in chapter ·{' '}
+              </span>
+            )}
+            {timeLeftLabel(total - index - 1, wpm)} left
+          </span>
         </div>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-4 sm:grid sm:grid-cols-[1fr_auto_1fr]">
