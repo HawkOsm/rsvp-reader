@@ -2,7 +2,7 @@
 
 **A local speed reader.** Words from a document are flashed one at a time at
 a fixed screen position, so your eyes never move across the page. When you
-want to read normally instead, it reflows into columns or shows the real PDF
+want to read normally instead, it reflows into a page or shows the real PDF
 page.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
@@ -29,7 +29,7 @@ the old one and exactly what's unverified.
 - **ORP alignment** computed from real font metrics (canvas
   `measureText`), so the focus letter lands on the same pixel for every word
 - **Book mode** — PDFs render their real pages; text and EPUB files reflow
-  into book-shaped columns, current word highlighted, click any word to jump
+  into one scrolling page, current word highlighted; click any word to read on from it
 - **Library with resume** — IndexedDB-backed, remembers your place in every
   document and prompts to continue
 - **Fully local.** No account, no telemetry. Your files and reading

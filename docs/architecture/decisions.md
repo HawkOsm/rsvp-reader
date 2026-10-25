@@ -1132,3 +1132,17 @@ the word and its ticks, so the page overlay may again sit closer to the word.
 version with no recorded reason. Picking the word RSVP goes on from is one of book mode's two
 jobs (the other is reading normally), and the reflowed view of text and EPUBs already allowed it,
 so PDFs now do the same. A click that ends a text selection still does nothing.
+
+## 2026-10-25: reflowed books scroll down one column
+
+Book mode laid text and EPUBs out in CSS columns inside a fixed-height box. The columns
+overflowed sideways, and bringing the current word into view scrolled sideways to wherever it
+landed, cutting the text off at the left edge. The reflowed page is now one centred column that
+scrolls down. Its window of rendered words grows as the reader scrolls (`reflow-window.ts`), so
+reading on by scrolling never runs out of text, and it moves to the current word only when that
+word changes. Each word, with the space after it, takes clicks across the whole line height, so
+a click between lines still picks a word.
+
+**Rejected:** fixed two-column pages turned with buttons (the design canvas's look). It needs
+page breaking that matches what CSS columns lay out, and the reflowed page's job is reading on
+and picking a word, which scrolling does without it.

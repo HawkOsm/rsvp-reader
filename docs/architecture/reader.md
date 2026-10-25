@@ -46,6 +46,11 @@ and are meant to match it word for word. Change them deliberately.
   word is at a point). `book-scroll.ts` does the DOM scrolling. Entering book mode pauses
   playback.
 
+The reflowed view (`TextReflowPanel`) renders a window of words, not the whole book:
+`reflow-window.ts` places it around the current word, keeps it while the word stays well inside,
+and grows it (trimming the far side) as the reader scrolls toward an edge. It follows the word
+only when the word changes, so scrolling away to read on is never undone.
+
 Where the reader is among the chapters (`chapterAt`, the bar's ticks, words left in the chapter)
 is pure maths in `chapters.ts`. Chapters come from `book.chapters`, which is empty for a book
 without them, so nothing chapter-shaped is drawn for it.
