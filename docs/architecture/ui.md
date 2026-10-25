@@ -16,7 +16,7 @@ Colours are **tokens**, never hex values or raw variables in a component:
 | `text`      | body text                                                     | `text-text`                    |
 | `text-dim`  | secondary text, hints, links                                  | `text-text-dim`                |
 | `accent`    | the one action, the ORP letter, danger                        | `bg-accent`, `accent-accent`   |
-| `guide`     | the RSVP guide ticks and lines                                | (canvas only)                  |
+| `guide`     | the RSVP guide ticks                                          | (canvas only)                  |
 | `shelf-*`   | shelf dots: `blue`, `green`, `amber`, `violet` (and `accent`) | `bg-shelf-blue`                |
 
 They are defined in `src/index.css` (dark, light, paper, and light-following-the-system), registered

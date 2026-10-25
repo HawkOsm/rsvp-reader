@@ -1115,3 +1115,12 @@ already loads the row and a novel's chapter list is a few kilobytes.
 
 **Rejected:** a `chapters` table keyed by book id, like `tokens`. One more read and one more
 table to clear on removal, for data that is small and always wanted with the book.
+
+## 2026-10-25: the RSVP word stands alone again
+
+The sentence line under the RSVP word and the long guide lines along its ticks (added earlier the
+same day) are gone. In use they pulled the eye off the word, which defeats RSVP: the point is one
+word at a time, read at the focus letter without moving the eyes. The two short ticks that mark
+the focus letter stay; they come from the original Python reader. `wordZoneHalfHeight` is back to
+the word and its ticks, so the page overlay may again sit closer to the word.
+`features/reader/context.ts` is removed with its test.

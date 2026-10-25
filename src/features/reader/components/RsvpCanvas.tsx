@@ -1,11 +1,8 @@
-import { memo, useEffect, useMemo, useRef } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { orpIndex } from '@/core/orp'
 import { codePoints } from '@/core/unicode'
 import { useEngine, useEngineIndex } from '@/features/reader/engine-context'
-import { contextAround, type WordContext } from '@/features/reader/context'
 import {
-  CONTEXT_GAP,
-  contextFontSize,
   GUIDE_LENGTH,
   GUIDE_START,
   RSVP_MIN_HEIGHT,
@@ -19,8 +16,6 @@ import { resolvePalette, type Palette } from '@/lib/theme'
 const FOCUS_X_RATIO = 0.42
 const MIN_FONT_PX = 12
 const SIDE_MARGIN_PX = 12
-/** The guide lines above and below the word stop growing past this. */
-const MAX_GUIDE_LINE_PX = 760
 
 /**
  * Draws the current word with its ORP letter pinned to a fixed x — the eye
@@ -38,7 +33,6 @@ export const RsvpCanvas = memo(function RsvpCanvas() {
   const fontSizePx = useAppStore((s) => s.fontSize)
   const orpColor = useAppStore((s) => s.orpColor)
   const word = engine.tokens[index]?.text ?? ''
-  const context = useMemo(() => contextAround(engine.tokens, index), [engine, index])
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number | null>(null)
@@ -68,15 +62,8 @@ export const RsvpCanvas = memo(function RsvpCanvas() {
       const focusX = width * FOCUS_X_RATIO
       const centerY = wordCenterY(container.clientHeight)
 
-      drawGuides(ctx, focusX, centerY, width, palette, fontSizePx)
+      drawGuides(ctx, focusX, centerY, palette, fontSizePx)
       if (!word) return
-      drawContext(ctx, context, focusX, centerY, {
-        fontFamily,
-        fontSizePx,
-        width,
-        textColor: palette.text,
-        dimColor: palette.textDim,
-      })
       drawWord(ctx, word, focusX, centerY, {
         fontFamily,
         fontSizePx,
@@ -98,7 +85,7 @@ export const RsvpCanvas = memo(function RsvpCanvas() {
       observer.disconnect()
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
     }
-  }, [word, context, palette, fontFamily, fontSizePx, orpColor])
+  }, [word, palette, fontFamily, fontSizePx, orpColor])
 
   return (
     <div ref={containerRef} className="min-h-[200px] w-full min-w-0 flex-1 overflow-hidden">
@@ -111,7 +98,6 @@ function drawGuides(
   ctx: CanvasRenderingContext2D,
   focusX: number,
   centerY: number,
-  width: number,
   palette: Palette,
   fontSizePx: number,
 ): void {
@@ -126,60 +112,6 @@ function drawGuides(
   ctx.moveTo(focusX, centerY + half)
   ctx.lineTo(focusX, bottom)
   ctx.stroke()
-
-  // A line along the outer end of each tick, placed so the focus letter
-  // sits as far along it as it sits across the canvas.
-  const length = Math.min(width - 2 * SIDE_MARGIN_PX, MAX_GUIDE_LINE_PX)
-  const left = focusX - length * FOCUS_X_RATIO
-  ctx.lineWidth = 1
-  ctx.beginPath()
-  ctx.moveTo(left, top + 0.5)
-  ctx.lineTo(left + length, top + 0.5)
-  ctx.moveTo(left, bottom - 0.5)
-  ctx.lineTo(left + length, bottom - 0.5)
-  ctx.stroke()
-}
-
-interface DrawContextOptions {
-  fontFamily: string
-  fontSizePx: number
-  width: number
-  textColor: string
-  dimColor: string
-}
-
-/** The words around the current one, faintly, on a line under the guides:
- * the current word centred under the focus letter, the rest cut off at the
- * canvas edges. */
-function drawContext(
-  ctx: CanvasRenderingContext2D,
-  context: WordContext,
-  focusX: number,
-  centerY: number,
-  options: DrawContextOptions,
-): void {
-  const { fontFamily, fontSizePx, width, textColor, dimColor } = options
-  const size = contextFontSize(fontSizePx)
-  const y = centerY + fontSizePx * GUIDE_START + GUIDE_LENGTH + CONTEXT_GAP + size / 2
-
-  ctx.save()
-  ctx.beginPath()
-  ctx.rect(SIDE_MARGIN_PX, y - size, width - 2 * SIDE_MARGIN_PX, size * 2)
-  ctx.clip()
-  ctx.font = `400 ${size}px ${fontFamily}`
-  ctx.textBaseline = 'middle'
-  const space = ctx.measureText(' ').width
-  const half = ctx.measureText(context.current).width / 2
-
-  ctx.fillStyle = textColor
-  ctx.textAlign = 'center'
-  ctx.fillText(context.current, focusX, y)
-  ctx.fillStyle = dimColor
-  ctx.textAlign = 'right'
-  ctx.fillText(context.before, focusX - half - space, y)
-  ctx.textAlign = 'left'
-  ctx.fillText(context.after, focusX + half + space, y)
-  ctx.restore()
 }
 
 interface DrawWordOptions {
