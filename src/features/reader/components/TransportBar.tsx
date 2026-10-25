@@ -7,9 +7,17 @@ import {
   useEnginePlaying,
   useEngineWpm,
 } from '@/features/reader/engine-context'
-import { Button } from '@/components/Button'
+import { Icon } from '@/components/Icon'
 import { ScrubBar } from './ScrubBar'
 import { WpmInput } from '@/components/WpmInput'
+import { timeLeftLabel } from '@/features/reader/time-left'
+
+/** The same step as the ↑/↓ shortcuts. */
+const WPM_STEP = 25
+const ROUND =
+  'flex h-11 w-11 items-center justify-center rounded-full text-text-dim hover:bg-bg-hover hover:text-text'
+const STEP =
+  'h-9 w-9 rounded-lg text-lg text-text hover:bg-bg-hover disabled:opacity-40 disabled:hover:bg-transparent'
 
 export interface TransportBarProps {
   /** A paged book gets a "page N / M" segment in the counter. */
@@ -36,38 +44,76 @@ export const TransportBar = memo(function TransportBar({ layout }: TransportBarP
   }
 
   return (
-    <div className="flex w-full flex-col gap-2 px-4 pb-4">
-      <ScrubBar />
-      <div className="flex items-center justify-between gap-4">
-        <Button
-          variant="primary"
-          onClick={() => engine.toggle()}
-          aria-label={playing ? 'Pause' : 'Play'}
-          className="rounded-full! px-4"
-        >
-          {playing ? 'Pause' : 'Play'}
-        </Button>
-        <div className="text-sm text-text-dim" data-testid="word-counter">
-          {counterParts.join(' · ')}
+    <div className="flex w-full flex-col gap-3 px-6 pb-5">
+      <div className="flex flex-col gap-1">
+        <ScrubBar />
+        <div className="flex justify-between gap-4 text-xs text-text-dim tabular-nums">
+          <span data-testid="word-counter">{counterParts.join(' · ')}</span>
+          <span>{timeLeftLabel(total - index - 1, wpm)} left</span>
         </div>
-        <label className="flex items-center gap-2 text-sm text-text-dim">
-          WPM
-          <input
-            type="range"
-            min={MIN_WPM}
-            max={MAX_WPM}
-            step={25}
-            value={wpm}
-            onChange={(e) => engine.setWpm(Number(e.target.value))}
-            aria-label="WPM speed"
-            className="w-40 accent-accent"
-          />
-          <WpmInput
-            value={wpm}
-            onCommit={(next) => engine.setWpm(next)}
-            className="w-16 rounded border border-border bg-bg-raised px-1 py-0.5 text-text"
-          />
-        </label>
+      </div>
+      <div className="flex flex-wrap items-center justify-center gap-4 sm:grid sm:grid-cols-[1fr_auto_1fr]">
+        <div className="hidden sm:block" />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => engine.skip(-10)}
+            aria-label="Back ten words"
+            title="Back ten words  (Shift ←)"
+            className={ROUND}
+          >
+            <Icon name="skipBack" size={20} />
+          </button>
+          <button
+            type="button"
+            onClick={() => engine.toggle()}
+            aria-label={playing ? 'Pause' : 'Play'}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-accent text-bg"
+          >
+            <Icon name={playing ? 'pause' : 'play'} size={22} />
+          </button>
+          <button
+            type="button"
+            onClick={() => engine.skip(10)}
+            aria-label="Forward ten words"
+            title="Forward ten words  (Shift →)"
+            className={ROUND}
+          >
+            <Icon name="skipForward" size={20} />
+          </button>
+        </div>
+        <div className="flex justify-end">
+          <div
+            role="group"
+            aria-label="Speed"
+            className="flex items-center rounded-xl border border-border bg-bg-raised p-0.5 text-sm"
+          >
+            <button
+              type="button"
+              onClick={() => engine.setWpm(wpm - WPM_STEP)}
+              disabled={wpm <= MIN_WPM}
+              aria-label="Slower"
+              className={STEP}
+            >
+              −
+            </button>
+            <WpmInput
+              value={wpm}
+              onCommit={(next) => engine.setWpm(next)}
+              className="w-14 bg-transparent text-center font-semibold text-text tabular-nums"
+            />
+            <span className="pr-1 text-xs text-text-dim">wpm</span>
+            <button
+              type="button"
+              onClick={() => engine.setWpm(wpm + WPM_STEP)}
+              disabled={wpm >= MAX_WPM}
+              aria-label="Faster"
+              className={STEP}
+            >
+              +
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )

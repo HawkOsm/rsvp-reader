@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { createEngine } from '@/core/engine'
 import { BookControls } from './BookControls'
 import { Button } from '@/components/Button'
+import { Icon } from '@/components/Icon'
 import { Centered } from '@/components/Page'
 import { resolvePage } from '@/core/page-spec'
 import type { BookRecord } from '@/features/reader/api/book'
@@ -19,6 +20,11 @@ import { useReaderKeyboardShortcuts } from '@/features/reader/hooks/useReaderKey
 import { useTouchControls } from '@/features/reader/hooks/useTouchControls'
 import { useWakeLock } from '@/features/reader/hooks/useWakeLock'
 import { useAppStore } from '@/stores/app-store'
+
+const MODES = [
+  { value: 'rsvp', label: 'RSVP', icon: 'bolt', title: 'Back to one word at a time  (B)' },
+  { value: 'book', label: 'Book', icon: 'book', title: 'Read normally, a page at a time  (B)' },
+] as const
 
 export function ReaderScreen() {
   const { bookId } = useParams<{ bookId: string }>()
@@ -87,22 +93,44 @@ function ReaderBody({ book }: { book: BookRecord }) {
     <div className="flex h-screen flex-col bg-bg text-text">
       <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border px-4 py-2 text-sm">
         <div>
-          <Button onClick={() => navigate('/')}>‹ Library</Button>
-        </div>
-        <span className="max-w-[40vw] truncate">{book.title}</span>
-        <div className="flex justify-end gap-2">
           <Button
-            onClick={() => setMode(mode === 'book' ? 'rsvp' : 'book')}
-            title={
-              mode === 'book'
-                ? 'Back to one word at a time  (B)'
-                : 'Read normally, a page at a time  (B)'
-            }
+            variant="link"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-1 py-1.5 pr-2"
           >
-            {mode === 'book' ? 'RSVP' : 'Book'}
+            <Icon name="back" />
+            Library
           </Button>
+        </div>
+        <span className="max-w-[40vw] truncate font-serif text-[15px]">{book.title}</span>
+        <div className="flex items-center justify-end gap-2">
+          <div
+            role="group"
+            aria-label="Reading mode"
+            className="flex rounded-lg border border-border bg-bg-raised p-0.5"
+          >
+            {MODES.map(({ value, label, icon, title }) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={mode === value}
+                onClick={() => setMode(value)}
+                title={title}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1 ${
+                  mode === value
+                    ? 'bg-bg-hover font-medium text-text'
+                    : 'text-text-dim hover:text-text'
+                }`}
+              >
+                <Icon name={icon} size={14} />
+                {label}
+              </button>
+            ))}
+          </div>
           {mode === 'rsvp' && (
             <Button
+              className="flex items-center gap-1.5"
+              aria-label={panelOpen && overlay ? 'Hide page' : 'Show page'}
               onClick={() => setPanelOpen(!panelOpen)}
               disabled={overlay === null}
               title={
@@ -111,7 +139,8 @@ function ReaderBody({ book }: { book: BookRecord }) {
                   : 'Show the page you are on  (P)'
               }
             >
-              {panelOpen && overlay ? 'Page ‹' : 'Page ›'}
+              <Icon name="page" size={16} />
+              <span className="hidden sm:inline">{panelOpen && overlay ? 'Page ‹' : 'Page ›'}</span>
             </Button>
           )}
         </div>
