@@ -47,12 +47,8 @@ export function LibrarySidebar({
   return (
     <aside className="flex min-w-0 flex-[1_1_13rem] flex-col gap-6 border-border bg-bg-raised/40 px-1 py-2 sm:min-h-screen sm:max-w-64 sm:border-r sm:px-3.5 sm:py-5">
       <div className="hidden items-center gap-2.5 px-2 pt-1 sm:flex">
-        <span
-          aria-hidden
-          className="flex h-8 w-8 items-center justify-center rounded-lg bg-bg-hover text-sm font-bold"
-        >
-          r<span className="text-accent">e</span>a
-        </span>
+        {/* The app's own icon, the same file as the favicon; precached, so offline too. */}
+        <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="h-8 w-8" />
         <span className="flex flex-col leading-tight">
           <span className="font-semibold">RSVP Reader</span>
           <span className="text-xs text-text-dim">Local speed reader</span>
