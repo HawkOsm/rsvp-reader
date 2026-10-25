@@ -35,7 +35,7 @@ import {
   type SortKey,
 } from '@/features/library/shelf'
 import { BookCover } from './BookCover'
-import { BookMenu } from './BookMenu'
+import { BookTile, ProgressBar } from './BookTile'
 import { LibrarySidebar } from './LibrarySidebar'
 import { NewShelfDialog } from './NewShelfDialog'
 import { OcrDialog } from './OcrDialog'
@@ -360,45 +360,16 @@ export function LibraryScreen() {
             <li className="col-span-full text-sm text-text-dim">No books match.</li>
           )}
           {shown.map((book) => (
-            <li
+            <BookTile
               key={book.id}
-              onClick={() => void openBook(book)}
-              className="group flex cursor-pointer flex-col gap-2"
-              data-testid="book-row"
-            >
-              <div className="shadow-lg shadow-black/25 transition-transform group-hover:-translate-y-1">
-                <BookCover book={book} />
-              </div>
-              <ProgressBar percent={percentOf(book)} />
-              <div className="flex flex-col gap-1 text-sm">
-                <span className="line-clamp-2 font-medium" title={book.title}>
-                  {book.title}
-                </span>
-                <div className="relative flex items-center gap-2 text-xs text-text-dim">
-                  <span data-testid="book-progress">{percentOf(book).toFixed(0)}%</span>
-                  <span>
-                    {book.lastOpenedAt ? new Date(book.lastOpenedAt).toLocaleDateString() : '—'}
-                  </span>
-                  {book.ocr && (
-                    <span
-                      className="rounded border border-border px-1"
-                      title="The text was recognised from page images, so expect the odd mistake"
-                    >
-                      OCR
-                    </span>
-                  )}
-                  <span className="ml-auto">
-                    <BookMenu
-                      bookId={book.id as number}
-                      shelves={shelves}
-                      onShelf={(id, on) => void onShelveBook(book, id, on)}
-                      onReset={() => void onResetProgress(book)}
-                      onRemove={() => void onRemove(book)}
-                    />
-                  </span>
-                </div>
-              </div>
-            </li>
+              book={book}
+              percent={percentOf(book)}
+              shelves={shelves}
+              onOpen={() => void openBook(book)}
+              onShelf={(id, on) => void onShelveBook(book, id, on)}
+              onReset={() => void onResetProgress(book)}
+              onRemove={() => void onRemove(book)}
+            />
           ))}
           <li>
             <button
@@ -460,13 +431,5 @@ export function LibraryScreen() {
         />
       )}
     </Page>
-  )
-}
-
-function ProgressBar({ percent }: { percent: number }) {
-  return (
-    <div className="h-1 rounded-full bg-border" aria-hidden>
-      <div className="h-1 rounded-full bg-accent" style={{ width: `${percent}%` }} />
-    </div>
   )
 }
