@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { extractBlocks } from '@/parse/epub/content'
+import { parseHtml } from '@/parse/epub/dom'
 
 function parse(html: string): Document {
-  return new DOMParser().parseFromString(`<html><body>${html}</body></html>`, 'text/html')
+  return parseHtml(`<html><body>${html}</body></html>`)
 }
 
 describe('extractBlocks', () => {

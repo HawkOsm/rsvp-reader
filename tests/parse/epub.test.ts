@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ExtractionError } from '@/parse/errors'
 import { parseEpub } from '@/parse/epub'
 
@@ -10,6 +10,10 @@ function fixtureFile(name: string): File {
 }
 
 describe('parseEpub', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('extracts a real Gutenberg EPUB with title, author, tokens and chapters', async () => {
     const result = await parseEpub(fixtureFile('austen-pride-and-prejudice.epub'))
 
@@ -36,6 +40,13 @@ describe('parseEpub', () => {
     for (const start of starts) {
       expect(start).toBeLessThan(result.tokens.length)
     }
+  })
+
+  it('parses without DOMParser, which a web worker does not have', async () => {
+    vi.stubGlobal('DOMParser', undefined)
+    const result = await parseEpub(fixtureFile('austen-pride-and-prejudice.epub'))
+    expect(result.title).toBe('Pride and Prejudice')
+    expect(result.tokens.length).toBeGreaterThan(120_000)
   })
 
   it('reports progress once per spine document', async () => {

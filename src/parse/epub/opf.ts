@@ -1,21 +1,11 @@
-const DC_NS = 'http://purl.org/dc/elements/1.1/'
-const CONTAINER_NS = 'urn:oasis:names:tc:opendocument:xmlns:container'
+import { parseXml } from './dom'
 
-function parseXml(xmlText: string): Document {
-  const doc = new DOMParser().parseFromString(xmlText, 'application/xml')
-  const parserError = doc.getElementsByTagName('parsererror')[0]
-  if (parserError) {
-    throw new Error(`Malformed XML: ${parserError.textContent ?? 'unknown error'}`)
-  }
-  return doc
-}
+const DC_NS = 'http://purl.org/dc/elements/1.1/'
 
 /** container.xml -> the OPF's own path inside the zip (e.g. "OEBPS/content.opf"). */
 export function parseContainer(xmlText: string): string {
   const doc = parseXml(xmlText)
-  const rootfile =
-    doc.getElementsByTagNameNS(CONTAINER_NS, 'rootfile')[0] ??
-    doc.getElementsByTagName('rootfile')[0]
+  const rootfile = doc.getElementsByTagName('rootfile')[0]
   const path = rootfile?.getAttribute('full-path')
   if (!path) throw new Error('container.xml has no <rootfile full-path="...">')
   return path
@@ -55,9 +45,18 @@ export function parseOpf(xmlText: string): OpfResult {
   return { title, author: author || undefined, spineHrefs }
 }
 
+/** The parser has no namespaces, so find the namespace's element by the
+ * prefix (or default namespace) the document declares for it. */
 function firstText(doc: Document, ns: string, localName: string): string | undefined {
-  const byNs = doc.getElementsByTagNameNS(ns, localName)[0]
-  const el = byNs ?? doc.getElementsByTagName(`dc:${localName}`)[0]
+  const names = new Set([`dc:${localName}`])
+  for (const el of Array.from(doc.querySelectorAll('*'))) {
+    for (const attr of Array.from(el.attributes)) {
+      if (attr.value !== ns) continue
+      if (attr.name === 'xmlns') names.add(localName)
+      else if (attr.name.startsWith('xmlns:')) names.add(`${attr.name.slice(6)}:${localName}`)
+    }
+  }
+  const el = Array.from(doc.querySelectorAll('*')).find((e) => names.has(e.tagName))
   const text = el?.textContent?.trim()
   return text || undefined
 }

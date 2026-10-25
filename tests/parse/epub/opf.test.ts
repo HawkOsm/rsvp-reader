@@ -63,4 +63,19 @@ describe('parseOpf', () => {
     expect(result.title).toBe('Untitled')
     expect(result.author).toBeUndefined()
   })
+
+  it('finds Dublin Core metadata under any prefix the OPF declares for it', () => {
+    const prefixed = `<?xml version="1.0"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="2.0">
+  <metadata xmlns:meta="http://purl.org/dc/elements/1.1/">
+    <meta:title>Odd Prefix</meta:title>
+    <meta:creator>A. Writer</meta:creator>
+  </metadata>
+  <manifest><item id="a" href="a.html" media-type="application/xhtml+xml"/></manifest>
+  <spine><itemref idref="a"/></spine>
+</package>`
+    const result = parseOpf(prefixed)
+    expect(result.title).toBe('Odd Prefix')
+    expect(result.author).toBe('A. Writer')
+  })
 })

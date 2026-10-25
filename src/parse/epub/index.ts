@@ -6,6 +6,7 @@ import { ExtractionError } from '@/parse/errors'
 import { titleFromFileName } from '@/parse/title'
 import type { ParsedChapter, ParseResult, ParseOptions } from '@/parse/types'
 import { extractBlocks } from './content'
+import { parseHtml } from './dom'
 import { parseContainer, parseOpf } from './opf'
 import { dirname, resolveEpubPath } from './path'
 
@@ -37,7 +38,6 @@ export async function parseEpub(file: File, options: ParseOptions = {}): Promise
   const opfDir = dirname(opfPath)
   const tokens: Token[] = []
   const chapters: ParsedChapter[] = []
-  const parser = new DOMParser()
 
   for (let i = 0; i < opf.spineHrefs.length; i++) {
     if (options.signal?.aborted) throw new DOMException('Parsing cancelled', 'AbortError')
@@ -47,7 +47,7 @@ export async function parseEpub(file: File, options: ParseOptions = {}): Promise
     const html = await readZipText(zip, zipPath)
     if (html === undefined) continue // a spine entry pointing nowhere; skip rather than fail the book
 
-    const doc = parser.parseFromString(html, 'text/html')
+    const doc = parseHtml(html)
     for (const block of extractBlocks(doc)) {
       if (CHAPTER_HEADING_TAGS.has(block.tag)) {
         chapters.push({ title: block.text, startTokenIndex: tokens.length })

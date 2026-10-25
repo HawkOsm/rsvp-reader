@@ -1046,3 +1046,20 @@ so requiring them would leave other PRs waiting for a check that never comes. No
 required, since there is one maintainer.
 
 The `next` branch, a leftover from the migration, is deleted and dropped from CI's triggers.
+
+## 2026-10-25: EPUBs are parsed with linkedom, not DOMParser
+
+EPUB import failed in every real browser with "DOMParser is not defined": EPUBs are parsed in
+`parse.worker.ts`, and dedicated workers have no DOMParser. The unit tests ran the parser in
+jsdom on the main thread, so they never saw it. `parse/epub/dom.ts` now parses the OPF and the
+chapter HTML with linkedom (ISC, plain JS, bundled), so the same code runs in the worker and in
+the tests. For the Austen fixture the result is identical to DOMParser's: same title, author,
+126,684 tokens and 66 chapters.
+
+linkedom has no XML namespaces and never reports a parse error. `opf.ts` finds Dublin Core
+elements by the prefix the OPF declares for that namespace, and malformed XML now surfaces as a
+missing rootfile or an empty spine rather than a "Malformed XML" error.
+`tests/e2e/epub.spec.ts` imports the fixture in a real browser.
+
+**Rejected:** parsing the chapters on the main thread and only unzipping in the worker. A novel's
+worth of HTML would block the UI, and the worker would need a second message round trip.
