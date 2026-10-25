@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -25,6 +25,14 @@ beforeEach(async () => {
   vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:cover')
   vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
 })
+
+/** The book's tile in the grid: its title also shows under "Continue reading". */
+async function findRow(title: string) {
+  const rows = await screen.findAllByTestId('book-row')
+  const row = rows.find((r) => within(r).queryByText(title))
+  if (!row) throw new Error(`no row for ${title}`)
+  return row
+}
 
 function renderLibrary() {
   return render(
@@ -57,7 +65,7 @@ describe('LibraryScreen', () => {
 
     renderLibrary()
 
-    expect(await screen.findByText('Dr Jekyll and Mr Hyde')).toBeInTheDocument()
+    expect(await findRow('Dr Jekyll and Mr Hyde')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByTestId('book-progress')).toHaveTextContent('25%'))
   })
 
@@ -85,7 +93,7 @@ describe('LibraryScreen', () => {
 
     const user = userEvent.setup()
     renderLibrary()
-    await user.click(await screen.findByText('Partly Read'))
+    await user.click(within(await findRow('Partly Read')).getByText('Partly Read'))
 
     expect(await screen.findByRole('dialog', { name: /resume reading/i })).toBeInTheDocument()
     expect(screen.getByText(/40% through/i)).toBeInTheDocument()
@@ -110,7 +118,7 @@ describe('LibraryScreen', () => {
 
     const user = userEvent.setup()
     renderLibrary()
-    await user.click(await screen.findByText('Partly Read 2'))
+    await user.click(within(await findRow('Partly Read 2')).getByText('Partly Read 2'))
     await screen.findByRole('dialog')
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
@@ -131,7 +139,7 @@ describe('LibraryScreen', () => {
 
     const user = userEvent.setup()
     renderLibrary()
-    await screen.findByText('To Reset')
+    await findRow('To Reset')
     await user.click(screen.getByRole('button', { name: 'Reset' }))
 
     expect(screen.queryByTestId('reader-screen')).not.toBeInTheDocument()
@@ -151,6 +159,29 @@ describe('LibraryScreen', () => {
     await user.click(screen.getByRole('button', { name: 'Remove' }))
 
     await waitFor(() => expect(screen.queryByText('To Remove')).not.toBeInTheDocument())
+  })
+
+  it('offers the book in progress under "Continue reading", and Resume opens it', async () => {
+    const db = getDb()
+    await addBook(db, { title: 'Unstarted', source: 'local', fingerprint: 'r0', ...TEXT_BOOK })
+    const book = await addBook(db, {
+      title: 'Halfway',
+      source: 'local',
+      fingerprint: 'r1',
+      ...TEXT_BOOK,
+    })
+    await db.books.update(book.id as number, { totalWords: 100 })
+    await saveProgress(db, book.id as number, { wordIndex: 50, wpm: 300, mode: 'rsvp' })
+
+    const user = userEvent.setup()
+    renderLibrary()
+    const section = await screen.findByRole('region', { name: 'Continue reading' })
+    expect(section).toHaveTextContent('Halfway')
+    expect(section).not.toHaveTextContent('Unstarted')
+
+    await user.click(within(section).getByRole('button', { name: 'Resume' }))
+    expect(await screen.findByTestId('reader-screen')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('links to the Settings screen', async () => {

@@ -100,4 +100,23 @@ describe('TransportBar', () => {
     act(() => engine.setWpm(450))
     expect(screen.getByRole('spinbutton')).toHaveValue(450)
   })
+
+  it('the ten-word buttons skip back and forward', async () => {
+    const user = userEvent.setup()
+    const engine = renderWithEngine(Array.from({ length: 30 }, (_, i) => `w${i}`))
+    await user.click(screen.getByRole('button', { name: 'Forward ten words' }))
+    expect(engine.index).toBe(10)
+    await user.click(screen.getByRole('button', { name: 'Back ten words' }))
+    expect(engine.index).toBe(0)
+  })
+
+  it('the speed buttons step the WPM by 25', async () => {
+    const user = userEvent.setup()
+    const engine = renderWithEngine(['one', 'two'], 300)
+    await user.click(screen.getByRole('button', { name: 'Faster' }))
+    expect(engine.wpm).toBe(325)
+    await user.click(screen.getByRole('button', { name: 'Slower' }))
+    await user.click(screen.getByRole('button', { name: 'Slower' }))
+    expect(engine.wpm).toBe(275)
+  })
 })
