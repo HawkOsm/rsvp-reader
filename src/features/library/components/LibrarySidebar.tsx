@@ -43,7 +43,7 @@ export function LibrarySidebar({
   onSettings,
 }: LibrarySidebarProps) {
   return (
-    <aside className="flex flex-[1_1_13rem] flex-col gap-5 border-border bg-bg-raised/40 p-4 sm:min-h-screen sm:max-w-64 sm:border-r">
+    <aside className="flex min-w-0 flex-[1_1_13rem] flex-col gap-5 border-border bg-bg-raised/40 p-4 sm:min-h-screen sm:max-w-64 sm:border-r">
       <div className="flex items-center gap-2.5 px-2 pt-1">
         <span
           aria-hidden
