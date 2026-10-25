@@ -2,6 +2,7 @@ import { DEFAULT_PAGE, makePageSpec } from '@/core/page-spec'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { makeToken } from '@/core/types'
 import type { ParseResult } from '@/parse/types'
+import { loadCover } from '@/storage/covers'
 import { loadFile } from '@/storage/files'
 import { exportBackup, importBackup } from '@/storage/backup'
 import { getTokens } from '@/storage/library'
@@ -43,7 +44,13 @@ beforeEach(async () => {
   parseFileInWorker.mockReset()
   ocrPdfFile.mockReset()
   const db = getDb()
-  await Promise.all([db.books.clear(), db.tokens.clear(), db.files.clear(), db.progress.clear()])
+  await Promise.all([
+    db.books.clear(),
+    db.tokens.clear(),
+    db.files.clear(),
+    db.progress.clear(),
+    db.covers.clear(),
+  ])
 })
 
 describe('importLocalFile', () => {
@@ -72,6 +79,13 @@ describe('importLocalFile', () => {
     parseFileInWorker.mockResolvedValue(text)
     const book = await importLocalFile(fileOf('story.txt'))
     expect(await loadFile(getDb(), book.id as number)).toBeUndefined()
+  })
+
+  it('keeps the cover the book came with', async () => {
+    const cover = new Blob(['jpg'], { type: 'image/jpeg' })
+    parseFileInWorker.mockResolvedValue({ ...text, formatId: 'epub', cover })
+    const book = await importLocalFile(fileOf('novel.epub'))
+    expect(await loadCover(getDb(), book.id as number)).toBeDefined()
   })
 
   it('passes progress and cancellation through to the parser', async () => {

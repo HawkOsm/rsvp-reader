@@ -76,4 +76,25 @@ describe('backup', () => {
       }),
     ).rejects.toThrow(/format version/)
   })
+
+  it('drops the cover of a book a restore writes over', async () => {
+    const book = await addBook(db, {
+      title: 'Old',
+      source: 'local',
+      fingerprint: 'c1',
+      ...TEXT_BOOK,
+    })
+    const bookId = book.id as number
+    await db.covers.put({ bookId, blob: new Blob(['old cover']) })
+
+    await importBackup(db, {
+      formatVersion: 1,
+      exportedAt: 1,
+      books: [{ ...book, title: 'Another book', fingerprint: 'c2' }],
+      progress: [],
+      settings: [],
+    })
+
+    expect(await db.covers.get(bookId)).toBeUndefined()
+  })
 })

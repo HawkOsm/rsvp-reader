@@ -76,6 +76,27 @@ describe('the version 3 upgrade', () => {
   })
 })
 
+describe('the version 5 upgrade', () => {
+  it('adds a covers table and keeps the books a version 4 database holds', async () => {
+    const name = `v4-test-${Math.random().toString(36).slice(2)}`
+    const old = new Dexie(name)
+    old.version(4).stores({
+      books: '++id, source, sourceId, fingerprint, addedAt, lastOpenedAt',
+      tokens: 'bookId',
+      progress: 'bookId, updatedAt',
+      settings: 'key',
+      files: 'bookId',
+    })
+    await old.table('books').put({ id: 1, title: 'Kept', ...base, fingerprint: 'k' })
+    old.close()
+
+    const db = getDb(name)
+    expect(await db.books.get(1)).toMatchObject({ title: 'Kept' })
+    await db.covers.put({ bookId: 1, blob: new Blob(['jpg']) })
+    expect(await db.covers.get(1)).toBeDefined()
+  })
+})
+
 describe('importing an old backup', () => {
   it('upgrades books written before formatId/layout existed', async () => {
     const backup: Backup = {

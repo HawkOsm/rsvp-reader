@@ -12,8 +12,9 @@ account.
 | `progress` | `bookId` | word index, WPM, mode; separate so frequent saves don't touch the book list  |
 | `settings` | `key`    | one row per preference (the app store's `Settings`)                          |
 | `files`    | `bookId` | the original bytes, for paged books only, so pages draw offline              |
+| `covers`   | `bookId` | the library grid's cover image; not backed up, it comes back from the file   |
 
-The accessors (`library.ts`, `files.ts`, `settings.ts`) take the `db` as their first argument,
+The accessors (`library.ts`, `files.ts`, `covers.ts`, `settings.ts`) take the `db` as their first argument,
 so tests run them on a fresh database each time (`getDb(name)` with fake-indexeddb). The UI never
 sees `db`: the `api/` folders call `getDb()` and pass it in.
 
@@ -24,7 +25,12 @@ sees `db`: the `api/` folders call `getDb()` and pass it in.
 2. Otherwise parse it (`parseFileInWorker`), or OCR it if the user chose that.
 3. `addBook`, which inserts a row or returns the existing one for that fingerprint; then update
    the row with the new reading.
-4. `saveTokens`, and `saveFile` for paged books.
+4. `saveTokens`, and `saveFile` for paged books. An EPUB that names a cover image has it saved
+   with `saveCover`.
+
+A paged book gets its cover later: the first time the library shows it, `getCover`
+(`features/library/api/covers.ts`) draws page 1 from the stored file and keeps it. A book with
+no cover shows its title's initial instead.
 
 "Whole" matters because a book restored from a backup has its row but no tokens, and an
 interrupted import may be missing its file. Both get read again.
@@ -33,7 +39,7 @@ interrupted import may be missing its file. Both get read again.
 
 Versions so far: **v1** is the old web app's exact raw-IndexedDB layout (same database name, so
 existing users upgrade in place), **v2** is this app's tables, **v3** changes `pages` to
-`formatId` + `layout`, and **v4** gives every book a frozen page size.
+`formatId` + `layout`, **v4** gives every book a frozen page size, and **v5** adds the `covers` table.
 
 Rules for changing the schema:
 

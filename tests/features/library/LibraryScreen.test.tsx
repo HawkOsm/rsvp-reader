@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { addBook, getProgress, saveProgress } from '@/storage/library'
 import { getDb } from '@/storage/schema'
 import { LibraryScreen } from '@/features/library/components/LibraryScreen'
@@ -15,11 +15,15 @@ async function clearDb() {
     db.progress.clear(),
     db.settings.clear(),
     db.files.clear(),
+    db.covers.clear(),
   ])
 }
 
 beforeEach(async () => {
   await clearDb()
+  // jsdom's createObjectURL cannot read the Node Blob tests/setup.ts swaps in.
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:cover')
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
 })
 
 function renderLibrary() {
@@ -172,5 +176,27 @@ describe('LibraryScreen', () => {
     const normal = rows.find((row) => row.textContent?.includes('Normal'))
     expect(scanned).toHaveTextContent('OCR')
     expect(normal).not.toHaveTextContent('OCR')
+  })
+
+  it('shows a stored cover, and the title’s initial for a book without one', async () => {
+    const db = getDb()
+    const withCover = await addBook(db, {
+      title: 'Covered',
+      source: 'local',
+      fingerprint: 'c1',
+      ...TEXT_BOOK,
+    })
+    await addBook(db, { title: 'Bare', source: 'local', fingerprint: 'c2', ...TEXT_BOOK })
+    await db.covers.put({
+      bookId: withCover.id as number,
+      blob: new Blob(['jpg'], { type: 'image/jpeg' }),
+    })
+
+    renderLibrary()
+    const rows = await screen.findAllByTestId('book-row')
+    const covered = rows.find((row) => row.textContent?.includes('Covered'))
+    const bare = rows.find((row) => row.textContent?.includes('Bare'))
+    await waitFor(() => expect(covered?.querySelector('img')).not.toBeNull())
+    expect(bare?.querySelector('img')).toBeNull()
   })
 })

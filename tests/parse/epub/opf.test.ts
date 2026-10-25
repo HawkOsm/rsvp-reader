@@ -63,4 +63,27 @@ describe('parseOpf', () => {
     expect(result.title).toBe('Untitled')
     expect(result.author).toBeUndefined()
   })
+
+  it('finds an EPUB 3 cover by its manifest property', () => {
+    const opf = OPF_XML.replace(
+      '<item id="ch1"',
+      '<item id="img" href="images/cover.png" media-type="image/png" properties="cover-image"/><item id="ch1"',
+    )
+    expect(parseOpf(opf).cover).toEqual({ href: 'images/cover.png', mediaType: 'image/png' })
+  })
+
+  it('finds an EPUB 2 cover through its <meta name="cover">', () => {
+    const opf = OPF_XML.replace(
+      '</metadata>',
+      '<meta name="cover" content="img"/></metadata>',
+    ).replace(
+      '<item id="ch1"',
+      '<item id="img" href="cover.jpg" media-type="image/jpeg"/><item id="ch1"',
+    )
+    expect(parseOpf(opf).cover).toEqual({ href: 'cover.jpg', mediaType: 'image/jpeg' })
+  })
+
+  it('has no cover when none is named', () => {
+    expect(parseOpf(OPF_XML).cover).toBeUndefined()
+  })
 })

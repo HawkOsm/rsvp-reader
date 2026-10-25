@@ -15,6 +15,7 @@ import {
   resetProgress,
   type BookRecord,
 } from '@/features/library/api/library'
+import { BookCover } from './BookCover'
 import { OcrDialog } from './OcrDialog'
 import { ResumeDialog } from './ResumeDialog'
 import { getPlatform } from '@/platform'
@@ -204,57 +205,49 @@ export function LibraryScreen() {
       {books.length === 0 && !importing ? (
         <p className="text-sm text-text-dim">No books yet — add one, or drag a file in.</p>
       ) : (
-        <table className="w-full text-left text-sm">
-          <thead className="text-text-dim">
-            <tr>
-              <th className="py-2 font-normal">Title</th>
-              <th className="py-2 font-normal">Progress</th>
-              <th className="py-2 font-normal">Last opened</th>
-              <th className="py-2 font-normal" />
-            </tr>
-          </thead>
-          <tbody>
-            {books.map((book) => (
-              <tr
-                key={book.id}
-                onClick={() => void openBook(book)}
-                className="cursor-pointer border-t border-border hover:bg-bg-hover"
-                data-testid="book-row"
-              >
-                <td className="py-2">
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-x-4 gap-y-6">
+          {books.map((book) => (
+            <li
+              key={book.id}
+              onClick={() => void openBook(book)}
+              className="group flex cursor-pointer flex-col gap-2"
+              data-testid="book-row"
+            >
+              <div className="transition-transform group-hover:-translate-y-1">
+                <BookCover book={book} />
+              </div>
+              <div className="flex flex-col gap-1 text-sm">
+                <span className="line-clamp-2 font-medium" title={book.title}>
                   {book.title}
+                </span>
+                <div className="flex items-center gap-2 text-xs text-text-dim">
+                  <span data-testid="book-progress">
+                    <BookProgress book={book} />
+                  </span>
+                  <span>
+                    {book.lastOpenedAt ? new Date(book.lastOpenedAt).toLocaleDateString() : '—'}
+                  </span>
                   {book.ocr && (
                     <span
-                      className="ml-2 rounded border border-border px-1 text-xs text-text-dim"
+                      className="rounded border border-border px-1"
                       title="The text was recognised from page images, so expect the odd mistake"
                     >
                       OCR
                     </span>
                   )}
-                </td>
-                <td className="py-2" data-testid="book-progress">
-                  <BookProgress book={book} />
-                </td>
-                <td className="py-2 text-text-dim">
-                  {book.lastOpenedAt ? new Date(book.lastOpenedAt).toLocaleDateString() : '—'}
-                </td>
-                <td className="py-2 text-right">
-                  <Button
-                    onClick={(e) => void onResetProgress(book, e)}
-                    variant="link"
-                    small
-                    className="mr-2"
-                  >
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={(e) => void onResetProgress(book, e)} variant="link" small>
                     Reset
                   </Button>
                   <Button onClick={(e) => void onRemove(book, e)} variant="danger" small>
                     Remove
                   </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
 
       {ocrOffer && (

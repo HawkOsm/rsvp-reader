@@ -7,6 +7,7 @@ import { getDb, type BookRecord } from '@/storage/schema'
 
 export type { BookRecord }
 export { importLocalFile, type ImportBookOptions } from './import-book'
+export { getCover } from './covers'
 
 export const listBooks = () => library.listBooks(getDb())
 export const removeBook = (bookId: number) => library.removeBook(getDb(), bookId)

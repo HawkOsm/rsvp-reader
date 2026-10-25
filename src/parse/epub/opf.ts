@@ -27,6 +27,9 @@ export interface OpfResult {
   /** Manifest hrefs in spine (reading) order, relative to the OPF's own
    * directory — not yet resolved to a zip path. */
   spineHrefs: string[]
+  /** The cover image's manifest href (relative like `spineHrefs`) and type,
+   * if the book names one. */
+  cover?: { href: string; mediaType?: string }
 }
 
 /** content.opf -> title/author metadata and the spine's reading order,
@@ -38,10 +41,28 @@ export function parseOpf(xmlText: string): OpfResult {
   const author = firstText(doc, DC_NS, 'creator')
 
   const manifest = new Map<string, string>()
+  let cover: OpfResult['cover']
   for (const item of Array.from(doc.getElementsByTagName('item'))) {
     const id = item.getAttribute('id')
     const href = item.getAttribute('href')
     if (id && href) manifest.set(id, href)
+    // EPUB 3 marks the cover on its manifest item.
+    const properties = item.getAttribute('properties')?.split(/\s+/) ?? []
+    if (href && !cover && properties.includes('cover-image')) {
+      cover = { href, mediaType: item.getAttribute('media-type') ?? undefined }
+    }
+  }
+  // EPUB 2 names it in a <meta name="cover" content="<item id>">.
+  if (!cover) {
+    const meta = Array.from(doc.getElementsByTagName('meta')).find(
+      (m) => m.getAttribute('name') === 'cover',
+    )
+    const item = Array.from(doc.getElementsByTagName('item')).find(
+      (i) => i.getAttribute('id') === meta?.getAttribute('content'),
+    )
+    const href = item?.getAttribute('href')
+    const mediaType = item?.getAttribute('media-type') ?? undefined
+    if (href && (!mediaType || mediaType.startsWith('image/'))) cover = { href, mediaType }
   }
 
   const spineHrefs: string[] = []
@@ -52,7 +73,7 @@ export function parseOpf(xmlText: string): OpfResult {
     if (href) spineHrefs.push(href)
   }
 
-  return { title, author: author || undefined, spineHrefs }
+  return { title, author: author || undefined, spineHrefs, cover }
 }
 
 function firstText(doc: Document, ns: string, localName: string): string | undefined {

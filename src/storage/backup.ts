@@ -12,7 +12,8 @@ import {
 // cross-device sync until cloud sync exists. Tokens are deliberately left
 // out: they're cheap to rebuild from the source (the included file, or a
 // re-added local file matched by fingerprint) and would otherwise make the
-// backup as large as the library itself. See docs/architecture/decisions.md.
+// backup as large as the library itself. Covers are left out for the same
+// reason. See docs/architecture/decisions.md.
 
 const BACKUP_FORMAT_VERSION = 1
 
@@ -76,8 +77,15 @@ export async function importBackup(db: RsvpDatabase, backup: Backup): Promise<vo
   if (backup.formatVersion !== BACKUP_FORMAT_VERSION) {
     throw new Error(`Unsupported backup format version: ${backup.formatVersion}`)
   }
-  await db.transaction('rw', db.books, db.progress, db.settings, db.files, async () => {
-    for (const book of backup.books) await db.books.put(normalizeBookRecord(book))
+  const tables = [db.books, db.progress, db.settings, db.files, db.covers]
+  await db.transaction('rw', tables, async () => {
+    for (const book of backup.books) {
+      const restored = normalizeBookRecord(book)
+      await db.books.put(restored)
+      // Backups hold no covers, and a restored row can take the id of a
+      // different book, so whatever cover sat under that id goes.
+      if (restored.id !== undefined) await db.covers.delete(restored.id)
+    }
     for (const p of backup.progress) await db.progress.put(p)
     for (const s of backup.settings) await db.settings.put(s)
     if (backup.files) {

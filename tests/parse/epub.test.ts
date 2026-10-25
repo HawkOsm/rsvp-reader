@@ -28,6 +28,9 @@ describe('parseEpub', () => {
     // leak into the chapter title (see content.ts's .caption stripping).
     expect(chapterTitles.some((t) => t.includes('will like it'))).toBe(false)
 
+    expect(result.cover?.type).toBe('image/jpeg')
+    expect(result.cover?.size).toBeGreaterThan(1000)
+
     // Chapter start indices are strictly increasing and land on real tokens.
     const starts = result.chapters?.map((c) => c.startTokenIndex) ?? []
     for (let i = 1; i < starts.length; i++) {

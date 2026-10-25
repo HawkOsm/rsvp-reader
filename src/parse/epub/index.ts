@@ -65,6 +65,10 @@ export async function parseEpub(file: File, options: ParseOptions = {}): Promise
     throw new ExtractionError('The document contains no readable words.')
   }
 
+  const cover =
+    opf.cover &&
+    (await readZipImage(zip, resolveEpubPath(opfDir, opf.cover.href), opf.cover.mediaType))
+
   return {
     title: opf.title === 'Untitled' ? titleFromFileName(file.name) : opf.title,
     author: opf.author,
@@ -73,6 +77,7 @@ export async function parseEpub(file: File, options: ParseOptions = {}): Promise
     layout: { kind: 'reflow' },
     page: DEFAULT_PAGE,
     chapters,
+    ...(cover && { cover }),
   }
 }
 
@@ -80,4 +85,14 @@ async function readZipText(zip: JSZip, path: string): Promise<string | undefined
   const entry = zip.file(path)
   if (!entry) return undefined
   return entry.async('text')
+}
+
+async function readZipImage(
+  zip: JSZip,
+  path: string,
+  mediaType: string | undefined,
+): Promise<Blob | undefined> {
+  const entry = zip.file(path)
+  if (!entry) return undefined // a cover pointing nowhere; the library draws one instead
+  return new Blob([await entry.async('arraybuffer')], { type: mediaType ?? '' })
 }
