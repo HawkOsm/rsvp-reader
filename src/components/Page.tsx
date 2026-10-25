@@ -6,14 +6,16 @@ export interface PageProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'>
   back?: ReactNode
   /** Right of the title: the screen's actions. */
   actions?: ReactNode
-  /** A side menu left of the content; on a phone it stacks above it. */
+  /** A side menu left of the content; if it is given on a phone, it stacks above it. */
   sidebar?: ReactNode
+  /** A phone's bottom tab bar, if the screen has one; room is left for it. */
+  tabBar?: ReactNode
   children: ReactNode
 }
 
 /** A full screen with a title row: the library and settings screens. (The
  * reader has its own chrome, built around the word.) */
-export function Page({ title, back, actions, sidebar, children, ...rest }: PageProps) {
+export function Page({ title, back, actions, sidebar, tabBar, children, ...rest }: PageProps) {
   const content = (
     <>
       <div className="flex flex-wrap items-center gap-4">
@@ -24,17 +26,20 @@ export function Page({ title, back, actions, sidebar, children, ...rest }: PageP
       {children}
     </>
   )
+  const room = tabBar ? 'pb-24' : ''
   if (!sidebar) {
     return (
-      <div {...rest} className="flex min-h-screen flex-col gap-4 bg-bg p-6 text-text">
+      <div {...rest} className={`flex min-h-screen flex-col gap-4 bg-bg p-6 text-text ${room}`}>
         {content}
+        {tabBar}
       </div>
     )
   }
   return (
-    <div {...rest} className="flex min-h-screen flex-wrap content-start bg-bg text-text">
+    <div {...rest} className={`flex min-h-screen flex-wrap content-start bg-bg text-text ${room}`}>
       {sidebar}
       <div className="flex min-w-0 flex-[999_1_32rem] flex-col gap-4 p-6">{content}</div>
+      {tabBar}
     </div>
   )
 }

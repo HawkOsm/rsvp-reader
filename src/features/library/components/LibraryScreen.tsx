@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ACCEPTED_EXTENSIONS,
   ExtractionError,
@@ -44,7 +44,9 @@ import { getPlatform } from '@/platform'
 import { Button } from '@/components/Button'
 import { Icon } from '@/components/Icon'
 import { Page } from '@/components/Page'
+import { PhoneTabBar } from '@/components/PhoneTabBar'
 import { logError } from '@/lib/error-log'
+import { useMediaQuery, WIDE } from '@/lib/media'
 import { useAppStore, type LibraryView } from '@/stores/app-store'
 
 const VIEWS: { value: LibraryView; label: string; icon: 'grid' | 'list' }[] = [
@@ -59,6 +61,10 @@ interface PendingResume {
 
 export function LibraryScreen() {
   const navigate = useNavigate()
+  const [search, setSearch] = useSearchParams()
+  const wide = useMediaQuery(WIDE)
+  /** A phone shows the side menu as its own tab, instead of the books. */
+  const phoneShelves = !wide && search.get('tab') === 'shelves'
   const [books, setBooks] = useState<BookRecord[]>([])
   /** Each book's saved word index, by book id. */
   const [wordIndexes, setWordIndexes] = useState<Record<number, number>>({})
@@ -236,87 +242,108 @@ export function LibraryScreen() {
   const Item = view === 'grid' ? BookTile : BookListRow
   const title = shelf ? shelf.name : SECTIONS.find((s) => s.value === section)?.label
 
+  // On a phone, picking from the side menu goes back to the books it picked.
+  const toBooks = () => phoneShelves && setSearch({})
+  const sidebar = (
+    <LibrarySidebar
+      section={shelf ? null : section}
+      counts={sectionCounts(books.map(percentOf))}
+      onSection={(next) => {
+        setShelfId(null)
+        setSection(next)
+        toBooks()
+      }}
+      shelves={shelves}
+      shelfId={shelf ? shelfId : null}
+      onShelf={(id) => {
+        setShelfId(id)
+        toBooks()
+      }}
+      onNewShelf={() => setMakingShelf(true)}
+      bookmarks={bookmarkRows(bookmarks, books)}
+      onBookmark={(mark) => navigate(`/reader/${mark.bookId}?at=${mark.wordIndex}`)}
+      onRemoveBookmark={(mark) => void removeBookmark(mark.id).then(refresh)}
+      usageBytes={usageBytes}
+      onSettings={wide ? () => navigate('/settings') : undefined}
+    />
+  )
+
   return (
     <Page
-      title={title}
-      sidebar={
-        <LibrarySidebar
-          section={shelf ? null : section}
-          counts={sectionCounts(books.map(percentOf))}
-          onSection={(next) => {
-            setShelfId(null)
-            setSection(next)
-          }}
-          shelves={shelves}
-          shelfId={shelf ? shelfId : null}
-          onShelf={setShelfId}
-          onNewShelf={() => setMakingShelf(true)}
-          bookmarks={bookmarkRows(bookmarks, books)}
-          onBookmark={(mark) => navigate(`/reader/${mark.bookId}?at=${mark.wordIndex}`)}
-          onRemoveBookmark={(mark) => void removeBookmark(mark.id).then(refresh)}
-          usageBytes={usageBytes}
-          onSettings={() => navigate('/settings')}
-        />
+      title={phoneShelves ? 'Shelves' : title}
+      sidebar={wide && sidebar}
+      tabBar={
+        !wide && (
+          <PhoneTabBar
+            active={phoneShelves ? 'shelves' : 'library'}
+            onSelect={(tab) => {
+              if (tab === 'settings') navigate('/settings')
+              else setSearch(tab === 'shelves' ? { tab: 'shelves' } : {})
+            }}
+          />
+        )
       }
       actions={
-        <>
-          <label className="flex h-10 w-60 max-w-full items-center gap-2 rounded-lg border border-border bg-bg-raised px-3 text-text-dim">
-            <Icon name="search" size={16} />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search titles"
-              aria-label="Search books"
-              className="min-w-0 flex-1 bg-transparent text-sm text-text outline-none placeholder:text-text-dim"
-            />
-          </label>
-          <label className="flex h-10 items-center gap-1.5 rounded-lg border border-border bg-bg-raised px-3 text-sm text-text-dim">
-            Sort
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortKey)}
-              aria-label="Sort books"
-              className="bg-transparent text-text outline-none"
-            >
-              {SORTS.map(({ value, label }) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div
-            role="group"
-            aria-label="View"
-            className="flex h-10 items-center rounded-lg border border-border bg-bg-raised p-0.5"
-          >
-            {VIEWS.map(({ value, label, icon }) => (
-              <button
-                key={value}
-                type="button"
-                aria-label={label}
-                aria-pressed={view === value}
-                title={label}
-                onClick={() => setView(value)}
-                className={`flex h-full w-9 items-center justify-center rounded-md ${
-                  view === value ? 'bg-bg-hover text-text' : 'text-text-dim hover:text-text'
-                }`}
+        !phoneShelves && (
+          <>
+            <label className="flex h-10 w-60 max-w-full items-center gap-2 rounded-lg border border-border bg-bg-raised px-3 text-text-dim">
+              <Icon name="search" size={16} />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search titles"
+                aria-label="Search books"
+                className="min-w-0 flex-1 bg-transparent text-sm text-text outline-none placeholder:text-text-dim"
+              />
+            </label>
+            <label className="flex h-10 items-center gap-1.5 rounded-lg border border-border bg-bg-raised px-3 text-sm text-text-dim">
+              Sort
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortKey)}
+                aria-label="Sort books"
+                className="bg-transparent text-text outline-none"
               >
-                <Icon name={icon} size={16} />
-              </button>
-            ))}
-          </div>
-          <Button
-            onClick={() => fileInputRef.current?.click()}
-            variant="primary"
-            disabled={importing !== null}
-            className="flex items-center gap-1.5 rounded-lg! px-4! py-2!"
-          >
-            <Icon name="plus" size={16} />
-            Add book
-          </Button>
-        </>
+                {SORTS.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div
+              role="group"
+              aria-label="View"
+              className="flex h-10 items-center rounded-lg border border-border bg-bg-raised p-0.5"
+            >
+              {VIEWS.map(({ value, label, icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-label={label}
+                  aria-pressed={view === value}
+                  title={label}
+                  onClick={() => setView(value)}
+                  className={`flex h-full w-9 items-center justify-center rounded-md ${
+                    view === value ? 'bg-bg-hover text-text' : 'text-text-dim hover:text-text'
+                  }`}
+                >
+                  <Icon name={icon} size={16} />
+                </button>
+              ))}
+            </div>
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              variant="primary"
+              disabled={importing !== null}
+              className="flex items-center gap-1.5 rounded-lg! px-4! py-2!"
+            >
+              <Icon name="plus" size={16} />
+              Add book
+            </Button>
+          </>
+        )
       }
       onDragOver={(e) => {
         e.preventDefault()
@@ -334,97 +361,105 @@ export function LibraryScreen() {
         aria-label="Add book"
       />
 
-      {dragOver && (
-        <div className="rounded border-2 border-dashed border-accent p-6 text-center text-sm text-text-dim">
-          Drop to add
-        </div>
-      )}
-
-      {importing && (
-        <div className="text-sm text-text-dim" role="status">
-          Adding book{importing.message ? `: ${importing.message}` : '…'} (
-          {Math.round(importing.fraction * 100)}%){' '}
-          <Button onClick={() => abortRef.current?.abort()} variant="link" small>
-            Cancel
-          </Button>
-        </div>
-      )}
-
-      {error && <div className="rounded border border-accent p-3 text-sm text-accent">{error}</div>}
-
-      {continuing && (
-        <section aria-labelledby="continue-heading" className="flex flex-col gap-3">
-          <h2 id="continue-heading" className="text-sm font-semibold">
-            Continue reading
-          </h2>
-          <div className="flex max-w-xl gap-4 rounded-xl border border-border bg-bg-raised p-4">
-            <div className="w-20 shrink-0">
-              <BookCover book={continuing} />
+      {phoneShelves ? (
+        sidebar
+      ) : (
+        <>
+          {dragOver && (
+            <div className="rounded border-2 border-dashed border-accent p-6 text-center text-sm text-text-dim">
+              Drop to add
             </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-2">
-              <span className="line-clamp-2 font-serif text-lg">{continuing.title}</span>
-              <div className="mt-auto flex flex-col gap-1.5">
-                <ProgressBar percent={percentOf(continuing)} />
-                <span className="text-xs text-text-dim">
-                  {percentOf(continuing).toFixed(0)}% read
-                </span>
-              </div>
-              <Button
-                variant="primary"
-                onClick={() => navigate(`/reader/${continuing.id}`)}
-                className="flex items-center gap-1.5 self-start rounded-lg! px-4! py-2!"
-              >
-                <Icon name="play" size={12} />
-                Resume
+          )}
+
+          {importing && (
+            <div className="text-sm text-text-dim" role="status">
+              Adding book{importing.message ? `: ${importing.message}` : '…'} (
+              {Math.round(importing.fraction * 100)}%){' '}
+              <Button onClick={() => abortRef.current?.abort()} variant="link" small>
+                Cancel
               </Button>
             </div>
-          </div>
-        </section>
-      )}
+          )}
 
-      {books.length === 0 && !importing ? (
-        <p className="text-sm text-text-dim">No books yet — add one, or drag a file in.</p>
-      ) : (
-        <ul
-          className={
-            view === 'grid'
-              ? 'grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-x-5 gap-y-7'
-              : 'flex flex-col gap-1'
-          }
-        >
-          {shown.length === 0 && (
-            <li className="col-span-full text-sm text-text-dim">No books match.</li>
+          {error && (
+            <div className="rounded border border-accent p-3 text-sm text-accent">{error}</div>
           )}
-          {shown.map((book) => (
-            <Item
-              key={book.id}
-              book={book}
-              percent={percentOf(book)}
-              shelves={shelves}
-              onOpen={() => void openBook(book)}
-              onShelf={(id, on) => void onShelveBook(book, id, on)}
-              onReset={() => void onResetProgress(book)}
-              onRemove={() => void onRemove(book)}
-            />
-          ))}
-          {view === 'grid' && (
-            <li>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={importing !== null}
-                className="flex aspect-[2/3] w-full flex-col items-center justify-center gap-2 rounded border-2 border-dashed border-guide p-4 text-xs leading-relaxed text-text-dim hover:border-text-dim hover:text-text disabled:opacity-40"
-              >
-                <Icon name="plus" size={22} />
-                <span>
-                  Drop a file here
-                  <br />
-                  EPUB · PDF · TXT · MD
-                </span>
-              </button>
-            </li>
+
+          {continuing && (
+            <section aria-labelledby="continue-heading" className="flex flex-col gap-3">
+              <h2 id="continue-heading" className="text-sm font-semibold">
+                Continue reading
+              </h2>
+              <div className="flex max-w-xl gap-4 rounded-xl border border-border bg-bg-raised p-4">
+                <div className="w-20 shrink-0">
+                  <BookCover book={continuing} />
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <span className="line-clamp-2 font-serif text-lg">{continuing.title}</span>
+                  <div className="mt-auto flex flex-col gap-1.5">
+                    <ProgressBar percent={percentOf(continuing)} />
+                    <span className="text-xs text-text-dim">
+                      {percentOf(continuing).toFixed(0)}% read
+                    </span>
+                  </div>
+                  <Button
+                    variant="primary"
+                    onClick={() => navigate(`/reader/${continuing.id}`)}
+                    className="flex items-center gap-1.5 self-start rounded-lg! px-4! py-2!"
+                  >
+                    <Icon name="play" size={12} />
+                    Resume
+                  </Button>
+                </div>
+              </div>
+            </section>
           )}
-        </ul>
+
+          {books.length === 0 && !importing ? (
+            <p className="text-sm text-text-dim">No books yet — add one, or drag a file in.</p>
+          ) : (
+            <ul
+              className={
+                view === 'grid'
+                  ? 'grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-x-5 gap-y-7'
+                  : 'flex flex-col gap-1'
+              }
+            >
+              {shown.length === 0 && (
+                <li className="col-span-full text-sm text-text-dim">No books match.</li>
+              )}
+              {shown.map((book) => (
+                <Item
+                  key={book.id}
+                  book={book}
+                  percent={percentOf(book)}
+                  shelves={shelves}
+                  onOpen={() => void openBook(book)}
+                  onShelf={(id, on) => void onShelveBook(book, id, on)}
+                  onReset={() => void onResetProgress(book)}
+                  onRemove={() => void onRemove(book)}
+                />
+              ))}
+              {view === 'grid' && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={importing !== null}
+                    className="flex aspect-[2/3] w-full flex-col items-center justify-center gap-2 rounded border-2 border-dashed border-guide p-4 text-xs leading-relaxed text-text-dim hover:border-text-dim hover:text-text disabled:opacity-40"
+                  >
+                    <Icon name="plus" size={22} />
+                    <span>
+                      Drop a file here
+                      <br />
+                      EPUB · PDF · TXT · MD
+                    </span>
+                  </button>
+                </li>
+              )}
+            </ul>
+          )}
+        </>
       )}
 
       {makingShelf && (

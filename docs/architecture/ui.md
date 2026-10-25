@@ -29,15 +29,16 @@ To add a colour, add it to all four CSS blocks, the `@theme inline` block, and e
 
 ## Components
 
-| Component                 | For                                                                      |
-| ------------------------- | ------------------------------------------------------------------------ |
-| `Page`                    | a full screen with a title row (`back`, `title`, `actions`, `sidebar`)   |
-| `Icon`                    | the stroke icons buttons and links use; decorative, the control is named |
-| `Centered`                | a full screen with one message: loading, or an error                     |
-| `Dialog`, `DialogActions` | every modal question. Closes on Escape and on the backdrop               |
-| `Button`                  | `default`, `primary` (the one action), `link`, `danger`                  |
-| `Field`, `CONTROL`        | a label with its control; `CONTROL` is the look of inputs and selects    |
-| `WpmInput`                | the words-per-minute box (commits on blur or Enter, not per key)         |
+| Component                 | For                                                                                     |
+| ------------------------- | --------------------------------------------------------------------------------------- |
+| `Page`                    | a full screen with a title row (`back`, `title`, `actions`, `sidebar`, `tabBar`)        |
+| `PhoneTabBar`             | a phone's bottom bar: Library / Shelves / Settings, in place of the library's side menu |
+| `Icon`                    | the stroke icons buttons and links use; decorative, the control is named                |
+| `Centered`                | a full screen with one message: loading, or an error                                    |
+| `Dialog`, `DialogActions` | every modal question. Closes on Escape and on the backdrop                              |
+| `Button`                  | `default`, `primary` (the one action), `link`, `danger`                                 |
+| `Field`, `CONTROL`        | a label with its control; `CONTROL` is the look of inputs and selects                   |
+| `WpmInput`                | the words-per-minute box (commits on blur or Enter, not per key)                        |
 
 The reader is the exception: its chrome (header, transport bar, page overlay) is built around
 the word and lives in `features/reader/components/`.
@@ -51,3 +52,7 @@ the word and lives in `features/reader/components/`.
 - **Every interactive element has an accessible name** (`aria-label`, or visible text), so tests
   can find it the way a person would, by role and name.
 - **It works at phone width.** The browser tests run at a phone size; a new screen should too.
+  Below the `sm` breakpoint the library and settings screens show `PhoneTabBar` instead of the
+  side menu (the library's Shelves tab, `/?tab=shelves`, shows the menu's contents). When a
+  layout needs to know the width in script, not just CSS, it asks `useMediaQuery(WIDE)`
+  (`src/lib/media.ts`), which reports wide where there is no `matchMedia`, as in the unit tests.

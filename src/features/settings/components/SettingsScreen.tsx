@@ -2,12 +2,14 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/Button'
 import { CONTROL, Field } from '@/components/Field'
 import { Page } from '@/components/Page'
+import { PhoneTabBar } from '@/components/PhoneTabBar'
 import { WpmInput } from '@/components/WpmInput'
 import { ErrorLogSection } from './ErrorLogSection'
 import { ExperimentalFlags } from './ExperimentalFlags'
 import { useAppStore } from '@/stores/app-store'
 import { FONT_CHOICES, MAX_FONT_SIZE, MIN_FONT_SIZE } from '@/lib/fonts'
 import { DARK_PALETTE, type ThemeMode } from '@/lib/theme'
+import { useMediaQuery, WIDE } from '@/lib/media'
 
 export function SettingsScreen() {
   const navigate = useNavigate()
@@ -23,14 +25,28 @@ export function SettingsScreen() {
   const setOrpColor = useAppStore((s) => s.setOrpColor)
   const showHints = useAppStore((s) => s.showHints)
   const setShowHints = useAppStore((s) => s.setShowHints)
+  const wide = useMediaQuery(WIDE)
 
   return (
     <Page
       title="Settings"
       back={
-        <Button variant="link" onClick={() => navigate('/')}>
-          ← Library
-        </Button>
+        wide && (
+          <Button variant="link" onClick={() => navigate('/')}>
+            ← Library
+          </Button>
+        )
+      }
+      tabBar={
+        !wide && (
+          <PhoneTabBar
+            active="settings"
+            onSelect={(tab) => {
+              if (tab === 'library') navigate('/')
+              if (tab === 'shelves') navigate('/?tab=shelves')
+            }}
+          />
+        )
       }
     >
       <section className="flex max-w-md flex-col gap-4">

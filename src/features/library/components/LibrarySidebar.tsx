@@ -23,11 +23,12 @@ export interface LibrarySidebarProps {
   onRemoveBookmark: (mark: BookmarkRow) => void
   /** Bytes the browser says the library uses, when it says. */
   usageBytes: number | null
-  onSettings: () => void
+  /** Left out where a tab bar already leads to settings. */
+  onSettings?: () => void
 }
 
 /** The library's side menu: which books to show, how much space they take,
- * and the way to settings. On a phone it sits above the books. */
+ * and the way to settings. On a phone it is the Shelves tab. */
 export function LibrarySidebar({
   section,
   counts,
@@ -43,8 +44,8 @@ export function LibrarySidebar({
   onSettings,
 }: LibrarySidebarProps) {
   return (
-    <aside className="flex min-w-0 flex-[1_1_13rem] flex-col gap-5 border-border bg-bg-raised/40 p-4 sm:min-h-screen sm:max-w-64 sm:border-r">
-      <div className="flex items-center gap-2.5 px-2 pt-1">
+    <aside className="flex min-w-0 flex-[1_1_13rem] flex-col gap-5 rounded-xl border-border bg-bg-raised/40 p-2 sm:min-h-screen sm:rounded-none sm:p-4 sm:max-w-64 sm:border-r">
+      <div className="hidden items-center gap-2.5 px-2 pt-1 sm:flex">
         <span
           aria-hidden
           className="flex h-8 w-8 items-center justify-center rounded-lg bg-bg-hover text-sm font-bold"
@@ -57,7 +58,7 @@ export function LibrarySidebar({
         </span>
       </div>
 
-      <nav aria-label="Library sections" className="flex flex-wrap gap-1 sm:flex-col">
+      <nav aria-label="Library sections" className="flex flex-col gap-1">
         {SECTIONS.map(({ value, label }) => (
           <button
             key={value}
@@ -140,14 +141,16 @@ export function LibrarySidebar({
             No account, no sync. Your books never leave this device.
           </p>
         )}
-        <button
-          type="button"
-          onClick={onSettings}
-          className="flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm text-text-dim hover:bg-bg-hover hover:text-text"
-        >
-          <Icon name="settings" size={16} />
-          Settings
-        </button>
+        {onSettings && (
+          <button
+            type="button"
+            onClick={onSettings}
+            className="flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm text-text-dim hover:bg-bg-hover hover:text-text"
+          >
+            <Icon name="settings" size={16} />
+            Settings
+          </button>
+        )}
       </div>
     </aside>
   )

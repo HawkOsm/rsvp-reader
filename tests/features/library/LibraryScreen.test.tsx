@@ -375,3 +375,56 @@ describe('LibraryScreen', () => {
     expect(bare?.querySelector('img')).toBeNull()
   })
 })
+
+describe('LibraryScreen on a phone', () => {
+  beforeEach(() => {
+    // Narrower than the `sm` breakpoint.
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }))
+    return () => vi.unstubAllGlobals()
+  })
+
+  it('swaps the side menu for a tab bar, and the Shelves tab picks what the books show', async () => {
+    const db = getDb()
+    await addBook(db, { title: 'Unread Novel', source: 'local', fingerprint: 'p0', ...TEXT_BOOK })
+    const started = await addBook(db, {
+      title: 'Started Essay',
+      source: 'local',
+      fingerprint: 'p1',
+      ...TEXT_BOOK,
+    })
+    await db.books.update(started.id as number, { totalWords: 100 })
+    await saveProgress(db, started.id as number, { wordIndex: 30, wpm: 300, mode: 'rsvp' })
+
+    const user = userEvent.setup()
+    renderLibrary()
+    await findRow('Unread Novel')
+    const tabs = screen.getByRole('navigation', { name: 'Tabs' })
+    expect(screen.queryByRole('navigation', { name: 'Library sections' })).not.toBeInTheDocument()
+    expect(within(tabs).getByRole('button', { name: 'Library' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+
+    await user.click(within(tabs).getByRole('button', { name: 'Shelves' }))
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Shelves')
+    expect(screen.queryAllByTestId('book-row')).toHaveLength(0)
+    // The tab bar is the way to settings here, so the menu has none of its own.
+    expect(screen.getAllByRole('button', { name: 'Settings' })).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: /^Reading/ }))
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Reading')
+    expect(screen.getAllByTestId('book-row')).toHaveLength(1)
+    expect(within(tabs).getByRole('button', { name: 'Library' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+
+    await user.click(within(tabs).getByRole('button', { name: 'Settings' }))
+    expect(await screen.findByTestId('settings-screen')).toBeInTheDocument()
+  })
+})

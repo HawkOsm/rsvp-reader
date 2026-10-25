@@ -49,6 +49,12 @@ const PATHS = {
     </>
   ),
   list: <path d="M4 6h16M4 12h16M4 18h16" />,
+  shelves: (
+    <>
+      <path d="M5 4v16M9 4v16M14 5l4 15" />
+      <path d="M3 20h18" />
+    </>
+  ),
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
   play: <path d="M8 4.5l12 7.5-12 7.5z" fill="currentColor" />,
   pause: (
