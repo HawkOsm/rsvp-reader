@@ -287,13 +287,13 @@ describe('PdfPageView click to jump', () => {
     expect(engine.index).toBe(1)
   })
 
-  it('does nothing outside the follow-along panel', async () => {
+  it('jumps in book mode too, not just beside the RSVP word', async () => {
     const { doc } = fakeDoc()
     const { container, engine } = await ready({ doc, peek: false })
     fireEvent.click(container.querySelector('.shadow-lg') as HTMLElement, {
       clientX: 90,
       clientY: 85,
     })
-    expect(engine.index).toBe(1)
+    expect(engine.index).toBe(0)
   })
 })

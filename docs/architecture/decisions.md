@@ -1124,3 +1124,11 @@ word at a time, read at the focus letter without moving the eyes. The two short 
 the focus letter stay; they come from the original Python reader. `wordZoneHalfHeight` is back to
 the word and its ticks, so the page overlay may again sit closer to the word.
 `features/reader/context.ts` is removed with its test.
+
+## 2026-10-25: clicking a word on a PDF page picks it in book mode too
+
+`PdfPageView` only turned a click into a jump in the small page shown beside the RSVP word
+(`peek`); in book mode a click on a PDF page did nothing, a rule carried over from the pdf.js
+version with no recorded reason. Picking the word RSVP goes on from is one of book mode's two
+jobs (the other is reading normally), and the reflowed view of text and EPUBs already allowed it,
+so PDFs now do the same. A click that ends a text selection still does nothing.
