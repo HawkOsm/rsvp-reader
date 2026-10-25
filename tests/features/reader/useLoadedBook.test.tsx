@@ -70,6 +70,18 @@ describe('useLoadedBook', () => {
     expect(useAppStore.getState().mode).toBe('book')
   })
 
+  it('does not load the book again when `at` leaves the address', async () => {
+    const id = await seedBook('at-gone')
+    const { result, rerender } = renderHook(({ at }) => useLoadedBook(String(id), at), {
+      initialProps: { at: '2' as string | null },
+    })
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    const loaded = result.current
+    rerender({ at: null })
+    expect(result.current).toBe(loaded)
+    expect(result.current).toMatchObject({ loaded: { startIndex: 2 } })
+  })
+
   it('marks the book as opened', async () => {
     const id = await seedBook('opened')
     const { result } = renderHook(() => useLoadedBook(String(id)))

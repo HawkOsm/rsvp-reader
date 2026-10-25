@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { logError } from '@/lib/error-log'
 import { DEFAULT_WPM } from '@/core/pacing'
 import type { Token } from '@/core/types'
@@ -26,6 +26,10 @@ export function useLoadedBook(
   at: string | null = null,
 ): LoadedBookState {
   const [state, setState] = useState<LoadedBookState>({ status: 'loading' })
+  // Only where the book opens: dropping `at` from the address afterwards
+  // must not load the book again.
+  const atRef = useRef(at)
+  atRef.current = at
 
   useEffect(() => {
     const id = Number(bookId)
@@ -54,7 +58,7 @@ export function useLoadedBook(
           loaded: {
             book,
             tokens,
-            startIndex: startIndexFor(at, progress?.wordIndex, tokens.length),
+            startIndex: startIndexFor(atRef.current, progress?.wordIndex, tokens.length),
             startWpm: progress?.wpm ?? DEFAULT_WPM,
           },
         })
@@ -66,7 +70,7 @@ export function useLoadedBook(
     return () => {
       cancelled = true
     }
-  }, [bookId, at])
+  }, [bookId])
 
   return state
 }

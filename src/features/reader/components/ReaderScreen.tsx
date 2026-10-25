@@ -33,8 +33,14 @@ const MODES = [
 export function ReaderScreen() {
   const { bookId } = useParams<{ bookId: string }>()
   const navigate = useNavigate()
-  const [search] = useSearchParams()
+  const [search, setSearch] = useSearchParams()
   const state = useLoadedBook(bookId, search.get('at'))
+  // A bookmark's `?at=` has done its job once the book is open; left in the
+  // address, a reload would jump back to the bookmark.
+  const opened = state.status === 'ready'
+  useEffect(() => {
+    if (opened && search.has('at')) setSearch({}, { replace: true })
+  }, [opened, search, setSearch])
 
   if (state.status === 'error') {
     return (

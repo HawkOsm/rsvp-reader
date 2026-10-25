@@ -42,7 +42,8 @@ test('a bookmark made in the reader is listed in the library, and opens there', 
   expect(overflow).toBe(0)
 
   await marks.getByRole('button', { name: /^long-words/ }).click()
-  await expect(page).toHaveURL(/\?at=2$/)
   await expect(page.getByTestId('word-counter')).toContainText('word 3 /')
+  // The bookmark's address is spent once the book is open.
+  await expect(page).toHaveURL(/#\/reader\/\d+$/)
   expect(errors).toEqual([])
 })
