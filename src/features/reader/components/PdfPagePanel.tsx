@@ -99,18 +99,24 @@ export function PdfPagePanel({
 
   // With no scale given (the side panel), pages fill the panel's width.
   const per = pages.length || 1
-  const boxWidth = box ? Math.max(80, (box.width - MARGIN - GUTTER * (per - 1)) / per) : 0
+  const boxWidth = box
+    ? Math.max(80, (box.width - (peek ? 0 : MARGIN) - GUTTER * (per - 1)) / per)
+    : 0
 
   return (
     <div className={`flex h-full flex-col ${peek ? '' : 'bg-bg-raised'}`}>
       {peek && (
-        <div className="pointer-events-auto flex items-center justify-between rounded bg-bg-raised/90 px-2 py-1 text-sm text-text-dim">
+        <div
+          className="pointer-events-auto flex items-center justify-between rounded bg-bg-raised/90 px-[0.6em] py-[0.3em] text-text-dim"
+          style={{ fontSize: box ? Math.round(Math.min(20, Math.max(10, box.width / 26))) : 14 }}
+        >
           <Button
             aria-label="Previous page"
             disabled={start <= 0}
             onClick={() => goToPage(engine, count, layout, start - perSpread(layout))}
             variant="link"
-            className="px-2"
+            className="px-[0.6em]"
+            style={{ fontSize: 'inherit' }}
           >
             ‹
           </Button>
@@ -120,7 +126,8 @@ export function PdfPagePanel({
             disabled={start + perSpread(layout) >= count}
             onClick={() => goToPage(engine, count, layout, start + perSpread(layout))}
             variant="link"
-            className="px-2"
+            className="px-[0.6em]"
+            style={{ fontSize: 'inherit' }}
           >
             ›
           </Button>
@@ -129,7 +136,7 @@ export function PdfPagePanel({
       <div
         ref={scrollRef}
         id={BOOK_SCROLL_ID}
-        className="min-h-0 flex-1 overflow-auto p-2 [scrollbar-gutter:stable]"
+        className={`min-h-0 flex-1 overflow-auto ${peek ? '' : 'p-2 [scrollbar-gutter:stable]'}`}
       >
         <div className="mx-auto flex w-fit items-start" style={{ gap: GUTTER }}>
           {doc &&
@@ -141,7 +148,7 @@ export function PdfPagePanel({
                 doc={doc}
                 pageIndex={pageIndex}
                 boxWidth={boxWidth}
-                boxHeight={peek && box ? Math.max(40, box.height - 16) : undefined}
+                boxHeight={peek && box ? Math.max(40, box.height) : undefined}
                 scale={scale}
                 highlight={pageIndex === tokenPage ? (token?.bbox ?? null) : null}
                 peek={peek}
