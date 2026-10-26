@@ -1,16 +1,22 @@
 # Sync design (draft)
 
-Status: phase 1 (section 15) is built and tested: identity, clock, merge, the change log, an
-in-memory transport and the sync run. Nothing calls it yet: there is no Drive transport, no auth
-and no UI, so the app still makes no network calls. Scope: cross-device sync of reading state and
-a new notes/drawing feature, using the user's own Google Drive as the only shared storage.
+Status: phases 1-3 (section 15) are built for the web, behind the `sync` flag (Settings →
+Advanced → Experimental): identity, clock, merge, the change log, sign-in with Google, the Drive
+transport, sync while the app is open, position offers, Settings → Sync and the sync log.
+Progress, settings, shelves, bookmarks and book removals sync; book files don't yet. With the
+flag off, or until the user connects, the app makes no network calls. Scope: cross-device sync
+of reading state and a new notes/drawing feature, using the user's own Google Drive as the only
+shared storage.
 
 **Where the code is:** `core/sync/hlc.ts` (clock), `core/sync/merge.ts` (changes and the merge
-rule), `storage/sync-log.ts` (recording local changes), `storage/sync-id.ts` (book identity),
-`sync/coordinator.ts` (`syncOnce`), `sync/identity.ts` (filling in older books), `sync/offers.ts`
-(other devices' positions, offered, never applied), `sync/transport.ts` (`Transport`,
-`MemoryTransport`). See "As built" at the end of this page for where phase 1 differs from the
-design below.
+rule), `core/sync/run.ts` (a run as the log keeps it), `storage/sync-log.ts` (recording local
+changes), `storage/sync-id.ts` (book identity), `sync/coordinator.ts` (`syncOnce`),
+`sync/identity.ts` (filling in older books), `sync/offers.ts` (other devices' positions, offered,
+never applied), `sync/transport.ts` (`Transport`, `MemoryTransport`), `sync/drive.ts`
+(`DriveTransport`), `sync/runner.ts` and `sync/status.ts` (when runs happen, what they came to),
+`platform/google-auth.ts` (sign-in on the web), `stores/sync-store.ts` (running it in the app),
+`lib/sync-runs.ts` (the sync log). See "As built" at the end of this page for where the code
+differs from the design below.
 
 ## 1. Goals and non-goals
 
