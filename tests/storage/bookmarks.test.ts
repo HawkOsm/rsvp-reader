@@ -55,7 +55,13 @@ describe('bookmarks', () => {
     const book = await addBook(db, { title: 'B', source: 'local', fingerprint: 'r', ...TEXT_BOOK })
     const bookId = book.id as number
     await addBookmark(db, bookId, 3, 'gone')
-    await db.shelves.add({ name: 'S', color: 'accent', bookIds: [bookId, 77], createdAt: 1 })
+    await db.shelves.add({
+      syncId: 's',
+      name: 'S',
+      color: 'accent',
+      bookIds: [bookId, 77],
+      createdAt: 1,
+    })
     await db.transaction('rw', bookTables(db), () => deleteBookRows(db, bookId))
     expect(await listBookmarks(db)).toEqual([])
     expect((await db.shelves.toArray()).map((s) => s.bookIds)).toEqual([[77]])

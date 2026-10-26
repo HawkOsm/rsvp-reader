@@ -1,7 +1,12 @@
 import { compareHlc, receive, type Hlc } from '@/core/sync/hlc'
 import { keyOf, newerRegisters, type Register, type SyncOp } from '@/core/sync/merge'
 import { bookTables, deleteBookRows } from '@/storage/library'
-import type { RsvpDatabase, SyncStateRecord } from '@/storage/schema'
+import {
+  SHELF_COLORS,
+  type RsvpDatabase,
+  type ShelfColor,
+  type SyncStateRecord,
+} from '@/storage/schema'
 import { localSyncState, syncTables } from '@/storage/sync-log'
 import { ensureSyncIds } from './identity'
 import type { Transport } from './transport'
@@ -52,6 +57,9 @@ export interface SyncResult {
   skewed: number
   /** A synced setting changed here; the app should load its settings again. */
   settingsChanged: boolean
+  /** A book was removed, or a shelf or bookmark changed: the library should
+   * be read again. */
+  libraryChanged: boolean
 }
 
 export async function syncOnce(
@@ -121,11 +129,14 @@ async function merge(
 
     const winners = newerRegisters(current, ops)
     let settingsChanged = false
+    let libraryChanged = false
     for (const register of winners) {
       // Stored without `pending`: a local change this replaces lost, and
       // there's no point sending it.
       await db.syncRegisters.put(register)
-      settingsChanged ||= await applyToLibrary(db, register)
+      const changed = await applyToLibrary(db, register)
+      settingsChanged ||= changed === 'settings'
+      libraryChanged ||= changed === 'library'
     }
 
     let clock: Hlc | null = state.clock
@@ -136,29 +147,69 @@ async function merge(
       if (next.skewed) skewed++
     }
     await db.syncState.put({ ...state, clock, cursors })
-    return { applied: winners.length, skewed, settingsChanged }
+    return { applied: winners.length, skewed, settingsChanged, libraryChanged }
   })
 }
 
 /** Make another device's change real here. Progress is left for the user to
- * accept (`progressOffers`): the reader never jumps on its own. Returns
- * whether a setting changed. */
-async function applyToLibrary(db: RsvpDatabase, { change }: Register): Promise<boolean> {
+ * accept (`progressOffers`): the reader never jumps on its own. Returns what
+ * changed, if anything did. */
+async function applyToLibrary(
+  db: RsvpDatabase,
+  { change }: Register,
+): Promise<'settings' | 'library' | null> {
   switch (change.kind) {
     case 'setting':
       await db.settings.put({ key: change.key, value: change.value })
-      return true
-    case 'book':
+      return 'settings'
+    case 'book': {
       // A book added elsewhere has no file here yet (book files don't sync
       // yet), so only a removal changes the library.
+      if (change.value !== null) return null
+      const books = await db.books.where('syncId').equals(change.book).toArray()
+      for (const book of books) await deleteBookRows(db, book.id as number)
+      return books.length > 0 ? 'library' : null
+    }
+    case 'shelf': {
+      const local = await db.shelves.where('syncId').equals(change.shelf).first()
       if (change.value === null) {
-        for (const book of await db.books.where('syncId').equals(change.book).toArray()) {
-          await deleteBookRows(db, book.id as number)
-        }
+        if (local) await db.shelves.delete(local.id as number)
+        return local ? 'library' : null
       }
-      return false
+      const { name, color, books, createdAt } = change.value
+      // Books this device doesn't have are left off; the shelf's register
+      // keeps them, so they aren't lost when the shelf is next changed here.
+      const ids = new Map<string, number>()
+      for (const book of await db.books.where('syncId').anyOf(books).toArray()) {
+        ids.set(book.syncId as string, book.id as number)
+      }
+      await db.shelves.put({
+        ...(local && { id: local.id }),
+        syncId: change.shelf,
+        name,
+        color: (SHELF_COLORS as readonly string[]).includes(color)
+          ? (color as ShelfColor)
+          : 'accent',
+        bookIds: books.flatMap((id) => ids.get(id) ?? []),
+        createdAt,
+      })
+      return 'library'
+    }
+    case 'bookmark': {
+      const book = await db.books.where('syncId').equals(change.book).first()
+      if (!book) return null
+      const bookId = book.id as number
+      const marks = db.bookmarks
+        .where('bookId')
+        .equals(bookId)
+        .filter((m) => m.wordIndex === change.wordIndex)
+      if (change.value === null) return (await marks.delete()) > 0 ? 'library' : null
+      if ((await marks.count()) > 0) return null
+      await db.bookmarks.add({ bookId, wordIndex: change.wordIndex, ...change.value })
+      return 'library'
+    }
     case 'progress':
-      return false
+      return null
   }
 }
 

@@ -450,6 +450,19 @@ Where the code differs from the design above, and why.
   `DriveFullError`; no answer at all throws `OfflineError`. Any of these leaves unsent changes
   pending, since a register is only marked sent after its log file is written. Tested against
   an in-memory fake of the Drive API (`tests/sync/fake-drive.ts`), never the real one.
+- **Shelves and bookmarks sync** (new `Change` kinds in `core/sync/merge.ts`). A shelf is one
+  register, `shelf:<shelf syncId>`, so the newest version wins whole (name, colour, books); its
+  books are listed by book `syncId`. Each shelf has a random `syncId` from schema v10. A book on
+  the shelf on another device but not on this one stays in the list when this device changes
+  the shelf, and is left off the shelf here until it exists here. Bookmarks are a set:
+  `bookmark:<book syncId>:<word index>`, and a removal is a tombstone. Both are recorded in the
+  same transaction as the local write (`storage/shelves.ts`, `storage/bookmarks.ts`), and what
+  existed before is seeded by `ensureSyncIds` with its `createdAt`. Known gaps: two devices that
+  each made a "Favourites" shelf before syncing end up with two; a book added after a shelf
+  arrived (or a bookmark for it) isn't put on the shelf until the shelf next changes; a book
+  with no `syncId` yet can't be named on a shelf. There is no UI to delete a shelf yet, so
+  shelf tombstones are only applied, never made. `SyncResult.libraryChanged` says the library
+  should be read again.
 
 Not built: book files, device list, purge and snapshots (`Transport` has no `delete` until purge
 needs it), notes, and sign-in on desktop and Android.

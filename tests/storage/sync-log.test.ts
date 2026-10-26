@@ -5,7 +5,9 @@ import { compareHlc } from '@/core/sync/hlc'
 import { makeToken } from '@/core/types'
 import { addBook, removeBook, resetProgress, saveProgress, saveTokens } from '@/storage/library'
 import { getDb, type RsvpDatabase } from '@/storage/schema'
+import { addBookmark, removeBookmark } from '@/storage/bookmarks'
 import { setSetting } from '@/storage/settings'
+import { createShelf, setOnShelf } from '@/storage/shelves'
 import { syncIdOf } from '@/storage/sync-id'
 import { TEXT_BOOK } from './fixtures'
 
@@ -68,6 +70,56 @@ describe('recording local changes', () => {
       book: 'sid',
       value: null,
     })
+  })
+
+  it('records a shelf with its books named by sync id', async () => {
+    const id = await syncedBook()
+    const old = await addBook(db, { title: 'Old', source: 'local', fingerprint: 'o', ...TEXT_BOOK })
+    const shelf = await createShelf(db, 'Favourites', 'shelf-blue')
+    await setOnShelf(db, shelf.id as number, id, true)
+    await setOnShelf(db, shelf.id as number, old.id as number, true)
+    expect((await db.syncRegisters.get(`shelf:${shelf.syncId}`))?.change).toEqual({
+      kind: 'shelf',
+      shelf: shelf.syncId,
+      // The book with no sync id can't be named yet.
+      value: {
+        name: 'Favourites',
+        color: 'shelf-blue',
+        books: ['sid'],
+        createdAt: shelf.createdAt,
+      },
+    })
+  })
+
+  it('keeps a book another device put on a shelf, though this one doesn’t have it', async () => {
+    const id = await syncedBook()
+    const shelf = await createShelf(db, 'S', 'accent')
+    const key = `shelf:${shelf.syncId}`
+    const register = (await db.syncRegisters.get(key))!
+    const value = { name: 'S', color: 'accent', books: ['elsewhere'], createdAt: 1 }
+    await db.syncRegisters.put({
+      ...register,
+      change: { kind: 'shelf', shelf: shelf.syncId, value },
+    })
+
+    await setOnShelf(db, shelf.id as number, id, true)
+    const books = () => db.syncRegisters.get(key).then((r) => r?.change)
+    expect(await books()).toMatchObject({ value: { books: ['sid', 'elsewhere'] } })
+    await setOnShelf(db, shelf.id as number, id, false)
+    expect(await books()).toMatchObject({ value: { books: ['elsewhere'] } })
+  })
+
+  it('records a bookmark by book and word, and its removal as a tombstone', async () => {
+    const id = await syncedBook()
+    const mark = await addBookmark(db, id, 4, 'the words')
+    expect((await db.syncRegisters.get('bookmark:sid:4'))?.change).toEqual({
+      kind: 'bookmark',
+      book: 'sid',
+      wordIndex: 4,
+      value: { excerpt: 'the words', createdAt: mark.createdAt },
+    })
+    await removeBookmark(db, mark.id as number)
+    expect((await db.syncRegisters.get('bookmark:sid:4'))?.change).toMatchObject({ value: null })
   })
 
   it('records synced settings only', async () => {

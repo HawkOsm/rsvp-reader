@@ -122,7 +122,13 @@ describe('the version 6 upgrade', () => {
     expect(await db.books.get(1)).toMatchObject({ title: 'Kept' })
     expect(await db.covers.get(1)).toBeDefined()
     expect(await db.shelves.count()).toBe(0)
-    const id = await db.shelves.add({ name: 'S', color: 'accent', bookIds: [1], createdAt: 1 })
+    const id = await db.shelves.add({
+      syncId: 's',
+      name: 'S',
+      color: 'accent',
+      bookIds: [1],
+      createdAt: 1,
+    })
     expect(await db.shelves.get(id)).toMatchObject({ bookIds: [1] })
   })
 })
@@ -201,6 +207,42 @@ describe('the version 8 upgrade', () => {
     })
     // Nothing is parsed again: the tokens are the ones stored.
     expect(await db.tokens.get(1)).toEqual({ bookId: 1, tokens: [{ text: 'kept' }] })
+    expect(await db.bookmarks.count()).toBe(1)
+  })
+})
+
+describe('the version 10 upgrade', () => {
+  it('gives every shelf a version 9 database holds its own sync id, and keeps the rest', async () => {
+    const name = `v9-test-${Math.random().toString(36).slice(2)}`
+    const old = new Dexie(name)
+    old.version(9).stores({
+      books: '++id, source, sourceId, fingerprint, addedAt, lastOpenedAt, syncId',
+      tokens: 'bookId',
+      progress: 'bookId, updatedAt',
+      settings: 'key',
+      files: 'bookId',
+      covers: 'bookId',
+      shelves: '++id',
+      bookmarks: '++id, bookId',
+      syncRegisters: 'key, pending',
+      syncState: 'id',
+    })
+    await old.table('books').put({ id: 1, title: 'Kept', ...base, fingerprint: 'k', syncId: 'h' })
+    await old.table('shelves').bulkPut([
+      { id: 1, name: 'A', color: 'accent', bookIds: [1], createdAt: 1 },
+      { id: 2, name: 'B', color: 'shelf-blue', bookIds: [], createdAt: 2 },
+    ])
+    await old.table('bookmarks').put({ id: 1, bookId: 1, wordIndex: 3, excerpt: 'x', createdAt: 1 })
+    old.close()
+
+    const db = getDb(name)
+    const [a, b] = await db.shelves.toArray()
+    expect(a).toMatchObject({ id: 1, name: 'A', bookIds: [1] })
+    expect(b).toMatchObject({ id: 2, name: 'B', bookIds: [] })
+    expect(a!.syncId).toMatch(/^[0-9a-f-]{36}$/)
+    expect(b!.syncId).not.toBe(a!.syncId)
+    expect(await db.shelves.where('syncId').equals(a!.syncId).count()).toBe(1)
+    expect(await db.books.get(1)).toMatchObject({ syncId: 'h' })
     expect(await db.bookmarks.count()).toBe(1)
   })
 })
