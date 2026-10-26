@@ -10,6 +10,8 @@ export interface Transport {
   read(name: string): Promise<string | null>
   /** Create or replace a file. */
   write(name: string, data: string): Promise<void>
+  /** Delete a file; deleting one that isn't there is not an error. */
+  delete(name: string): Promise<void>
 }
 
 /** A store held in memory. Several devices can share one to test sync. */
@@ -26,5 +28,9 @@ export class MemoryTransport implements Transport {
 
   async write(name: string, data: string): Promise<void> {
     this.files.set(name, data)
+  }
+
+  async delete(name: string): Promise<void> {
+    this.files.delete(name)
   }
 }

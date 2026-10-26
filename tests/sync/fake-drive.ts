@@ -61,6 +61,10 @@ export class FakeDrive {
       if (method === 'GET' && url.searchParams.get('alt') === 'media') {
         return new Response(file.data)
       }
+      if (method === 'DELETE' && !path.startsWith('/upload/')) {
+        this.files.splice(this.files.indexOf(file), 1)
+        return new Response(null, { status: 204 })
+      }
       if (method === 'PATCH' && url.searchParams.get('uploadType') === 'media') {
         file.data = String(init.body)
         return json({ id: file.id })

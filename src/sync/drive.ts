@@ -153,6 +153,14 @@ export class DriveTransport implements Transport {
     this.ids?.set(name, created.id)
   }
 
+  async delete(name: string): Promise<void> {
+    const id = await this.idOf(name)
+    if (!id) return
+    // A 404 means another run deleted it already: the same result.
+    await this.request('DELETE', `${API}/files/${id}`)
+    this.ids?.delete(name)
+  }
+
   private async idOf(name: string): Promise<string | undefined> {
     if (!this.ids) await this.list()
     return this.ids?.get(name)

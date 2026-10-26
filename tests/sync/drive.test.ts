@@ -65,6 +65,18 @@ describe('DriveTransport', () => {
     expect(drive.byName('a.json')).toBe('again')
   })
 
+  it('deletes a file, and a file already gone is no error', async () => {
+    const store = transport()
+    await store.write('a.json', 'a')
+    await store.write('b.json', 'b')
+    await store.delete('a.json')
+    expect(drive.files.map((f) => f.name)).toEqual(['b.json'])
+    await store.delete('a.json')
+    drive.files.length = 0 // gone from Drive behind this transport's back
+    await store.delete('b.json')
+    expect(await transport().list()).toEqual([])
+  })
+
   it('backs off and retries on rate limits and server errors', async () => {
     const store = transport()
     await store.list()

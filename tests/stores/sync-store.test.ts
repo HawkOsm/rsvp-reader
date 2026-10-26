@@ -17,6 +17,7 @@ vi.mock('@/stores/api/sync', async (original) => ({
     list: () => (failWith ? Promise.reject(failWith) : store.list()),
     read: (name: string) => store.read(name),
     write: (name: string, data: string) => store.write(name, data),
+    delete: (name: string) => store.delete(name),
   }),
 }))
 
