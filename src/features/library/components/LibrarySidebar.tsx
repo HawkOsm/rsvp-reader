@@ -1,4 +1,5 @@
 import { Icon, type IconName } from '@/components/Icon'
+import { formatBytes } from '@/lib/format'
 import type { ShelfRecord } from '@/features/library/api/library'
 import { SECTIONS, SHELF_DOT, type Section } from '@/features/library/shelf'
 
@@ -130,9 +131,4 @@ export function LibrarySidebar({
       </div>
     </aside>
   )
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
-  return `${Math.round(bytes / (1024 * 1024))} MB`
 }
