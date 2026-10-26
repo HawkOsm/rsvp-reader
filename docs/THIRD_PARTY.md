@@ -80,13 +80,20 @@ etc. — are all MIT/ISC/0BSD/`(MIT AND Zlib)`; full list via the
 
 ## Rust dependencies (src-tauri/)
 
-474 crates at last count (mostly transitive, pulled in by `tauri`,
+528 crates at last count (mostly transitive, pulled in by `tauri`,
 `webkit2gtk`, and the plugin crates) — far too many to hand-list here
 without this file going stale immediately. License _types_ present, per
 `cargo license`: MIT, Apache-2.0, BSD-3-Clause, ISC, MPL-2.0, Zlib,
 Unicode-3.0, CDLA-Permissive-2.0, and dual/triple combinations of those
 (e.g. `Apache-2.0 OR MIT OR Zlib`). No crate is GPL/AGPL/copyleft-only.
 Run `cargo license` from `src-tauri/` for the full, current, per-crate list.
+
+Added for desktop sync sign-in (all `Apache-2.0 OR MIT`): `keyring` (the OS keychain, with
+`secret-service`/`dbus-secret-service` on Linux), `ureq` (HTTPS to Google's token endpoint,
+with `rustls`, `Apache-2.0 OR ISC OR MIT`, and `ring`, `Apache-2.0 AND ISC`) and
+`tauri-plugin-opener` (the system browser). Licence types they brought in, each an option
+alongside MIT or Apache-2.0: `MIT OR Unlicense`, `Apache-2.0 OR CC0-1.0 OR MIT-0`,
+`Apache-2.0 OR LGPL-2.1-or-later OR MIT`.
 
 ## Fonts and icons
 

@@ -1201,3 +1201,16 @@ it opt-in. Everything else (reading, OCR, import) stays offline.
 
 **Rejected:** a server of our own, or any third-party service besides Google Drive (sync.md
 decision 10).
+
+## 2026-10-26: the desktop OAuth client's secret is built into the app
+
+Desktop sign-in for sync uses a Google OAuth client of type "Desktop app", with PKCE and a
+loopback redirect. Google's token endpoint expects that client's secret, and Google's own
+documentation says an installed app's secret "is obviously not treated as a secret": anyone
+can read it out of the app. So, with the owner's agreement, it is committed in
+`src/platform/tauri.ts` beside the client ID, as the web client's ID already is. The rule that
+no secret is committed still holds for everything else (API keys, service accounts, signing
+keys). PKCE is what protects a sign-in, not the secret.
+
+**Rejected:** putting it in CI only and injecting it at build time. It would end up in the
+installer just the same, while making local builds unable to sign in.

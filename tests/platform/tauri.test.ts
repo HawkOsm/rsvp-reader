@@ -30,4 +30,16 @@ describe('the desktop platform', () => {
     invoke.mockResolvedValueOnce(null)
     await expect((await getPlatform()).takeLaunchFile()).resolves.toBeNull()
   })
+
+  it('signs in through the system browser, reading the keychain only once asked', async () => {
+    invoke.mockClear()
+    const auth = (await getPlatform()).syncAuth!
+    expect(auth.state()).toBe('signed-out')
+    expect(invoke).not.toHaveBeenCalled()
+    invoke.mockResolvedValueOnce(null) // nothing in the keychain
+    auth.subscribe(() => {})
+    await new Promise((r) => setTimeout(r, 0))
+    expect(invoke).toHaveBeenCalledWith('secret_get', { key: 'google-refresh-token' })
+    expect(auth.state()).toBe('signed-out')
+  })
 })

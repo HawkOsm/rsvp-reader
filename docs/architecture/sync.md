@@ -561,5 +561,25 @@ Where the code differs from the design above, and why.
 - `Transport` now reads and writes bytes (`readBlob`, `write` of a `Blob`) and reports `usage`:
   the app folder's size and the user's free Drive space.
 
-Not built: notes, and sign-in on desktop and Android. Book files have no per-book "don't sync
+### Phase 5 (desktop so far)
+
+- **Desktop sign-in** (`platform/pkce-auth.ts`, native half in `src-tauri/src/oauth.rs`).
+  OAuth 2.0 with PKCE (S256) in the system browser, back to `http://127.0.0.1:<free port>`,
+  as Google's guide for desktop apps asks; custom URI schemes and copy-and-paste codes are no
+  longer allowed. `access_type=offline` gets a refresh token, kept in the OS keychain
+  (`keyring` crate: Keychain on macOS, Credential Manager on Windows, Secret Service on Linux),
+  so the app stays connected across restarts and `renewToken` really renews, without asking.
+  If Google refuses the refresh token (revoked, or expired after 7 days in Testing mode), it
+  is forgotten and sync waits in `needs-reconnect`. The keychain is first read when the sync
+  store subscribes, so with sync off nothing asks to unlock it. Each Rust command does one
+  fixed thing: listen once, open only Google's sign-in page, POST only to Google's token and
+  revoke endpoints, and read or write only this app's keychain entry; none takes a URL.
+- **The Desktop client's secret is built in**, as `DESKTOP_CLIENT_SECRET` in
+  `platform/tauri.ts`, next to `DESKTOP_CLIENT_ID` (both placeholders until filled in). Google
+  documents that an installed app's secret is not treated as a secret; see decisions.md.
+- Android is not built yet: Google no longer allows custom-scheme redirects for new Android
+  clients, so it needs a native sign-in plugin and an Android OAuth client with the release
+  keystore's SHA-1.
+
+Not built: notes, and sign-in on Android. Book files have no per-book "don't sync
 this" switch, and no Wi-Fi-only option (Android, phase 5).

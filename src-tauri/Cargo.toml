@@ -25,3 +25,6 @@ tauri = { version = "2.12.0", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-fs = "2.6.0"
 tauri-plugin-window-state = "2.5.0"
+tauri-plugin-opener = "2"
+ureq = "3"
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
