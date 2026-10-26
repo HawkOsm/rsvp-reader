@@ -153,13 +153,14 @@ async function merge(
     }
 
     const winners = newerRegisters(current, ops)
+    const marks = new Map<number, Map<number, number>>()
     let settingsChanged = false
     let libraryChanged = false
     for (const register of winners) {
       // Stored without `pending`: a local change this replaces lost, and
       // there's no point sending it.
       await db.syncRegisters.put(register)
-      const changed = await applyToLibrary(db, register)
+      const changed = await applyToLibrary(db, register, marks)
       settingsChanged ||= changed === 'settings'
       libraryChanged ||= changed === 'library'
     }
@@ -178,10 +179,12 @@ async function merge(
 
 /** Make another device's change real here. Progress is left for the user to
  * accept (`progressOffers`): the reader never jumps on its own. Returns what
- * changed, if anything did. */
+ * changed, if anything did. `marks` holds each book's bookmarks (word index
+ * to row id) once read, since a new device can apply thousands in one go. */
 async function applyToLibrary(
   db: RsvpDatabase,
   { change }: Register,
+  marks: Map<number, Map<number, number>>,
 ): Promise<'settings' | 'library' | null> {
   switch (change.kind) {
     case 'setting':
@@ -224,13 +227,22 @@ async function applyToLibrary(
       const book = await db.books.where('syncId').equals(change.book).first()
       if (!book) return null
       const bookId = book.id as number
-      const marks = db.bookmarks
-        .where('bookId')
-        .equals(bookId)
-        .filter((m) => m.wordIndex === change.wordIndex)
-      if (change.value === null) return (await marks.delete()) > 0 ? 'library' : null
-      if ((await marks.count()) > 0) return null
-      await db.bookmarks.add({ bookId, wordIndex: change.wordIndex, ...change.value })
+      let here = marks.get(bookId)
+      if (!here) {
+        const rows = await db.bookmarks.where('bookId').equals(bookId).toArray()
+        here = new Map(rows.map((m) => [m.wordIndex, m.id as number]))
+        marks.set(bookId, here)
+      }
+      const id = here.get(change.wordIndex)
+      if (change.value === null) {
+        if (id === undefined) return null
+        await db.bookmarks.delete(id)
+        here.delete(change.wordIndex)
+        return 'library'
+      }
+      if (id !== undefined) return null
+      const added = await db.bookmarks.add({ bookId, wordIndex: change.wordIndex, ...change.value })
+      here.set(change.wordIndex, added)
       return 'library'
     }
     case 'progress':
