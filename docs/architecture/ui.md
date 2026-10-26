@@ -38,6 +38,7 @@ To add a colour, add it to all four CSS blocks, the `@theme inline` block, and e
 | `Dialog`, `DialogActions` | every modal question. Closes on Escape and on the backdrop                                   |
 | `Button`                  | `default`, `primary` (the one action), `link`, `danger`                                      |
 | `Field`, `CONTROL`        | a label with its control; `CONTROL` is the look of inputs and selects                        |
+| `Switch`                  | an on/off setting (`role="switch"`), named by its `label`                                    |
 | `WpmInput`                | the words-per-minute box (commits on blur or Enter, not per key)                             |
 
 The reader is the exception: its chrome (header, transport bar, page overlay) is built around

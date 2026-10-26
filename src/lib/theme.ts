@@ -68,6 +68,16 @@ const PAPER_PALETTE: Palette = {
   shelfViolet: '#7a5a9e',
 }
 
+/** The focus-letter colours offered in settings, besides the theme's own
+ * accent. Stored as the colour itself, so a reader's pick survives a change
+ * of theme. */
+export const ORP_CHOICES = [
+  { label: 'Coral', hex: '#ff5a5f' },
+  { label: 'Amber', hex: '#f5a524' },
+  { label: 'Blue', hex: '#5aa9ff' },
+  { label: 'Green', hex: '#3fcf8e' },
+] as const
+
 export function resolvePalette(mode: ThemeMode): Palette {
   if (mode === 'light') return LIGHT_PALETTE
   if (mode === 'paper') return PAPER_PALETTE
