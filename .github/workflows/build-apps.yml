@@ -57,6 +57,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec tauri build ${{ matrix.args }}
+        env:
+          # Desktop sync sign-in. Unset (a pull request check), the app builds
+          # but can't sign in on the desktop.
+          VITE_GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
 
       - name: Give the download a plain name
         shell: bash

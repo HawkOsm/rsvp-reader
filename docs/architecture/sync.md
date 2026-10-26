@@ -574,9 +574,11 @@ Where the code differs from the design above, and why.
   store subscribes, so with sync off nothing asks to unlock it. Each Rust command does one
   fixed thing: listen once, open only Google's sign-in page, POST only to Google's token and
   revoke endpoints, and read or write only this app's keychain entry; none takes a URL.
-- **The Desktop client's secret is built in**, as `DESKTOP_CLIENT_SECRET` in
-  `platform/tauri.ts`, next to `DESKTOP_CLIENT_ID` (both placeholders until filled in). Google
-  documents that an installed app's secret is not treated as a secret; see decisions.md.
+- **The Desktop client's secret is not in the repository.** It is read at build time from
+  `VITE_GOOGLE_DESKTOP_CLIENT_SECRET`: `.env.local` (git-ignored) for local builds, the
+  `GOOGLE_DESKTOP_CLIENT_SECRET` Actions secret for release builds. It still ends up inside the
+  installed app, which Google accepts for desktop clients; see decisions.md. The client ID is
+  `DESKTOP_CLIENT_ID` in `platform/tauri.ts`.
 - Android is not built yet: Google no longer allows custom-scheme redirects for new Android
   clients, so it needs a native sign-in plugin and an Android OAuth client with the release
   keystore's SHA-1.

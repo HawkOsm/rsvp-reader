@@ -22,11 +22,13 @@ async function takeLaunchFile(): Promise<File | null> {
 }
 
 /** The Google OAuth client (type "Desktop app") the desktop app signs in
- * with. Google treats a desktop client's secret as not confidential, since
- * an installed app can't keep one, so both are built in. Placeholders until
- * the real ones are filled in. */
+ * with. The ID is public and belongs here (a placeholder until filled in).
+ * The secret is never committed: it comes in at build time from
+ * `VITE_GOOGLE_DESKTOP_CLIENT_SECRET` (`.env.local`, or a GitHub Actions
+ * secret for release builds). A build without one can't sign in on the
+ * desktop. */
 const DESKTOP_CLIENT_ID = ''
-const DESKTOP_CLIENT_SECRET = ''
+const DESKTOP_CLIENT_SECRET = import.meta.env.VITE_GOOGLE_DESKTOP_CLIENT_SECRET ?? ''
 
 /** Sign-in's native half: the commands in src-tauri/src/oauth.rs. */
 const desktopSignIn: PkceNative = {

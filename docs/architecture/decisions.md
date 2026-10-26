@@ -1214,3 +1214,14 @@ keys). PKCE is what protects a sign-in, not the secret.
 
 **Rejected:** putting it in CI only and injecting it at build time. It would end up in the
 installer just the same, while making local builds unable to sign in.
+
+## 2026-10-26: the desktop client secret stays out of the repository after all
+
+Revises the entry above, the same day and before it was pushed: the owner asked that the
+desktop client's secret never reach GitHub. It is now read at build time from
+`VITE_GOOGLE_DESKTOP_CLIENT_SECRET`, set in `.env.local` locally and from the
+`GOOGLE_DESKTOP_CLIENT_SECRET` Actions secret in release builds, and `.gitignore` refuses
+`client_secret*.json`, the file the Cloud console offers for download. The secret still ships
+inside the installed app, since the token endpoint needs it; that is unavoidable for a desktop
+client and accepted. A pull request's check builds without it, so its desktop build can't sign
+in, which a check never needs to.
