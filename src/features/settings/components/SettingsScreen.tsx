@@ -232,7 +232,7 @@ function StorageRow({ storage, phone }: { storage: StorageSummary | null; phone?
       {!phone && (
         <span className="text-[13px] text-text-dim">
           {sync
-            ? 'Your books stay on this device; see Sync for what goes to Google Drive.'
+            ? 'Your books are copied to Google Drive only if you connect it under Sync.'
             : 'No account and no sync. Your books and reading positions never leave this device.'}
           {storage?.persisted && ' The browser has agreed not to clear them.'}
         </span>
@@ -359,7 +359,7 @@ function PhoneSettings({ storage }: { storage: StorageSummary | null }) {
           </PhoneGroup>
           <p className="mx-3.5 text-xs leading-snug text-text-dim">
             {sync
-              ? 'Your books stay on this device.'
+              ? 'Copied to Google Drive only if you connect it under Sync.'
               : 'No account, no sync. Your books never leave this device.'}
           </p>
         </div>

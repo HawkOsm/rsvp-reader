@@ -551,6 +551,13 @@ Where the code differs from the design above, and why.
   book arriving after its shelf. Its place stays an offer, as for any other device's.
 - **Removing a book** deletes its files from Drive (`deleteRemovedBooks`). Any device may: a
   removal propagates everywhere, and a device that adds the book again uploads it again.
+- **In the app** (`stores/sync-store.ts`). After each successful run a second runner, so a
+  big upload never holds up syncing a reading position, deletes removed books' files, uploads
+  this device's books that aren't on Drive yet (one at a time, oldest first, with "Uploading
+  books: 1 of 3 done" in Settings), lists other devices' books, and reads Drive's usage.
+  Settings → Sync → Book files switches uploading off for this device (decision 9: on by
+  default); downloading still works. The library shows other devices' books under "On your
+  other devices", with Download, which opens the book once it is here.
 - `Transport` now reads and writes bytes (`readBlob`, `write` of a `Blob`) and reports `usage`:
   the app folder's size and the user's free Drive space.
 

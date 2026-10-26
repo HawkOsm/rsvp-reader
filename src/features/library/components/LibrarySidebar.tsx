@@ -118,7 +118,7 @@ export function LibrarySidebar({
               <span className="text-text-dim">{formatBytes(usageBytes)}</span>
             </span>
             {sync
-              ? 'Your books stay on this device.'
+              ? 'Copied to Google Drive only if you connect it in Settings.'
               : 'No account, no sync. Your books never leave this device.'}
           </p>
         )}

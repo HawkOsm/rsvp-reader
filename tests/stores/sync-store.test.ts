@@ -7,6 +7,10 @@ import { readSyncRuns } from '@/lib/sync-runs'
 import type { SyncAuth, SyncAuthState } from '@/platform'
 import { NeedsReconnectError } from '@/sync/drive'
 import { MemoryTransport } from '@/sync/transport'
+import { makeToken } from '@/core/types'
+import { addBook, saveTokens } from '@/storage/library'
+import { getDb } from '@/storage/schema'
+import { TEXT_BOOK } from '../storage/fixtures'
 
 const store = new MemoryTransport()
 let failWith: Error | null = null
@@ -18,6 +22,8 @@ vi.mock('@/stores/api/sync', async (original) => ({
     read: (name: string) => store.read(name),
     write: (name: string, data: string) => store.write(name, data),
     delete: (name: string) => store.delete(name),
+    readBlob: (name: string) => store.readBlob(name),
+    usage: () => store.usage(),
   }),
 }))
 
@@ -56,6 +62,7 @@ const runs = (count: number) => vi.waitFor(() => expect(readSyncRuns()).toHaveLe
 beforeEach(() => {
   localStorage.clear()
   store.files.clear()
+  store.blobs.clear()
   failWith = null
 })
 
@@ -124,6 +131,41 @@ describe('the sync store', () => {
     await act(() => useSyncStore.getState().disconnect())
     expect(useSyncStore.getState().auth).toBe('signed-out')
     expect(readSyncRuns()).toEqual([])
+  })
+})
+
+describe('book files', () => {
+  async function bookHere(syncId: string) {
+    const db = getDb()
+    const book = await addBook(db, {
+      title: `Book ${syncId}`,
+      source: 'local',
+      fingerprint: `f-${syncId}`,
+      syncId,
+      ...TEXT_BOOK,
+    })
+    await saveTokens(db, book.id as number, [makeToken('word')], `f-${syncId}`)
+  }
+
+  it('uploads this device’s books after a sync, and says how much Drive holds', async () => {
+    await bookHere(`up-${Math.random()}`)
+    auth = fakeAuth('signed-in')
+    stop = useSyncStore.getState().start()
+    await vi.waitFor(() => expect(useSyncStore.getState().usage).not.toBeNull())
+    expect([...store.blobs.keys()].some((n) => n.startsWith('book-up-'))).toBe(true)
+    expect(useSyncStore.getState().upload).toBeNull()
+    expect(useSyncStore.getState().usage!.used).toBeGreaterThan(0)
+  })
+
+  it('uploads nothing with book files switched off, and remembers that', async () => {
+    useSyncStore.getState().setBookFiles(false)
+    await bookHere(`off-${Math.random()}`)
+    auth = fakeAuth('signed-in')
+    stop = useSyncStore.getState().start()
+    await vi.waitFor(() => expect(useSyncStore.getState().usage).not.toBeNull())
+    expect([...store.blobs.keys()].some((n) => n.startsWith('book-off-'))).toBe(false)
+    expect(localStorage.getItem('rsvp-reader:sync-book-files')).toBe('off')
+    useSyncStore.getState().setBookFiles(true)
   })
 })
 

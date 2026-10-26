@@ -1,6 +1,7 @@
 import { useSyncPhase, useSyncStore } from '@/stores/sync-store'
 import { SMALL_BUTTON } from '@/features/settings/settings-values'
-import { connectLabel, syncStatusText } from '@/features/settings/sync-text'
+import { Switch } from '@/components/Switch'
+import { bookFilesText, connectLabel, syncStatusText } from '@/features/settings/sync-text'
 import { Row } from './SettingsControls'
 
 /** Settings → Sync: connect Google Drive, see where sync stands, sync now.
@@ -13,6 +14,11 @@ export function SyncSection() {
   const connect = useSyncStore((s) => s.connect)
   const disconnect = useSyncStore((s) => s.disconnect)
   const syncNow = useSyncStore((s) => s.syncNow)
+  const bookFiles = useSyncStore((s) => s.bookFiles)
+  const setBookFiles = useSyncStore((s) => s.setBookFiles)
+  const upload = useSyncStore((s) => s.upload)
+  const usage = useSyncStore((s) => s.usage)
+  const bookError = useSyncStore((s) => s.bookError)
   const label = connectLabel(phase)
   const connected = !['unavailable', 'off', 'connecting', 'needs-reconnect'].includes(phase)
 
@@ -52,11 +58,16 @@ export function SyncSection() {
           </button>
         </Row>
       )}
+      {connected && (
+        <Row title="Book files" hint={bookFilesText(bookFiles, upload, usage, bookError)}>
+          <Switch label="Copy books to Google Drive" checked={bookFiles} onChange={setBookFiles} />
+        </Row>
+      )}
       {phase !== 'unavailable' && (
         <p className="px-[18px] py-3.5 text-[13px] leading-snug text-text-dim">
-          Your reading positions, settings, shelves and bookmarks are kept in a hidden folder of
-          your own Google Drive, so your other devices can pick them up. Book files stay on this
-          device. Google can read what is stored there; nothing is sent anywhere else.
+          Your reading positions, settings, shelves, bookmarks and books are kept in a hidden folder
+          of your own Google Drive, so your other devices can pick them up. Google can read what is
+          stored there; nothing is sent anywhere else.
         </p>
       )}
     </>
