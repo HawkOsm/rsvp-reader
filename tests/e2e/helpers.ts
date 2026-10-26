@@ -16,9 +16,17 @@ export const TEXT = {
   ),
 }
 
-/** Every console error and uncaught exception, so a test can insist on none. */
+/** Every console error and uncaught exception, so a test can insist on none.
+ * A request that leaves the app's own origin counts as one too: with sync
+ * off, the app must make no network call (ARCHITECTURE.md, invariant 1). */
 export function collectErrors(page: Page): string[] {
   const errors: string[] = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (/^(https?|wss?):$/.test(url.protocol) && url.hostname !== 'localhost') {
+      errors.push(`network request to ${url.origin}`)
+    }
+  })
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text())
   })

@@ -1186,3 +1186,18 @@ after shelves (v6), bookmarks (v7) and chapters (v8); the entry above that says 
 Nothing else about it changed. `bookTables` and `deleteBookRows` now include bookmarks and
 shelves, so a book removed by another device loses its bookmarks and leaves every shelf, as a
 local removal does. Shelves and bookmarks themselves are not synced yet.
+
+## 2026-10-26: invariant 1 allows the sync the user turns on
+
+Invariant 1 was "no network at runtime". It now reads "no network at runtime, except the sync the
+user turns on": once the user connects Google Drive (Settings → Sync, behind the `sync` flag while
+it is unfinished), the app talks to Google's sign-in script and token endpoint and to the Drive
+REST API, using the `drive.appdata` scope only, and to nothing else. Until then it makes no
+request at all: the sign-in script is loaded when the user presses Connect, not at start-up, and
+the e2e tests fail on any request that leaves the app's own origin.
+
+Sync is the one feature that cannot work without a network, and sync.md decision 6 already made
+it opt-in. Everything else (reading, OCR, import) stays offline.
+
+**Rejected:** a server of our own, or any third-party service besides Google Drive (sync.md
+decision 10).
