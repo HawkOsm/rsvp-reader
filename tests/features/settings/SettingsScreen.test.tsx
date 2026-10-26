@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { SettingsScreen } from '@/features/settings/components/SettingsScreen'
+import { flags } from '@/lib/flags'
 import { getSetting } from '@/storage/settings'
 import { getDb } from '@/storage/schema'
 import { useAppStore } from '@/stores/app-store'
@@ -117,5 +118,27 @@ describe('SettingsScreen', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Settings')
     expect(screen.getByRole('button', { name: /Word display/ })).toHaveTextContent('Inter · 56 px')
     vi.unstubAllGlobals()
+  })
+
+  it('shows Sync only with the sync flag on', () => {
+    flags.setEnabled('sync', false)
+    const { unmount } = render(
+      <MemoryRouter>
+        <SettingsScreen />
+      </MemoryRouter>,
+    )
+    expect(screen.queryByRole('heading', { name: 'Sync' })).not.toBeInTheDocument()
+    expect(screen.getByText(/No account and no sync/)).toBeInTheDocument()
+    unmount()
+
+    flags.setEnabled('sync', true)
+    render(
+      <MemoryRouter>
+        <SettingsScreen />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('heading', { name: 'Sync' })).toBeInTheDocument()
+    expect(screen.queryByText(/No account and no sync/)).not.toBeInTheDocument()
+    flags.setEnabled('sync', false)
   })
 })

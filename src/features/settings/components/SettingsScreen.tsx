@@ -7,6 +7,7 @@ import { Switch } from '@/components/Switch'
 import { storageSummary, type StorageSummary } from '@/features/settings/api/storage'
 import { logError } from '@/lib/error-log'
 import { fontName } from '@/lib/fonts'
+import { useFlag } from '@/lib/flags'
 import { formatBytes } from '@/lib/format'
 import { useMediaQuery, WIDE } from '@/lib/media'
 import type { ThemeMode } from '@/lib/theme'
@@ -14,6 +15,7 @@ import { useAppStore } from '@/stores/app-store'
 import { THEMES } from '@/features/settings/settings-values'
 import { ErrorLogSection } from './ErrorLogSection'
 import { ExperimentalFlags } from './ExperimentalFlags'
+import { SyncSection } from './SyncSection'
 import {
   Card,
   FocusLetterSwatches,
@@ -30,17 +32,19 @@ const SECTIONS: { id: string; label: string; icon: IconName }[] = [
   { id: 'appearance', label: 'Appearance', icon: 'sun' },
   { id: 'reading', label: 'Reading', icon: 'book' },
   { id: 'data', label: 'Library & data', icon: 'drive' },
+  { id: 'sync', label: 'Sync', icon: 'sync' },
   { id: 'advanced', label: 'Advanced', icon: 'flask' },
   { id: 'about', label: 'About', icon: 'info' },
 ]
 
 /** A phone shows settings as a list, and some of them on a page of their own. */
-type PhonePage = 'reading' | 'errors' | 'about'
-const PHONE_PAGE_TITLES: Record<PhonePage, string> = {
+const PHONE_PAGE_TITLES = {
   reading: 'Word display',
+  experimental: 'Experimental',
   errors: 'Error log',
   about: 'About and licences',
 }
+type PhonePage = keyof typeof PHONE_PAGE_TITLES
 
 export function SettingsScreen() {
   const wide = useMediaQuery(WIDE)
@@ -54,8 +58,8 @@ export function SettingsScreen() {
 
   if (wide) return <WideSettings storage={storage} />
   const page = search.get('page')
-  if (page === 'reading' || page === 'errors' || page === 'about') {
-    return <PhoneSubpage page={page} />
+  if (page !== null && page in PHONE_PAGE_TITLES) {
+    return <PhoneSubpage page={page as PhonePage} />
   }
   return <PhoneSettings storage={storage} />
 }
@@ -66,6 +70,7 @@ function WideSettings({ storage }: { storage: StorageSummary | null }) {
   const setShowHints = useAppStore((s) => s.setShowHints)
   const orpColor = useAppStore((s) => s.orpColor)
   const setOrpColor = useAppStore((s) => s.setOrpColor)
+  const sync = useFlag('sync')
 
   return (
     <Page
@@ -81,7 +86,7 @@ function WideSettings({ storage }: { storage: StorageSummary | null }) {
             Library
           </button>
           <nav aria-label="Settings sections" className="flex flex-col gap-0.5">
-            {SECTIONS.map(({ id, label, icon }) => (
+            {SECTIONS.filter(({ id }) => sync || id !== 'sync').map(({ id, label, icon }) => (
               <a
                 key={id}
                 href={`#${id}`}
@@ -159,6 +164,14 @@ function WideSettings({ storage }: { storage: StorageSummary | null }) {
           </Card>
         </Section>
 
+        {sync && (
+          <Section id="sync" title="Sync">
+            <Card>
+              <SyncSection />
+            </Card>
+          </Section>
+        )}
+
         <Section id="advanced" title="Advanced">
           <Card>
             <ExperimentalFlags />
@@ -192,6 +205,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
 }
 
 function StorageRow({ storage, phone }: { storage: StorageSummary | null; phone?: boolean }) {
+  const sync = useFlag('sync')
   const size = storage?.usageBytes != null ? formatBytes(storage.usageBytes) : null
   const books = storage ? `${storage.books} ${storage.books === 1 ? 'book' : 'books'}` : null
   return (
@@ -212,7 +226,9 @@ function StorageRow({ storage, phone }: { storage: StorageSummary | null; phone?
       )}
       {!phone && (
         <span className="text-[13px] text-text-dim">
-          No account and no sync. Your books and reading positions never leave this device.
+          {sync
+            ? 'Your books stay on this device; see Sync for what goes to Google Drive.'
+            : 'No account and no sync. Your books and reading positions never leave this device.'}
           {storage?.persisted && ' The browser has agreed not to clear them.'}
         </span>
       )}
@@ -281,6 +297,7 @@ function PhoneSettings({ storage }: { storage: StorageSummary | null }) {
   const fontFamily = useAppStore((s) => s.fontFamily)
   const fontSize = useAppStore((s) => s.fontSize)
   const wpm = useAppStore((s) => s.defaultWpm)
+  const sync = useFlag('sync')
   const open = (page: PhonePage) => setSearch({ page })
 
   return (
@@ -336,11 +353,20 @@ function PhoneSettings({ storage }: { storage: StorageSummary | null }) {
             <StorageRow storage={storage} phone />
           </PhoneGroup>
           <p className="mx-3.5 text-xs leading-snug text-text-dim">
-            No account, no sync. Your books never leave this device.
+            {sync
+              ? 'Your books stay on this device.'
+              : 'No account, no sync. Your books never leave this device.'}
           </p>
         </div>
 
+        {sync && (
+          <PhoneGroup title="Sync">
+            <SyncSection />
+          </PhoneGroup>
+        )}
+
         <PhoneGroup title="More">
+          <LinkRow title="Experimental" onClick={() => open('experimental')} />
           <LinkRow title="Error log" onClick={() => open('errors')} />
           <LinkRow
             title="About and licences"
@@ -397,6 +423,11 @@ function PhoneSubpage({ page }: { page: PhonePage }) {
               </div>
             </PhoneGroup>
           </>
+        )}
+        {page === 'experimental' && (
+          <Card>
+            <ExperimentalFlags />
+          </Card>
         )}
         {page === 'errors' && (
           <Card>

@@ -476,6 +476,13 @@ Where the code differs from the design above, and why.
   settings if a synced setting changed.
 - **Device names.** Each `device-<id>.json` now has a `name` from the browser's user agent
   ("Firefox on Linux"), and a run reads the other devices' files to list them in the sync log.
+- **Settings → Sync** (`features/settings/components/SyncSection.tsx`, only with the flag on):
+  Connect / Reconnect / Disconnect, where sync stands (off, connecting, syncing, synced at a
+  time, needs reconnect, offline, Drive full, failed; `sync-text.ts`), Sync now, and a plain
+  statement of what goes to Drive and that Google can read it (section 12). Disconnecting
+  forgets the token, the sync log and that the user connected; the data already on Drive and
+  in the local registers stays. On a phone, Settings now also links to the Experimental flags,
+  which it had no way to reach before.
 
 Not built: book files, device list, purge and snapshots (`Transport` has no `delete` until purge
 needs it), notes, and sign-in on desktop and Android.

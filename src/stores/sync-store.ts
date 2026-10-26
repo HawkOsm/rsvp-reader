@@ -38,9 +38,10 @@ interface SyncStore {
   running: boolean
   lastOutcome: SyncOutcome | null
   lastSyncedAt: number | null
-  /** What went wrong last, to show: a failed run, or a sign-in that didn't
-   * finish. */
+  /** Why the last run failed. */
   error: string | null
+  /** Why the last sign-in didn't finish: a closed window, a blocked pop-up. */
+  connectError: string | null
   /** Counts runs that brought changes in, so screens that show synced data
    * read it again when it changes. */
   revision: number
@@ -106,6 +107,7 @@ export const useSyncStore = create<SyncStore>((set, get) => {
     lastOutcome: null,
     lastSyncedAt: lastSynced(),
     error: null,
+    connectError: null,
     revision: 0,
 
     start() {
@@ -151,13 +153,13 @@ export const useSyncStore = create<SyncStore>((set, get) => {
 
     async connect() {
       if (!auth) return
-      set({ error: null })
+      set({ connectError: null })
       try {
         await auth.signIn() // the auth listener starts the first run
       } catch (err) {
         // Not logged: a closed window or a blocked pop-up is the user's
         // doing, and the message says what to do about it.
-        set({ error: err instanceof Error ? err.message : String(err) })
+        set({ connectError: err instanceof Error ? err.message : String(err) })
       }
     },
 
@@ -165,7 +167,7 @@ export const useSyncStore = create<SyncStore>((set, get) => {
       await auth?.signOut()
       transport = null
       clearSyncLog()
-      set({ lastOutcome: null, lastSyncedAt: null, error: null })
+      set({ lastOutcome: null, lastSyncedAt: null, error: null, connectError: null })
     },
 
     syncNow: () => runner?.now() ?? Promise.resolve(),
@@ -180,6 +182,8 @@ export const useSyncStore = create<SyncStore>((set, get) => {
     },
   }
 })
+
+export type { SyncPhase }
 
 /** Where sync stands, for Settings. */
 export const useSyncPhase = (): SyncPhase =>

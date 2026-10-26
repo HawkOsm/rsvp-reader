@@ -26,3 +26,7 @@ export function stepWpm(wpm: number, direction: 1 | -1): number {
 export function sizePercent(size: number): number {
   return ((size - MIN_FONT_SIZE) / (MAX_FONT_SIZE - MIN_FONT_SIZE)) * 100
 }
+
+/** A small outlined button, for actions in a settings row. */
+export const SMALL_BUTTON =
+  'h-9 shrink-0 rounded-[9px] border border-border px-3.5 text-[13px] hover:bg-bg-hover disabled:opacity-60 disabled:hover:bg-transparent'
