@@ -1,10 +1,12 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { addBookmark } from '@/storage/bookmarks'
 import { addBook, getProgress, saveProgress } from '@/storage/library'
 import { getDb } from '@/storage/schema'
 import { LibraryScreen } from '@/features/library/components/LibraryScreen'
+import { useAppStore } from '@/stores/app-store'
 import { TEXT_BOOK } from '../../storage/fixtures'
 
 async function clearDb() {
@@ -16,20 +18,30 @@ async function clearDb() {
     db.settings.clear(),
     db.files.clear(),
     db.covers.clear(),
+    db.shelves.clear(),
+    db.bookmarks.clear(),
   ])
+}
+
+/** Stands in for the reader, showing the address it was opened at. */
+function ReaderStub() {
+  const location = useLocation()
+  return <div data-testid="reader-screen">{location.pathname + location.search}</div>
 }
 
 beforeEach(async () => {
   await clearDb()
+  useAppStore.setState({ libraryView: 'grid' })
   // jsdom's createObjectURL cannot read the Node Blob tests/setup.ts swaps in.
   vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:cover')
   vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
 })
 
-/** The book's tile in the grid: its title also shows under "Continue reading". */
+/** The book's tile in the grid. Its title shows more than once: on a
+ * cover without an image, and under "Continue reading". */
 async function findRow(title: string) {
   const rows = await screen.findAllByTestId('book-row')
-  const row = rows.find((r) => within(r).queryByText(title))
+  const row = rows.find((r) => within(r).queryAllByText(title).length > 0)
   if (!row) throw new Error(`no row for ${title}`)
   return row
 }
@@ -39,7 +51,7 @@ function renderLibrary() {
     <MemoryRouter initialEntries={['/']}>
       <Routes>
         <Route path="/" element={<LibraryScreen />} />
-        <Route path="/reader/:bookId" element={<div data-testid="reader-screen">reader</div>} />
+        <Route path="/reader/:bookId" element={<ReaderStub />} />
         <Route path="/settings" element={<div data-testid="settings-screen">settings</div>} />
       </Routes>
     </MemoryRouter>,
@@ -75,7 +87,7 @@ describe('LibraryScreen', () => {
 
     const user = userEvent.setup()
     renderLibrary()
-    await user.click(await screen.findByText('Fresh Book'))
+    await user.click(await findRow('Fresh Book'))
 
     expect(await screen.findByTestId('reader-screen')).toBeInTheDocument()
   })
@@ -93,7 +105,7 @@ describe('LibraryScreen', () => {
 
     const user = userEvent.setup()
     renderLibrary()
-    await user.click(within(await findRow('Partly Read')).getByText('Partly Read'))
+    await user.click(await findRow('Partly Read'))
 
     expect(await screen.findByRole('dialog', { name: /resume reading/i })).toBeInTheDocument()
     expect(screen.getByText(/40% through/i)).toBeInTheDocument()
@@ -118,7 +130,7 @@ describe('LibraryScreen', () => {
 
     const user = userEvent.setup()
     renderLibrary()
-    await user.click(within(await findRow('Partly Read 2')).getByText('Partly Read 2'))
+    await user.click(await findRow('Partly Read 2'))
     await screen.findByRole('dialog')
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
@@ -139,7 +151,8 @@ describe('LibraryScreen', () => {
 
     const user = userEvent.setup()
     renderLibrary()
-    await findRow('To Reset')
+    const row = await findRow('To Reset')
+    await user.click(within(row).getByRole('button', { name: 'More options' }))
     await user.click(screen.getByRole('button', { name: 'Reset' }))
 
     expect(screen.queryByTestId('reader-screen')).not.toBeInTheDocument()
@@ -155,10 +168,11 @@ describe('LibraryScreen', () => {
 
     const user = userEvent.setup()
     renderLibrary()
-    await screen.findByText('To Remove')
+    const row = await findRow('To Remove')
+    await user.click(within(row).getByRole('button', { name: 'More options' }))
     await user.click(screen.getByRole('button', { name: 'Remove' }))
 
-    await waitFor(() => expect(screen.queryByText('To Remove')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryAllByText('To Remove')).toHaveLength(0))
   })
 
   it('offers the book in progress under "Continue reading", and Resume opens it', async () => {
@@ -182,6 +196,162 @@ describe('LibraryScreen', () => {
     await user.click(within(section).getByRole('button', { name: 'Resume' }))
     expect(await screen.findByTestId('reader-screen')).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('the sidebar sections and the search box narrow the grid', async () => {
+    const db = getDb()
+    await addBook(db, { title: 'Unread Novel', source: 'local', fingerprint: 's0', ...TEXT_BOOK })
+    const started = await addBook(db, {
+      title: 'Started Essay',
+      source: 'local',
+      fingerprint: 's1',
+      ...TEXT_BOOK,
+    })
+    await db.books.update(started.id as number, { totalWords: 100 })
+    await saveProgress(db, started.id as number, { wordIndex: 30, wpm: 300, mode: 'rsvp' })
+
+    const user = userEvent.setup()
+    renderLibrary()
+    await findRow('Unread Novel')
+    const titlesShown = () =>
+      screen.getAllByTestId('book-row').map((row) => row.querySelector('[title]')?.textContent)
+
+    await user.click(screen.getByRole('button', { name: /^Reading now/ }))
+    expect(titlesShown()).toEqual(['Started Essay'])
+
+    // The chips narrow whichever section is picked.
+    await user.click(screen.getByRole('button', { name: /^All books/ }))
+    await user.click(
+      within(screen.getByRole('group', { name: 'Filter' })).getByRole('button', { name: 'New' }),
+    )
+    expect(titlesShown()).toEqual(['Unread Novel'])
+    await user.click(
+      within(screen.getByRole('group', { name: 'Filter' })).getByRole('button', { name: 'All' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: /^All books/ }))
+    await user.type(screen.getByRole('searchbox', { name: 'Search books' }), 'novel')
+    expect(titlesShown()).toEqual(['Unread Novel'])
+  })
+
+  it('makes a shelf, puts a book on it from the tile menu, and filters by it', async () => {
+    const db = getDb()
+    await addBook(db, { title: 'Walden', source: 'local', fingerprint: 'w', ...TEXT_BOOK })
+    await addBook(db, { title: 'Dracula', source: 'local', fingerprint: 'd', ...TEXT_BOOK })
+
+    const user = userEvent.setup()
+    renderLibrary()
+    await findRow('Walden')
+    const titlesShown = () =>
+      screen.getAllByTestId('book-row').map((row) => row.querySelector('[title]')?.textContent)
+
+    await user.click(screen.getByRole('button', { name: 'New shelf' }))
+    const dialog = screen.getByRole('dialog', { name: 'New shelf' })
+    await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'Nature')
+    await user.click(within(dialog).getByRole('button', { name: 'Create shelf' }))
+
+    // The new shelf is picked, and has nothing on it yet.
+    const shelvesNav = () => screen.getByRole('navigation', { name: 'Shelves' })
+    const shelfButton = await within(shelvesNav()).findByRole('button', { name: /^Nature/ })
+    expect(shelfButton).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('heading', { level: 2, name: 'Nature' })).toBeInTheDocument()
+    expect(screen.queryAllByTestId('book-row')).toHaveLength(0)
+
+    await user.click(screen.getByRole('button', { name: /^All books/ }))
+    const row = await findRow('Walden')
+    await user.click(within(row).getByRole('button', { name: 'More options' }))
+    await user.click(within(row).getByRole('button', { name: 'Add to shelf' }))
+    await user.click(within(row).getByRole('button', { name: 'Nature' }))
+    await waitFor(() =>
+      expect(within(row).getByRole('button', { name: 'Nature' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      ),
+    )
+    expect(screen.queryByTestId('reader-screen')).not.toBeInTheDocument()
+
+    await user.click(within(shelvesNav()).getByRole('button', { name: /^Nature/ }))
+    expect(titlesShown()).toEqual(['Walden'])
+    expect(within(shelvesNav()).getByRole('button', { name: /^Nature/ })).toHaveTextContent('1')
+  })
+
+  it('lists bookmarks across books, opens one at its word, and removes one', async () => {
+    const db = getDb()
+    const book = await addBook(db, {
+      title: 'Walden',
+      source: 'local',
+      fingerprint: 'bm',
+      ...TEXT_BOOK,
+    })
+    const id = book.id as number
+    await db.books.update(id, { totalWords: 100 })
+    await addBookmark(db, id, 40, 'I went to the woods')
+    await addBookmark(db, 12345, 1, 'a book that is gone')
+
+    const user = userEvent.setup()
+    const { unmount } = renderLibrary()
+    await user.click(await screen.findByRole('button', { name: /^Bookmarks/ }))
+    const list = await screen.findByRole('list', { name: 'Bookmarks' })
+    await within(list).findByText('40% · “I went to the woods…”')
+    expect(list).not.toHaveTextContent('a book that is gone')
+
+    await user.click(within(list).getByRole('button', { name: /^Walden/ }))
+    expect(await screen.findByTestId('reader-screen')).toHaveTextContent(`/reader/${id}?at=40`)
+    unmount()
+
+    renderLibrary()
+    await user.click(await screen.findByRole('button', { name: /^Bookmarks/ }))
+    await user.click(await screen.findByRole('button', { name: 'Remove bookmark in Walden' }))
+    await screen.findByText(/No bookmarks yet/)
+  })
+
+  it('switches to a list of rows and back, and remembers the choice', async () => {
+    const db = getDb()
+    const book = await addBook(db, {
+      title: 'Listed',
+      source: 'local',
+      fingerprint: 'l',
+      ...TEXT_BOOK,
+    })
+    await db.books.update(book.id as number, { totalWords: 100 })
+    await saveProgress(db, book.id as number, { wordIndex: 70, wpm: 300, mode: 'rsvp' })
+
+    const user = userEvent.setup()
+    renderLibrary()
+    await findRow('Listed')
+    expect(screen.getByRole('button', { name: /Drop a file here/ })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'List view' }))
+    expect(screen.getByRole('button', { name: 'List view' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(useAppStore.getState().libraryView).toBe('list')
+    expect(screen.queryByRole('button', { name: /Drop a file here/ })).not.toBeInTheDocument()
+    const row = await findRow('Listed')
+    expect(within(row).getByTestId('book-progress')).toHaveTextContent('70%')
+    await user.click(within(row).getByRole('button', { name: 'More options' }))
+    expect(within(row).getByRole('button', { name: 'Remove' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Grid view' }))
+    expect(useAppStore.getState().libraryView).toBe('grid')
+  })
+
+  it('shows a book’s author beside its status, and none for a book without one', async () => {
+    const db = getDb()
+    await addBook(db, {
+      title: 'Emma',
+      source: 'local',
+      fingerprint: 'a1',
+      ...TEXT_BOOK,
+      author: 'Jane Austen',
+    })
+    await addBook(db, { title: 'Notes', source: 'local', fingerprint: 'a2', ...TEXT_BOOK })
+    renderLibrary()
+    expect(await findRow('Emma')).toHaveTextContent(/Jane Austen\s*·\s*New/)
+    const notes = await findRow('Notes')
+    expect(notes).not.toHaveTextContent('·')
+    expect(notes).not.toHaveTextContent(/unknown/i)
   })
 
   it('links to the Settings screen', async () => {
@@ -209,7 +379,7 @@ describe('LibraryScreen', () => {
     expect(normal).not.toHaveTextContent('OCR')
   })
 
-  it('shows a stored cover, and the title’s initial for a book without one', async () => {
+  it('shows a stored cover, and a title card for a book without one', async () => {
     const db = getDb()
     const withCover = await addBook(db, {
       title: 'Covered',
@@ -229,5 +399,59 @@ describe('LibraryScreen', () => {
     const bare = rows.find((row) => row.textContent?.includes('Bare'))
     await waitFor(() => expect(covered?.querySelector('img')).not.toBeNull())
     expect(bare?.querySelector('img')).toBeNull()
+  })
+})
+
+describe('LibraryScreen on a phone', () => {
+  beforeEach(() => {
+    // Narrower than the `sm` breakpoint.
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }))
+    return () => vi.unstubAllGlobals()
+  })
+
+  it('swaps the side menu for a tab bar, and the Shelves tab picks what the books show', async () => {
+    const db = getDb()
+    await addBook(db, { title: 'Unread Novel', source: 'local', fingerprint: 'p0', ...TEXT_BOOK })
+    const started = await addBook(db, {
+      title: 'Started Essay',
+      source: 'local',
+      fingerprint: 'p1',
+      ...TEXT_BOOK,
+    })
+    await db.books.update(started.id as number, { totalWords: 100 })
+    await saveProgress(db, started.id as number, { wordIndex: 30, wpm: 300, mode: 'rsvp' })
+
+    const user = userEvent.setup()
+    renderLibrary()
+    await findRow('Unread Novel')
+    const tabs = screen.getByRole('navigation', { name: 'Tabs' })
+    expect(screen.queryByRole('navigation', { name: 'Library sections' })).not.toBeInTheDocument()
+    expect(within(tabs).getByRole('button', { name: 'Library' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+
+    await user.click(within(tabs).getByRole('button', { name: 'Shelves' }))
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Shelves')
+    expect(screen.queryAllByTestId('book-row')).toHaveLength(0)
+    expect(screen.queryByRole('group', { name: 'Filter' })).not.toBeInTheDocument()
+    // The tab bar is the way to settings here, so the menu has none of its own.
+    expect(screen.getAllByRole('button', { name: 'Settings' })).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: /^Reading now/ }))
+    expect(screen.getByRole('heading', { level: 2, name: 'Reading now' })).toBeInTheDocument()
+    expect(screen.getAllByTestId('book-row')).toHaveLength(1)
+    expect(within(tabs).getByRole('button', { name: 'Library' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+
+    await user.click(within(tabs).getByRole('button', { name: 'Settings' }))
+    expect(await screen.findByTestId('settings-screen')).toBeInTheDocument()
   })
 })

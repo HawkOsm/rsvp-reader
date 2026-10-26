@@ -34,6 +34,9 @@ describe('the palette in index.css matches theme.ts', () => {
   it('light, chosen in settings', () => {
     expect(block(":root[data-theme='light']")).toEqual(asCss(resolvePalette('light')))
   })
+  it('paper', () => {
+    expect(block(":root[data-theme='paper']")).toEqual(asCss(resolvePalette('paper')))
+  })
   it('light, following the system', () => {
     expect(block(':root:not([data-theme])')).toEqual(asCss(resolvePalette('light')))
   })

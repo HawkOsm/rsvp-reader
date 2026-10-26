@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { logError } from '@/lib/error-log'
 import { DEFAULT_WPM } from '@/core/pacing'
 import type { Token } from '@/core/types'
 import { loadBook, touchOpened, type BookRecord } from '@/features/reader/api/book'
+import { startIndexFor } from '@/features/reader/bookmark'
 import { useAppStore } from '@/stores/app-store'
 
 export interface LoadedBook {
@@ -17,11 +18,18 @@ export type LoadedBookState =
   | { status: 'error'; message: string }
   | { status: 'ready'; loaded: LoadedBook }
 
-/** Load a book, its tokens and where the reader left off. Sets the reading
- * mode the book was last left in before reporting `ready`, so the reader
- * never flashes the wrong mode. */
-export function useLoadedBook(bookId: string | undefined): LoadedBookState {
+/** Load a book, its tokens and where the reader left off (or the word `at`
+ * names, for a bookmark). Sets the reading mode the book was last left in
+ * before reporting `ready`, so the reader never flashes the wrong mode. */
+export function useLoadedBook(
+  bookId: string | undefined,
+  at: string | null = null,
+): LoadedBookState {
   const [state, setState] = useState<LoadedBookState>({ status: 'loading' })
+  // Only where the book opens: dropping `at` from the address afterwards
+  // must not load the book again.
+  const atRef = useRef(at)
+  atRef.current = at
 
   useEffect(() => {
     const id = Number(bookId)
@@ -50,7 +58,7 @@ export function useLoadedBook(bookId: string | undefined): LoadedBookState {
           loaded: {
             book,
             tokens,
-            startIndex: progress?.wordIndex ?? 0,
+            startIndex: startIndexFor(atRef.current, progress?.wordIndex, tokens.length),
             startWpm: progress?.wpm ?? DEFAULT_WPM,
           },
         })

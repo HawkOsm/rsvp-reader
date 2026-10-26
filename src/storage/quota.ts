@@ -17,3 +17,9 @@ export async function storageUsage(): Promise<StorageUsage | null> {
   if (usage === undefined || quota === undefined) return null
   return { usageBytes: usage, quotaBytes: quota }
 }
+
+/** Whether the browser has already agreed not to clear this origin's storage. */
+export async function isPersisted(): Promise<boolean> {
+  if (!navigator.storage?.persisted) return false
+  return navigator.storage.persisted()
+}

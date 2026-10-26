@@ -4,9 +4,12 @@ import { ExperimentalFlags } from '@/features/settings/components/ExperimentalFl
 import { FLAGS } from '@/lib/flags'
 
 describe('ExperimentalFlags', () => {
-  it('shows nothing while there are no flags', () => {
+  it('says there are none while there are no flags, or lists them', () => {
     const { container } = render(<ExperimentalFlags />)
-    if (Object.keys(FLAGS).length === 0) expect(container).toBeEmptyDOMElement()
-    else expect(container).toHaveTextContent('Experimental')
+    const descriptions = (Object.values(FLAGS) as { description: string }[]).map(
+      (f) => f.description,
+    )
+    if (descriptions.length === 0) expect(container).toHaveTextContent('None right now')
+    else for (const d of descriptions) expect(container).toHaveTextContent(d)
   })
 })

@@ -1,7 +1,11 @@
-import { useEffect, useMemo, useRef } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { createEngine } from '@/core/engine'
 import { BookControls } from './BookControls'
+import { BookmarkButton } from './BookmarkButton'
+import { ReaderMenu } from './ReaderMenu'
+import { Byline, ContentsPanel } from './ContentsPanel'
+import { DisplayPanel } from './DisplayPanel'
 import { Button } from '@/components/Button'
 import { Icon } from '@/components/Icon'
 import { Centered } from '@/components/Page'
@@ -20,6 +24,7 @@ import { useReaderKeyboardShortcuts } from '@/features/reader/hooks/useReaderKey
 import { useTouchControls } from '@/features/reader/hooks/useTouchControls'
 import { useWakeLock } from '@/features/reader/hooks/useWakeLock'
 import { useAppStore } from '@/stores/app-store'
+import { useMediaQuery, WIDE } from '@/lib/media'
 
 const MODES = [
   { value: 'rsvp', label: 'RSVP', icon: 'bolt', title: 'Back to one word at a time  (B)' },
@@ -29,7 +34,14 @@ const MODES = [
 export function ReaderScreen() {
   const { bookId } = useParams<{ bookId: string }>()
   const navigate = useNavigate()
-  const state = useLoadedBook(bookId)
+  const [search, setSearch] = useSearchParams()
+  const state = useLoadedBook(bookId, search.get('at'))
+  // A bookmark's `?at=` has done its job once the book is open; left in the
+  // address, a reload would jump back to the bookmark.
+  const opened = state.status === 'ready'
+  useEffect(() => {
+    if (opened && search.has('at')) setSearch({}, { replace: true })
+  }, [opened, search, setSearch])
 
   if (state.status === 'error') {
     return (
@@ -79,6 +91,14 @@ function ReaderBody({ book }: { book: BookRecord }) {
   const setPanelOpen = useAppStore((s) => s.setPanelOpen)
   const areaRef = useRef<HTMLDivElement>(null)
   const overlay = usePageOverlay(areaRef)
+  const wide = useMediaQuery(WIDE)
+  // In book mode on a wide screen, beside the page and open at first. Over
+  // the reading area otherwise (on a phone, or by the RSVP word), closed at
+  // first and closed again once a chapter is picked.
+  const contentsBeside = wide && mode === 'book'
+  const [contentsOpen, setContentsOpen] = useState(contentsBeside)
+  const hasContents = book.chapters.length > 0
+  useEffect(() => setContentsOpen(contentsBeside), [contentsBeside])
 
   useReaderKeyboardShortcuts(layout)
   useAutosaveProgress(bookId, mode)
@@ -89,9 +109,67 @@ function ReaderBody({ book }: { book: BookRecord }) {
     if (mode === 'book') engine.pause()
   }, [mode, engine])
 
+  // Beside the title on a wide screen; behind the "⋯" menu on a phone.
+  const controls = (
+    <>
+      <div
+        role="group"
+        aria-label="Reading mode"
+        className="flex rounded-lg border border-border bg-bg-raised p-0.5"
+      >
+        {MODES.map(({ value, label, icon, title }) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={mode === value}
+            onClick={() => setMode(value)}
+            title={title}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1 ${
+              mode === value ? 'bg-bg-hover font-medium text-text' : 'text-text-dim hover:text-text'
+            }`}
+          >
+            <Icon name={icon} size={14} />
+            {label}
+          </button>
+        ))}
+      </div>
+      {hasContents && (
+        <button
+          type="button"
+          aria-label="Contents"
+          aria-expanded={contentsOpen}
+          title="Chapters"
+          onClick={() => setContentsOpen(!contentsOpen)}
+          className={`flex h-9 w-9 items-center justify-center rounded-lg hover:bg-bg-hover ${
+            contentsOpen ? 'text-text' : 'text-text-dim hover:text-text'
+          }`}
+        >
+          <Icon name="contents" size={17} />
+        </button>
+      )}
+      {mode === 'rsvp' && (
+        <Button
+          className="flex items-center gap-1.5"
+          aria-label={panelOpen && overlay ? 'Hide page' : 'Show page'}
+          onClick={() => setPanelOpen(!panelOpen)}
+          disabled={overlay === null}
+          title={
+            overlay === null
+              ? 'No room for the page without covering the word: use a smaller text size, or turn the screen upright'
+              : 'Show the page you are on  (P)'
+          }
+        >
+          <Icon name="page" size={16} />
+          <span>{panelOpen && overlay ? 'Page ‹' : 'Page ›'}</span>
+        </Button>
+      )}
+      <BookmarkButton bookId={bookId} />
+    </>
+  )
+
   return (
     <div className="flex h-screen flex-col bg-bg text-text">
-      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border px-4 py-2 text-sm">
+      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-border px-2 py-2 text-sm sm:gap-3 sm:px-4">
         <div>
           <Button
             variant="link"
@@ -99,49 +177,26 @@ function ReaderBody({ book }: { book: BookRecord }) {
             className="flex items-center gap-1 py-1.5 pr-2"
           >
             <Icon name="back" />
-            Library
+            <span className="sr-only sm:not-sr-only">Library</span>
           </Button>
         </div>
-        <span className="max-w-[40vw] truncate font-serif text-[15px]">{book.title}</span>
+        <span className="flex min-w-0 flex-col items-center">
+          <span className="max-w-[40vw] truncate font-serif text-[15px] font-medium">
+            {book.title}
+          </span>
+          <Byline author={book.author} chapters={book.chapters} />
+        </span>
         <div className="flex items-center justify-end gap-2">
-          <div
-            role="group"
-            aria-label="Reading mode"
-            className="flex rounded-lg border border-border bg-bg-raised p-0.5"
-          >
-            {MODES.map(({ value, label, icon, title }) => (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={mode === value}
-                onClick={() => setMode(value)}
-                title={title}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1 ${
-                  mode === value
-                    ? 'bg-bg-hover font-medium text-text'
-                    : 'text-text-dim hover:text-text'
-                }`}
-              >
-                <Icon name={icon} size={14} />
-                {label}
-              </button>
-            ))}
-          </div>
-          {mode === 'rsvp' && (
-            <Button
-              className="flex items-center gap-1.5"
-              aria-label={panelOpen && overlay ? 'Hide page' : 'Show page'}
-              onClick={() => setPanelOpen(!panelOpen)}
-              disabled={overlay === null}
-              title={
-                overlay === null
-                  ? 'No room for the page without covering the word: use a smaller text size, or turn the screen upright'
-                  : 'Show the page you are on  (P)'
-              }
-            >
-              <Icon name="page" size={16} />
-              <span className="hidden sm:inline">{panelOpen && overlay ? 'Page ‹' : 'Page ›'}</span>
-            </Button>
+          {wide ? (
+            <>
+              {controls}
+              <DisplayPanel />
+            </>
+          ) : (
+            <>
+              <DisplayPanel />
+              <ReaderMenu>{controls}</ReaderMenu>
+            </>
           )}
         </div>
       </header>
@@ -150,6 +205,14 @@ function ReaderBody({ book }: { book: BookRecord }) {
         {mode === 'rsvp' && (
           <div className="flex min-h-0 min-w-0 flex-1 flex-col" onClick={onTap}>
             <RsvpCanvas />
+          </div>
+        )}
+        {hasContents && contentsOpen && (
+          <div className={contentsBeside ? 'min-h-0' : 'absolute inset-y-0 left-0 z-20 shadow-xl'}>
+            <ContentsPanel
+              chapters={book.chapters}
+              onPicked={contentsBeside ? undefined : () => setContentsOpen(false)}
+            />
           </div>
         )}
         {mode === 'book' && (
@@ -170,7 +233,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
       {mode === 'book' && layout.kind === 'paged' ? (
         <BookControls pageCount={layout.pages} />
       ) : (
-        <TransportBar layout={layout} />
+        <TransportBar layout={layout} chapters={book.chapters} />
       )}
       {showHints && <ReaderHints mode={mode} layout={layout} />}
     </div>

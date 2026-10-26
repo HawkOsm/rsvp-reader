@@ -120,9 +120,11 @@ export function PdfPageView({
     if (peek) markRef.current?.scrollIntoView({ block: 'center' })
   }, [peek, markTop])
 
-  /** Click a word to jump there — unless the click ends a text selection. */
+  /** Click a word to jump there, in book mode as beside the RSVP word: it is
+   * how the reader picks where RSVP goes on. Not when the click ends a text
+   * selection. */
   function onClick(event: MouseEvent<HTMLDivElement>) {
-    if (!peek || !drawn || !window.getSelection()?.isCollapsed) return
+    if (!drawn || !window.getSelection()?.isCollapsed) return
     const rect = event.currentTarget.getBoundingClientRect()
     const [x, y] = legacyBoxes
       ? screenToUserPoint(

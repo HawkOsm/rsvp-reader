@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { getCover, type BookRecord } from '@/features/library/api/library'
 import { logError } from '@/lib/error-log'
 
-/** The book's cover, or its initial on a plain card while there is none. */
+/** The book's cover, or a plain card with its title while there is none. */
 export function BookCover({ book }: { book: BookRecord }) {
   const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
@@ -29,9 +29,15 @@ export function BookCover({ book }: { book: BookRecord }) {
       ) : (
         <div
           aria-hidden
-          className="flex h-full items-center justify-center font-serif text-5xl text-text-dim"
+          className="flex h-full flex-col justify-between bg-bg-hover p-3 text-text @container"
         >
-          {book.title.trim().charAt(0).toUpperCase()}
+          <span className="text-[10px] tracking-widest text-text-dim uppercase">
+            {book.formatId}
+          </span>
+          <span className="line-clamp-5 font-serif text-[clamp(0.75rem,12cqw,1.25rem)] leading-tight">
+            {book.title}
+          </span>
+          <span className="h-px bg-border" />
         </div>
       )}
     </div>

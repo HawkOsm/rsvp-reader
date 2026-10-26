@@ -104,11 +104,13 @@ function drawGuides(
   ctx.strokeStyle = palette.guide
   ctx.lineWidth = 2
   const half = fontSizePx * GUIDE_START
+  const top = centerY - half - GUIDE_LENGTH
+  const bottom = centerY + half + GUIDE_LENGTH
   ctx.beginPath()
-  ctx.moveTo(focusX, centerY - half - GUIDE_LENGTH)
+  ctx.moveTo(focusX, top)
   ctx.lineTo(focusX, centerY - half)
   ctx.moveTo(focusX, centerY + half)
-  ctx.lineTo(focusX, centerY + half + GUIDE_LENGTH)
+  ctx.lineTo(focusX, bottom)
   ctx.stroke()
 }
 

@@ -1,6 +1,8 @@
 import Dexie, { type Table, type Transaction } from 'dexie'
 import { DEFAULT_WPM } from '@/core/pacing'
 import { DEFAULT_PAGE, type PageSpec } from '@/core/page-spec'
+import type { Hlc } from '@/core/sync/hlc'
+import type { Register } from '@/core/sync/merge'
 import type { ContentLayout, FormatId, Token } from '@/core/types'
 
 /** Bumped whenever the packed token format changes, so caches written by an
@@ -11,6 +13,12 @@ export const CACHE_VERSION = 1
 /** `'gutendex'` only on books imported by the since-removed Project
  * Gutenberg search; kept so those rows still type-check. */
 export type BookSource = 'local' | 'gutendex'
+
+/** Where a chapter starts, as the parser found it (EPUB headings). */
+export interface BookChapter {
+  title: string
+  startTokenIndex: number
+}
 
 export interface BookRecord {
   id?: number
@@ -29,6 +37,10 @@ export interface BookRecord {
   /** The size of the book's page, scanned once at import and never changed
    * (a PDF's first page; the default for anything without pages). */
   page: PageSpec
+  /** The book's chapters, in reading order. Empty for a format without
+   * them, and for any book imported before chapters were kept: those are
+   * never parsed again to find theirs. */
+  chapters: BookChapter[]
   /** `v<CACHE_VERSION>:<size>:<lastModified>` — no file path exists on
    * web, so this (not a path) is what decides whether cached tokens are
    * still good. */
@@ -36,14 +48,18 @@ export interface BookRecord {
   /** The words were recognised from page images (OCR), not read from a
    * text layer. */
   ocr?: true
+  /** The same book's id on every device: a hash of its content
+   * (`storage/sync-id.ts`). Missing on books added before sync existed until
+   * `ensureSyncIds` fills it in. */
+  syncId?: string
   addedAt: number
   lastOpenedAt: number | null
 }
 
 /** A book row as an older version wrote it: `pages` instead of `layout`, and
  * no `formatId`. Only ever read by `normalizeBookRecord`. */
-export type StoredBookRecord = Omit<BookRecord, 'formatId' | 'layout' | 'page'> &
-  Partial<Pick<BookRecord, 'formatId' | 'layout' | 'page'>> & { pages?: number }
+export type StoredBookRecord = Omit<BookRecord, 'formatId' | 'layout' | 'page' | 'chapters'> &
+  Partial<Pick<BookRecord, 'formatId' | 'layout' | 'page' | 'chapters'>> & { pages?: number }
 
 /** Bring a book row from any earlier version up to the current shape.
  * Shared by the Dexie upgrade and by backup import, so an old backup file
@@ -54,7 +70,7 @@ export type StoredBookRecord = Omit<BookRecord, 'formatId' | 'layout' | 'page'> 
  * an older version comes out as `'text'`: it reads identically (both
  * reflow), and nothing stored says otherwise. */
 export function normalizeBookRecord(raw: StoredBookRecord): BookRecord {
-  const { pages, formatId, layout, page, ...rest } = raw
+  const { pages, formatId, layout, page, chapters, ...rest } = raw
   const resolvedLayout: ContentLayout =
     layout ?? (pages !== undefined ? { kind: 'paged', pages } : { kind: 'reflow' })
   return {
@@ -62,6 +78,7 @@ export function normalizeBookRecord(raw: StoredBookRecord): BookRecord {
     formatId: formatId ?? (resolvedLayout.kind === 'paged' ? 'pdf' : 'text'),
     layout: resolvedLayout,
     page: page ?? DEFAULT_PAGE,
+    chapters: chapters ?? [],
   }
 }
 
@@ -92,6 +109,58 @@ export interface SettingRecord {
 export interface CoverRecord {
   bookId: number
   blob: Blob
+}
+
+/** The colours a shelf's dot can take: colour tokens, see docs/architecture/ui.md. */
+export const SHELF_COLORS = [
+  'accent',
+  'shelf-blue',
+  'shelf-green',
+  'shelf-amber',
+  'shelf-violet',
+] as const
+export type ShelfColor = (typeof SHELF_COLORS)[number]
+
+/** A named set of books, kept by the reader. The shelf holds the book ids,
+ * so a book on no shelf costs nothing and a book row never changes. */
+export interface ShelfRecord {
+  id?: number
+  name: string
+  color: ShelfColor
+  bookIds: number[]
+  createdAt: number
+}
+
+/** A word the reader marked, to come back to. */
+export interface BookmarkRecord {
+  id?: number
+  bookId: number
+  wordIndex: number
+  /** The first few words from the mark, so the list says where it is
+   * without loading the book's tokens. */
+  excerpt: string
+  createdAt: number
+}
+
+/** The newest known version of one synced value (`core/sync/merge.ts`).
+ * `pending` marks a local change other devices haven't been sent yet; it's a
+ * number, not a boolean, so Dexie can index it. */
+export interface SyncRegisterRecord extends Register {
+  pending?: 1
+}
+
+/** This device's side of sync. One row, under `id: 'local'`. */
+export interface SyncStateRecord {
+  id: 'local'
+  /** Random, made once per install. */
+  device: string
+  clock: Hlc | null
+  /** The sequence number this device's next published change gets. */
+  nextSeq: number
+  /** Per other device, the highest sequence number applied here. */
+  cursors: Record<string, number>
+  /** Whatever was here before sync existed has been queued to send. */
+  seeded: boolean
 }
 
 export interface FileRecord {
@@ -131,6 +200,10 @@ export class RsvpDatabase extends Dexie {
   settings!: Table<SettingRecord, string>
   files!: Table<FileRecord, number>
   covers!: Table<CoverRecord, number>
+  shelves!: Table<ShelfRecord, number>
+  bookmarks!: Table<BookmarkRecord, number>
+  syncRegisters!: Table<SyncRegisterRecord, string>
+  syncState!: Table<SyncStateRecord, string>
 
   constructor(name = 'rsvp-reader') {
     super(name)
@@ -191,6 +264,34 @@ export class RsvpDatabase extends Dexie {
     // Cover images for the library grid. A new table only: covers are made
     // when the library next shows a book, never here.
     this.version(5).stores({ covers: 'bookId' })
+
+    // Shelves. A new table only: every existing book starts on no shelf.
+    this.version(6).stores({ shelves: '++id' })
+
+    // Bookmarks. A new table only: no book has any yet.
+    this.version(7).stores({ bookmarks: '++id, bookId' })
+
+    // Every book gets a chapter list. Older ones have none stored and get an
+    // empty one: finding theirs would mean parsing the book again.
+    this.version(8)
+      .stores({})
+      .upgrade((tx) =>
+        tx
+          .table<StoredBookRecord, number>('books')
+          .toCollection()
+          .modify((book) => {
+            book.chapters ??= []
+          }),
+      )
+
+    // Sync (docs/architecture/sync.md). New tables, and books indexed by
+    // `syncId`. No upgrade: a sync id is a hash, and hashing can't run inside
+    // an IndexedDB transaction, so `ensureSyncIds` fills them in later.
+    this.version(9).stores({
+      books: '++id, source, sourceId, fingerprint, addedAt, lastOpenedAt, syncId',
+      syncRegisters: 'key, pending',
+      syncState: 'id',
+    })
   }
 }
 

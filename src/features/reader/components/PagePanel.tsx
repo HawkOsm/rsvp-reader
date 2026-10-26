@@ -24,7 +24,7 @@ export const PagePanel = memo(function PagePanel({
   const scale = useAppStore((s) => s.bookScale)
   const setBookFits = useAppStore((s) => s.setBookFits)
 
-  if (layout.kind === 'reflow') return <TextReflowPanel />
+  if (layout.kind === 'reflow') return <TextReflowPanel book={variant === 'book'} />
   const legacyBoxes = layout.boxSpace !== 'displayed'
   if (variant === 'book') {
     return (

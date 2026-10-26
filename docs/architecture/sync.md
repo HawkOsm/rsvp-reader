@@ -1,7 +1,16 @@
 # Sync design (draft)
 
-Status: proposal, no code yet. Scope: cross-device sync of reading state and a new
-notes/drawing feature, using the user's own Google Drive as the only shared storage.
+Status: phase 1 (section 15) is built and tested: identity, clock, merge, the change log, an
+in-memory transport and the sync run. Nothing calls it yet: there is no Drive transport, no auth
+and no UI, so the app still makes no network calls. Scope: cross-device sync of reading state and
+a new notes/drawing feature, using the user's own Google Drive as the only shared storage.
+
+**Where the code is:** `core/sync/hlc.ts` (clock), `core/sync/merge.ts` (changes and the merge
+rule), `storage/sync-log.ts` (recording local changes), `storage/sync-id.ts` (book identity),
+`sync/coordinator.ts` (`syncOnce`), `sync/identity.ts` (filling in older books), `sync/offers.ts`
+(other devices' positions, offered, never applied), `sync/transport.ts` (`Transport`,
+`MemoryTransport`). See "As built" at the end of this page for where phase 1 differs from the
+design below.
 
 ## 1. Goals and non-goals
 
@@ -389,3 +398,36 @@ Assumptions made while recording these (correct me if wrong):
 1. How drawings anchor in reflowed (non-PDF) text (section 9).
 2. Web/PWA token renewal UX, given no refresh token in the browser.
 3. Whether book-file sync should be Wi-Fi-only by default on Android.
+
+## 18. As built (phase 1)
+
+Where the code differs from the design above, and why:
+
+- **Registers, not an op outbox.** Progress, settings and books are all "newest wins" values, so
+  each is a register (`syncRegisters`): the newest known version, marked `pending` until sent.
+  A second local change to the same value before a sync replaces the first, so the queue holds at
+  most one entry per book and setting, however often progress is saved. A change is stamped with
+  the clock when it is saved, not when it is sent, so an offline change can't beat a newer one
+  from another device by being sent later. Notes (phase 7) will need real operations with a
+  `baseVersion`; `Change` gets new kinds then.
+- **A book's id is hashed from its words if it reflows**, from its file if it's paged. Reflowed
+  books keep no file, and an older book has to be given an id later from what it keeps. The same
+  EPUB imported by two app versions whose parsers differ gets two ids; fuzzy matching (decision 2) is the planned answer.
+- **Sequence numbers are given when a change is sent.** If a device crashes after writing its log
+  but before saving that it did, the next run reads its own log back and carries on after it, so
+  no number is used twice. Numbers can skip, and readers don't wait on a gap.
+- **Clock skew.** A change stamped more than a day ahead of the receiving device is applied (every
+  device must end in the same state) and counted in `SyncResult.skewed`, but the receiver's
+  clock doesn't follow it.
+- **Synced settings** are `theme`, `defaultWpm`, `fontFamily`, `fontSize`, `orpColor` and
+  `showHints` (`SYNCED_SETTINGS`). The panel, page scale and spread belong to the screen.
+- **What existed before sync** is queued on the first run, with the time it was saved (a book's
+  `addedAt`, its progress's `updatedAt`). Settings have no time, so another device's settings
+  win over this one's the first time it syncs.
+- **A book added on another device** is recorded but not shown: its file doesn't sync until
+  phase 4. A removal does propagate.
+
+Not built: Drive transport and auth (phase 2), the sync log view, book files, device list,
+purge and snapshots (`Transport` has no `delete` until purge needs it), notes. Phase 2 also has
+to amend invariant 1 in ARCHITECTURE.md ("no network at runtime") to allow the opt-in Drive
+calls.

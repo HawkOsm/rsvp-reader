@@ -21,7 +21,11 @@ export interface Settings {
   bookScale: number | null
   /** The reader's keyboard cheat-sheet under the controls. */
   showHints: boolean
+  /** The library shows covers in a grid, or one row per book. */
+  libraryView: LibraryView
 }
+
+export type LibraryView = 'grid' | 'list'
 
 const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
@@ -33,6 +37,7 @@ const DEFAULT_SETTINGS: Settings = {
   bookLayout: 'spread',
   bookScale: null,
   showHints: true,
+  libraryView: 'grid',
 }
 
 interface AppState extends Settings {
@@ -56,6 +61,7 @@ interface AppState extends Settings {
   setOrpColor: (color: string | null) => void
   setPanelOpen: (open: boolean) => void
   setShowHints: (show: boolean) => void
+  setLibraryView: (view: LibraryView) => void
   setBookLayout: (layout: PageSpread) => void
   setBookScale: (scale: number) => void
   stepBookScale: (delta: number) => void
@@ -108,6 +114,7 @@ export const useAppStore = create<AppState>((set, get) => {
     setOrpColor: setter('orpColor'),
     setPanelOpen: setter('panelOpen'),
     setShowHints: setter('showHints'),
+    setLibraryView: setter('libraryView'),
     // The layout picks a fit; it lands once the new page sizes are known.
     setBookLayout: (bookLayout) => {
       setter('bookLayout')(bookLayout)

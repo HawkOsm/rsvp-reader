@@ -3,6 +3,7 @@ import JSZip from 'jszip'
 import { tokenize } from '@/core/tokenize'
 import type { Token } from '@/core/types'
 import { ExtractionError } from '@/parse/errors'
+import { cleanAuthor } from '@/parse/author'
 import { titleFromFileName } from '@/parse/title'
 import type { ParsedChapter, ParseResult, ParseOptions } from '@/parse/types'
 import { extractBlocks } from './content'
@@ -71,7 +72,7 @@ export async function parseEpub(file: File, options: ParseOptions = {}): Promise
 
   return {
     title: opf.title === 'Untitled' ? titleFromFileName(file.name) : opf.title,
-    author: opf.author,
+    author: cleanAuthor(opf.author),
     tokens,
     formatId: 'epub',
     layout: { kind: 'reflow' },

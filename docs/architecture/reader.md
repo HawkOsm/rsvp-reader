@@ -6,13 +6,20 @@
 
 ```
 ReaderScreen
- ├─ useLoadedBook(bookId)        loads book + tokens + progress through api/book.ts
+ ├─ useLoadedBook(bookId, at)    loads book + tokens + progress through api/book.ts; a
+ │                               bookmark link's ?at=<word> overrides where it starts
  ├─ createEngine(tokens)         one engine per opened book, destroyed on unmount
  └─ <EngineProvider>             engine-context.tsx: components subscribe to one value each
      ├─ RsvpCanvas               the word, drawn on a canvas, ORP letter pinned
      ├─ PagePanel                paged → PdfPagePanel/PdfPageView, reflow → TextReflowPanel
      │   └─ inside PageOverlay   in RSVP mode, the page shown over the reading area
-     ├─ TransportBar / BookControls   play, seek, WPM / page turn, scale, spread
+     ├─ BookmarkButton           marks the current word (the library lists the marks)
+     ├─ ReaderMenu               on a phone, the "⋯" holding the mode switch, Contents, page
+     │                               view and bookmark, which the header has no room for
+     ├─ ContentsPanel            a book with chapters: jump to one, current marked; beside
+     │                               the page in book mode on a wide screen, over it otherwise
+     ├─ TransportBar / BookControls   play, seek, WPM / page turn, scale, spread; chapter
+     │                               ticks on the bar and the time left in the chapter
      └─ ReaderHints              the shortcut strip
 ```
 
@@ -40,6 +47,15 @@ and are meant to match it word for word. Change them deliberately.
 - **Book**: pages. `book-nav.ts` is the pure paging maths (page ↔ token index, spreads, which
   word is at a point). `book-scroll.ts` does the DOM scrolling. Entering book mode pauses
   playback.
+
+The reflowed view (`TextReflowPanel`) renders a window of words, not the whole book:
+`reflow-window.ts` places it around the current word, keeps it while the word stays well inside,
+and grows it (trimming the far side) as the reader scrolls toward an edge. It follows the word
+only when the word changes, so scrolling away to read on is never undone.
+
+Where the reader is among the chapters (`chapterAt`, the bar's ticks, words left in the chapter)
+is pure maths in `chapters.ts`. Chapters come from `book.chapters`, which is empty for a book
+without them, so nothing chapter-shaped is drawn for it.
 
 Page geometry shared with the store (scale limits, fit-to-page and fit-to-width) is in
 `src/lib/book-layout.ts`.

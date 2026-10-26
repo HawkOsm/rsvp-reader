@@ -1063,3 +1063,126 @@ missing rootfile or an empty spine rather than a "Malformed XML" error.
 
 **Rejected:** parsing the chapters on the main thread and only unzipping in the worker. A novel's
 worth of HTML would block the UI, and the worker would need a second message round trip.
+
+## 2026-10-25: the RSVP word gets a sentence line, and the overlay keeps clear of it
+
+The RSVP canvas now draws the words around the current one, faintly, on a line under the guides,
+with the current word centred under the focus letter, so a reader who loses the thread can see
+where they are without opening the page. It stops at paragraph ends (`features/reader/context.ts`).
+`wordZoneHalfHeight` includes that line, on both sides, so the page overlay never covers it. On a
+short screen the overlay is now hidden a little sooner.
+
+**Rejected:** a DOM line under the canvas. It would move the word's centre line, which
+`page-overlay.ts` and the browser tests rely on, whenever the line wrapped.
+
+## 2026-10-25: shelves are their own table, holding book ids
+
+Schema v6 adds `shelves` (`++id`): a name, a colour and `bookIds`. Membership lives on the shelf,
+not the book row, so a book row never changes when it is shelved, there is nothing to migrate
+(every existing book is on no shelf), and the library loads all shelves in one read. `removeBook`
+takes the book off every shelf in the same transaction, since a later book can reuse the id.
+A shelf's colour is one of five colour tokens (`accent` and the new `shelf-*` tokens), stored by
+token name, so each theme draws it in its own shade.
+
+**Rejected:** a `shelfIds` multi-entry index on the book row. It would need an upgrade over every
+book and makes shelving a book rewrite its row; the library never has enough shelves for an index
+to matter.
+
+## 2026-10-25: bookmarks keep a few words, and open the reader with `?at=`
+
+Schema v7 adds `bookmarks` (`++id, bookId`): a book id, a word index and an excerpt, the eight
+words from the mark. The excerpt is stored so the library's bookmark list never has to load a
+book's tokens to say where a mark is. A new table only, so nothing is migrated. `removeBook`
+deletes a book's bookmarks with it.
+
+The library opens a bookmark at `/reader/:id?at=<word>`; `useLoadedBook` starts there instead of
+at the saved progress when the index is inside the book (`startIndexFor`), and keeps the saved
+speed and mode. The reader header's bookmark button marks the current word, or unmarks it if it
+is already marked.
+
+## 2026-10-25: a book's chapters are kept on its row, and old books get none
+
+The EPUB parser has always found chapters (`ParseResult.chapters`, one per heading), but the
+import threw them away. Schema v8 gives `BookRecord` a `chapters` list, saved at import; the
+upgrade sets it to `[]` on every existing row, and `normalizeBookRecord` does the same for old
+backups. Books imported before this keep an empty list for good: finding their chapters would
+mean parsing the book again, which a migration must never do. Re-adding the same file does not
+fill it in either, since the import returns a whole book without reading it.
+
+The list is required, not optional, so the UI asks "are there chapters?" (`length > 0`) rather
+than "is the field there?". It lives on the book row, not in its own table, because the reader
+already loads the row and a novel's chapter list is a few kilobytes.
+
+**Rejected:** a `chapters` table keyed by book id, like `tokens`. One more read and one more
+table to clear on removal, for data that is small and always wanted with the book.
+
+## 2026-10-25: the RSVP word stands alone again
+
+The sentence line under the RSVP word and the long guide lines along its ticks (added earlier the
+same day) are gone. In use they pulled the eye off the word, which defeats RSVP: the point is one
+word at a time, read at the focus letter without moving the eyes. The two short ticks that mark
+the focus letter stay; they come from the original Python reader. `wordZoneHalfHeight` is back to
+the word and its ticks, so the page overlay may again sit closer to the word.
+`features/reader/context.ts` is removed with its test.
+
+## 2026-10-25: clicking a word on a PDF page picks it in book mode too
+
+`PdfPageView` only turned a click into a jump in the small page shown beside the RSVP word
+(`peek`); in book mode a click on a PDF page did nothing, a rule carried over from the pdf.js
+version with no recorded reason. Picking the word RSVP goes on from is one of book mode's two
+jobs (the other is reading normally), and the reflowed view of text and EPUBs already allowed it,
+so PDFs now do the same. A click that ends a text selection still does nothing.
+
+## 2026-10-25: reflowed books scroll down one column
+
+Book mode laid text and EPUBs out in CSS columns inside a fixed-height box. The columns
+overflowed sideways, and bringing the current word into view scrolled sideways to wherever it
+landed, cutting the text off at the left edge. The reflowed page is now one centred column that
+scrolls down. Its window of rendered words grows as the reader scrolls (`reflow-window.ts`), so
+reading on by scrolling never runs out of text, and it moves to the current word only when that
+word changes. Each word, with the space after it, takes clicks across the whole line height, so
+a click between lines still picks a word.
+
+**Rejected:** fixed two-column pages turned with buttons (the design canvas's look). It needs
+page breaking that matches what CSS columns lay out, and the reflowed page's job is reading on
+and picking a word, which scrolling does without it.
+
+## 2026-10-26: a book's author is kept only when it is clean
+
+The EPUB parser has always read `dc:creator`, but the import dropped it. It is now kept on the
+book row (`BookRecord.author`, a field that already existed for old Gutendex imports, so no schema
+version), and shown beside a tile's status, on the Continue reading card and under the title in
+the reader. `parse/author.ts` decides what counts: spaces tidied, and nothing that is a
+placeholder ("Unknown", "Anonymous", "N/A", a tool's name), a path, a file name, an address, or no
+letters at all. A book without a clean author shows nothing in its place, never "Unknown author".
+Books imported before keep none: finding theirs would mean reading the file again.
+
+## 2026-10-25: Sync phase 1, as registers
+
+Phase 1 of docs/architecture/sync.md is built: the clock, the merge, the change log, book ids, an
+in-memory transport and `syncOnce`, tested with two simulated devices. Nothing in the app calls
+it, so no flag is needed yet; the one visible effect is that saving progress, a synced setting or
+a book now also writes a row to `syncRegisters`, in the same transaction.
+
+Every value phase 1 syncs is "newest wins", so the log is a set of registers, one per book or
+setting, each with the clock of its last local change, rather than an append-only outbox. The
+queue stays bounded however often progress is saved. A change takes its clock when it is saved,
+not sent, so an offline change can't win by arriving late. Sequence numbers are given at send
+time, and a device that crashed mid-send reads its own log back rather than reuse one.
+
+Reflowed books are hashed from their words, not their file: they keep no file, and a book added
+before sync has to be given the same id later from what it keeps. Schema v6 has no upgrade
+function, because hashing can't run inside an IndexedDB transaction; `ensureSyncIds` fills ids
+in at the start of each sync run.
+
+**Rejected:** a Drive transport now. It needs a Google OAuth client, which only the owner can
+make, and it ends invariant 1 for anyone who connects, which deserves its own change.
+
+## 2026-10-26: sync's schema version is v9, not v6
+
+Sync phase 1 was built on a branch alongside shelves, bookmarks and chapters, and both took schema
+v6. Neither had shipped, so on merging, sync's tables and the `books.syncId` index became **v9**,
+after shelves (v6), bookmarks (v7) and chapters (v8); the entry above that says v6 means v9.
+Nothing else about it changed. `bookTables` and `deleteBookRows` now include bookmarks and
+shelves, so a book removed by another device loses its bookmarks and leaves every shelf, as a
+local removal does. Shelves and bookmarks themselves are not synced yet.
