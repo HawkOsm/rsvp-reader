@@ -488,6 +488,12 @@ Where the code differs from the design above, and why.
   skewed, error), this device's id, the other devices seen and when, and Copy log. Kept in
   localStorage by `lib/sync-runs.ts`, like the error log. Token state is the Sync card's status
   line; the log doesn't repeat it.
+- **Position offers** (`features/reader/components/PositionOffer.tsx`): a bar under the
+  reader's header, "Chrome on Android is 3 pages further on. Jump there?", in pages for a paged
+  book and words for a reflowed one (`offer-text.ts`). It is looked for when the book opens and
+  after every run that brought changes in. Jump there moves the reader and saves the place
+  without recording a change; the × (Stay here) saves this device's place again, which makes
+  it the newer one everywhere. The reader never moves on its own.
 
 Not built: book files, device list, purge and snapshots (`Transport` has no `delete` until purge
 needs it), notes, and sign-in on desktop and Android.
