@@ -60,7 +60,7 @@ export function SyncLog() {
           This device: <code className="break-all">{device ?? '…'}</code>
         </span>
         {devices.length === 0 ? (
-          <span className="text-text-dim">No other device has synced yet.</span>
+          <span className="text-text-dim">No other devices.</span>
         ) : (
           <ul aria-label="Other devices" className="flex flex-col gap-0.5 text-text-dim">
             {devices.map((d) => (
