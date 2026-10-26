@@ -463,6 +463,19 @@ Where the code differs from the design above, and why.
   with no `syncId` yet can't be named on a shelf. There is no UI to delete a shelf yet, so
   shelf tombstones are only applied, never made. `SyncResult.libraryChanged` says the library
   should be read again.
+- **Running sync** (`stores/sync-store.ts`, started by `app/hooks/useSync.ts` only with the
+  `sync` flag on). Runs when the app opens, when the user connects, when it comes back online
+  or to the front, every five minutes while in front, and five quiet seconds after a pause in
+  reading or leaving the reader (`useAutosaveProgress`); not "after a batch of local changes"
+  as such. `sync/runner.ts` keeps it to one run at a time: anything asked for during a run gets
+  one more run after it. A run needs a signed-in token; without one nothing is sent and no
+  request is made. Each run is added to the sync log; a failure goes to the error log too,
+  unless it is offline or needs-reconnect, which sync just waits out. Before the PWA applies an
+  update, the Reload button waits for one last run, at most ten seconds (decision 4). A run that
+  brings changes in bumps `revision`, which the library and the reader watch, and reloads the
+  settings if a synced setting changed.
+- **Device names.** Each `device-<id>.json` now has a `name` from the browser's user agent
+  ("Firefox on Linux"), and a run reads the other devices' files to list them in the sync log.
 
 Not built: book files, device list, purge and snapshots (`Transport` has no `delete` until purge
 needs it), notes, and sign-in on desktop and Android.

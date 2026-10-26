@@ -1,4 +1,5 @@
 import { compareHlc, receive, type Hlc } from '@/core/sync/hlc'
+import type { DeviceInfo } from '@/core/sync/run'
 import { keyOf, newerRegisters, type Register, type SyncOp } from '@/core/sync/merge'
 import { bookTables, deleteBookRows } from '@/storage/library'
 import {
@@ -28,6 +29,7 @@ const deviceFile = (device: string) => `device-${device}.json`
 const logFile = (device: string, segment: number) =>
   `log-${device}-${String(segment).padStart(6, '0')}.json`
 const LOG_NAME = /^log-(.+)-(\d{6})\.json$/
+const DEVICE_NAME = /^device-(.+)\.json$/
 
 /** The log segment that holds sequence number `seq`. */
 const segmentOf = (seq: number) => Math.floor((seq - 1) / OPS_PER_SEGMENT)
@@ -60,12 +62,16 @@ export interface SyncResult {
   /** A book was removed, or a shelf or bookmark changed: the library should
    * be read again. */
   libraryChanged: boolean
+  /** Every other device that has synced, as it last described itself. */
+  devices: DeviceInfo[]
 }
 
+/** One sync run. `name` is how other devices will name this one. */
 export async function syncOnce(
   db: RsvpDatabase,
   transport: Transport,
   now: () => number = Date.now,
+  name?: string,
 ): Promise<SyncResult> {
   await ensureSyncIds(db)
   await checkFormat(transport)
@@ -74,8 +80,27 @@ export async function syncOnce(
 
   const { ops, cursors } = await pull(transport, names, state)
   const merged = await merge(db, ops, cursors, now())
-  const pushed = await push(db, transport, names, now())
-  return { ...merged, pushed }
+  const pushed = await push(db, transport, names, now(), name)
+  const devices = await otherDevices(transport, names, state.device)
+  return { ...merged, pushed, devices }
+}
+
+async function otherDevices(
+  transport: Transport,
+  names: string[],
+  self: string,
+): Promise<DeviceInfo[]> {
+  const devices: DeviceInfo[] = []
+  for (const name of names) {
+    const device = DEVICE_NAME.exec(name)?.[1]
+    if (!device || device === self) continue
+    const data = await transport.read(name)
+    if (data !== null) {
+      const { name: label, lastSeen } = JSON.parse(data) as Partial<DeviceInfo>
+      devices.push({ device, name: label, lastSeen: lastSeen ?? 0 })
+    }
+  }
+  return devices
 }
 
 async function checkFormat(transport: Transport): Promise<void> {
@@ -117,7 +142,7 @@ async function merge(
   ops: SyncOp[],
   cursors: Record<string, number>,
   now: number,
-): Promise<Omit<SyncResult, 'pushed'>> {
+): Promise<Omit<SyncResult, 'pushed' | 'devices'>> {
   const tables = [...syncTables(db), ...bookTables(db), db.settings]
   return db.transaction('rw', tables, async () => {
     const state = await localSyncState(db)
@@ -219,6 +244,7 @@ async function push(
   transport: Transport,
   names: string[],
   now: number,
+  name: string | undefined,
 ): Promise<number> {
   const state = await localSyncState(db)
   const pending = (await db.syncRegisters.where('pending').equals(1).toArray()).sort((a, b) =>
@@ -262,6 +288,7 @@ async function push(
 
   const device = {
     device: state.device,
+    name,
     lastSeen: now,
     cursors: (await localSyncState(db)).cursors,
   }

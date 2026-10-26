@@ -1,5 +1,6 @@
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { Button } from '@/components/Button'
+import { useSyncStore } from '@/stores/sync-store'
 
 /**
  * "Prompt to update" per the plan: a new service-worker version never
@@ -22,7 +23,17 @@ export function UpdatePrompt() {
         {needRefresh ? (
           <>
             <span>A new version is ready.</span>
-            <Button onClick={() => void updateServiceWorker(true)} variant="primary">
+            <Button
+              // Sync first, so nothing waits on the old version to be sent
+              // (docs/architecture/sync.md, decision 4).
+              onClick={() =>
+                void useSyncStore
+                  .getState()
+                  .finalSync()
+                  .then(() => updateServiceWorker(true))
+              }
+              variant="primary"
+            >
               Reload
             </Button>
             <Button onClick={() => setNeedRefresh(false)} variant="link">

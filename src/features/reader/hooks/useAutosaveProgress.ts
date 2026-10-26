@@ -2,13 +2,16 @@ import { useEffect, useRef } from 'react'
 import { saveProgress } from '@/features/reader/api/book'
 import { useEngine } from '@/features/reader/engine-context'
 import type { ReadingMode } from '@/stores/app-store'
+import { useSyncStore } from '@/stores/sync-store'
 
 const SAVE_EVERY_WORDS = 20
 
 /** Writes progress to IndexedDB every ~20 words, on pause, on tab hide, and
  * on leaving the reader (unmount) or closing the tab (beforeunload) —
  * matches the README's "written to disk every 20 words, and again
- * whenever you pause, go back to the library, or close the app". */
+ * whenever you pause, go back to the library, or close the app". A pause
+ * or leaving the reader also asks sync to run, once reading has stayed
+ * paused for a few seconds. */
 export function useAutosaveProgress(bookId: number | null, mode: ReadingMode): void {
   const engine = useEngine()
   // Read at save time, not captured: a save made as the mode changes must
@@ -28,7 +31,9 @@ export function useAutosaveProgress(bookId: number | null, mode: ReadingMode): v
       if (Math.abs(index - lastSavedIndex) >= SAVE_EVERY_WORDS) save()
     })
     const offPlaying = engine.on('playing', (playing) => {
-      if (!playing) save()
+      if (playing) return
+      save()
+      useSyncStore.getState().syncSoon()
     })
     function onVisibilityChange() {
       if (document.visibilityState === 'hidden') save()
@@ -37,6 +42,7 @@ export function useAutosaveProgress(bookId: number | null, mode: ReadingMode): v
     window.addEventListener('beforeunload', save)
     return () => {
       save()
+      useSyncStore.getState().syncSoon()
       offWord()
       offPlaying()
       document.removeEventListener('visibilitychange', onVisibilityChange)

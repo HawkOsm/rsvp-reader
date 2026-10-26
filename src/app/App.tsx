@@ -7,6 +7,7 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { UpdatePrompt } from './UpdatePrompt'
 import { useBackButton } from '@/app/hooks/useBackButton'
 import { useGlobalShortcuts } from '@/app/hooks/useGlobalShortcuts'
+import { useSync } from '@/app/hooks/useSync'
 import { useSystemChrome } from '@/app/hooks/useSystemChrome'
 import { getPlatform } from '@/platform'
 import { useAppStore } from '@/stores/app-store'
@@ -32,6 +33,7 @@ function App() {
   }, [loadSettings])
 
   useSystemChrome()
+  useSync()
 
   // Only an app that updates itself registers a service worker: a native
   // build updates by reinstalling, and a worker there could keep serving the
