@@ -441,6 +441,15 @@ Where the code differs from the design above, and why.
   gives up and sync waits in `needs-reconnect`. Desktop and Android have `syncAuth: null` until
   phase 5. The client ID is `GOOGLE_CLIENT_ID` in `platform/web.ts` (a placeholder until the
   real one is filled in; `VITE_GOOGLE_CLIENT_ID` overrides it for local testing).
+- **Drive transport** (`sync/drive.ts`): `DriveTransport` implements `Transport` with plain
+  `fetch` against Drive v3 in `appDataFolder`; no Google library. Drive names files by id, so
+  ids are learned from `list` (ordered by creation time, so if two devices ever made the same
+  name, every device uses the older file). 429, 5xx, Drive's rate-limit 403s and a lost
+  connection are retried with full-jitter exponential backoff, six tries in all. A 401 asks
+  auth for a new token once, then throws `NeedsReconnectError`; `storageQuotaExceeded` throws
+  `DriveFullError`; no answer at all throws `OfflineError`. Any of these leaves unsent changes
+  pending, since a register is only marked sent after its log file is written. Tested against
+  an in-memory fake of the Drive API (`tests/sync/fake-drive.ts`), never the real one.
 
 Not built: book files, device list, purge and snapshots (`Transport` has no `delete` until purge
 needs it), notes, and sign-in on desktop and Android.
