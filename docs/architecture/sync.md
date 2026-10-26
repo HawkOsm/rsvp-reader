@@ -483,6 +483,11 @@ Where the code differs from the design above, and why.
   forgets the token, the sync log and that the user connected; the data already on Drive and
   in the local registers stays. On a phone, Settings now also links to the Experimental flags,
   which it had no way to reach before.
+- **Sync log** (phase 3, `features/settings/components/SyncLog.tsx`; below the Sync card on a
+  wide screen, its own page on a phone): the last 50 runs (time, outcome, sent, received,
+  skewed, error), this device's id, the other devices seen and when, and Copy log. Kept in
+  localStorage by `lib/sync-runs.ts`, like the error log. Token state is the Sync card's status
+  line; the log doesn't repeat it.
 
 Not built: book files, device list, purge and snapshots (`Transport` has no `delete` until purge
 needs it), notes, and sign-in on desktop and Android.

@@ -15,6 +15,7 @@ import { useAppStore } from '@/stores/app-store'
 import { THEMES } from '@/features/settings/settings-values'
 import { ErrorLogSection } from './ErrorLogSection'
 import { ExperimentalFlags } from './ExperimentalFlags'
+import { SyncLog } from './SyncLog'
 import { SyncSection } from './SyncSection'
 import {
   Card,
@@ -40,6 +41,7 @@ const SECTIONS: { id: string; label: string; icon: IconName }[] = [
 /** A phone shows settings as a list, and some of them on a page of their own. */
 const PHONE_PAGE_TITLES = {
   reading: 'Word display',
+  'sync-log': 'Sync log',
   experimental: 'Experimental',
   errors: 'Error log',
   about: 'About and licences',
@@ -168,6 +170,9 @@ function WideSettings({ storage }: { storage: StorageSummary | null }) {
           <Section id="sync" title="Sync">
             <Card>
               <SyncSection />
+            </Card>
+            <Card>
+              <SyncLog />
             </Card>
           </Section>
         )}
@@ -362,6 +367,7 @@ function PhoneSettings({ storage }: { storage: StorageSummary | null }) {
         {sync && (
           <PhoneGroup title="Sync">
             <SyncSection />
+            <LinkRow title="Sync log" onClick={() => open('sync-log')} />
           </PhoneGroup>
         )}
 
@@ -423,6 +429,11 @@ function PhoneSubpage({ page }: { page: PhonePage }) {
               </div>
             </PhoneGroup>
           </>
+        )}
+        {page === 'sync-log' && (
+          <Card>
+            <SyncLog />
+          </Card>
         )}
         {page === 'experimental' && (
           <Card>
