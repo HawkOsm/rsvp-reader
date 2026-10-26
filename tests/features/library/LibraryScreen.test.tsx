@@ -337,6 +337,23 @@ describe('LibraryScreen', () => {
     expect(useAppStore.getState().libraryView).toBe('grid')
   })
 
+  it('shows a book’s author beside its status, and none for a book without one', async () => {
+    const db = getDb()
+    await addBook(db, {
+      title: 'Emma',
+      source: 'local',
+      fingerprint: 'a1',
+      ...TEXT_BOOK,
+      author: 'Jane Austen',
+    })
+    await addBook(db, { title: 'Notes', source: 'local', fingerprint: 'a2', ...TEXT_BOOK })
+    renderLibrary()
+    expect(await findRow('Emma')).toHaveTextContent(/Jane Austen\s*·\s*New/)
+    const notes = await findRow('Notes')
+    expect(notes).not.toHaveTextContent('·')
+    expect(notes).not.toHaveTextContent(/unknown/i)
+  })
+
   it('links to the Settings screen', async () => {
     const user = userEvent.setup()
     renderLibrary()

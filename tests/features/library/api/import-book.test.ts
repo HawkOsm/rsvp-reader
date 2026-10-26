@@ -102,6 +102,16 @@ describe('importLocalFile', () => {
     expect(plain.chapters).toEqual([])
   })
 
+  it('keeps the author the parser gives, and none when it gives none', async () => {
+    parseFileInWorker.mockResolvedValueOnce({ ...text, formatId: 'epub', author: 'Jane Austen' })
+    const named = await importLocalFile(fileOf('novel.epub'))
+    expect(named.author).toBe('Jane Austen')
+
+    parseFileInWorker.mockResolvedValueOnce(text)
+    const unnamed = await importLocalFile(fileOf('story.txt'))
+    expect(unnamed).not.toHaveProperty('author')
+  })
+
   it('passes progress and cancellation through to the parser', async () => {
     parseFileInWorker.mockResolvedValue(text)
     const onProgress = vi.fn()

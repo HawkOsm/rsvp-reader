@@ -74,11 +74,13 @@ function passes(filter: Filter, percent: number, formatId: string | undefined): 
 
 /**
  * The books to show: those in the section (and on the shelf, and through
- * the chip) whose title contains the query
+ * the chip) whose title or author contains the query
  * (ignoring case and accents), sorted. `books` arrives most recently opened
  * first, which is what 'recent' keeps.
  */
-export function shelve<B extends { id?: number; title: string; formatId?: string }>(
+export function shelve<
+  B extends { id?: number; title: string; formatId?: string; author?: string },
+>(
   books: B[],
   percentOf: (book: B) => number,
   { section, query, sort, shelfBookIds, filter = 'all' }: ShelfOptions,
@@ -89,7 +91,7 @@ export function shelve<B extends { id?: number; title: string; formatId?: string
       inSection(section, percentOf(book)) &&
       passes(filter, percentOf(book), book.formatId) &&
       (!shelfBookIds || shelfBookIds.includes(book.id as number)) &&
-      fold(book.title).includes(needle),
+      fold(book.author ? `${book.title} ${book.author}` : book.title).includes(needle),
   )
   if (sort === 'title') return shown.sort((a, b) => a.title.localeCompare(b.title))
   if (sort === 'progress') return shown.sort((a, b) => percentOf(b) - percentOf(a))

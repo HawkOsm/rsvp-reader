@@ -24,6 +24,8 @@ export interface AddBookInput {
   page: PageSpec
   /** Left out for a format without chapters. */
   chapters?: BookChapter[]
+  /** Only a clean one (`parse/author.ts`); left out otherwise. */
+  author?: string
   ocr?: true
 }
 
@@ -41,6 +43,7 @@ export async function addBook(db: RsvpDatabase, input: AddBookInput): Promise<Bo
     layout: input.layout,
     page: input.page,
     chapters: input.chapters ?? [],
+    ...(input.author && { author: input.author }),
     ...(input.ocr && { ocr: true as const }),
     addedAt: Date.now(),
     lastOpenedAt: null,

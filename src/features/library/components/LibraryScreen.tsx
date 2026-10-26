@@ -264,7 +264,7 @@ export function LibraryScreen() {
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search titles"
+        placeholder="Search titles and authors"
         aria-label="Search books"
         autoFocus={!wide}
         className="min-w-0 flex-1 bg-transparent text-sm text-text outline-none placeholder:text-text-dim"
@@ -429,7 +429,12 @@ export function LibraryScreen() {
                   <BookCover book={continuing} />
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
-                  <span className="line-clamp-2 font-serif text-lg">{continuing.title}</span>
+                  <span className="flex flex-col gap-0.5">
+                    <span className="line-clamp-2 font-serif text-lg">{continuing.title}</span>
+                    {continuing.author && (
+                      <span className="text-[13px] text-text-dim">{continuing.author}</span>
+                    )}
+                  </span>
                   <div className="mt-auto flex flex-col gap-1.5">
                     <ProgressBar percent={percentOf(continuing)} />
                     <span className="text-xs text-text-dim">

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { createEngine } from '@/core/engine'
 import { makeToken } from '@/core/types'
-import { ChapterName, ContentsPanel } from '@/features/reader/components/ContentsPanel'
+import { Byline, ContentsPanel } from '@/features/reader/components/ContentsPanel'
 import { EngineProvider } from '@/features/reader/engine-context'
 
 const chapters = [
@@ -46,15 +46,29 @@ describe('ContentsPanel', () => {
     expect(onPicked).toHaveBeenCalled()
   })
 
-  it('names the chapter being read, and nothing before the first', () => {
+  it('puts the author and the chapter being read under the title', () => {
     const engine = createEngine(Array.from({ length: 8 }, (_, i) => makeToken(`w${i}`)))
-    render(
+    const { rerender } = render(
       <EngineProvider value={engine}>
-        <ChapterName chapters={chapters} />
+        <Byline author="Jane Austen" chapters={chapters} />
       </EngineProvider>,
     )
-    expect(screen.queryByTestId('chapter-name')).not.toBeInTheDocument()
+    // Before the first chapter: the author alone.
+    expect(screen.getByTestId('byline')).toHaveTextContent(/^Jane Austen$/)
     act(() => engine.seek(6))
-    expect(screen.getByTestId('chapter-name')).toHaveTextContent('Chapter 2')
+    expect(screen.getByTestId('byline')).toHaveTextContent('Jane Austen · Chapter 2')
+
+    rerender(
+      <EngineProvider value={engine}>
+        <Byline chapters={chapters} />
+      </EngineProvider>,
+    )
+    expect(screen.getByTestId('byline')).toHaveTextContent(/^Chapter 2$/)
+    rerender(
+      <EngineProvider value={engine}>
+        <Byline chapters={[]} />
+      </EngineProvider>,
+    )
+    expect(screen.queryByTestId('byline')).not.toBeInTheDocument()
   })
 })

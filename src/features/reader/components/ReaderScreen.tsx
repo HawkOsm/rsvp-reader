@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { createEngine } from '@/core/engine'
 import { BookControls } from './BookControls'
 import { BookmarkButton } from './BookmarkButton'
-import { ChapterName, ContentsPanel } from './ContentsPanel'
+import { Byline, ContentsPanel } from './ContentsPanel'
 import { DisplayPanel } from './DisplayPanel'
 import { Button } from '@/components/Button'
 import { Icon } from '@/components/Icon'
@@ -125,7 +125,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
           <span className="max-w-[40vw] truncate font-serif text-[15px] font-medium">
             {book.title}
           </span>
-          {hasContents && <ChapterName chapters={book.chapters} />}
+          <Byline author={book.author} chapters={book.chapters} />
         </span>
         <div className="flex items-center justify-end gap-0.5 sm:gap-2">
           <div

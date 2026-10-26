@@ -52,15 +52,17 @@ export function ContentsPanel({ chapters, onPicked }: ContentsPanelProps) {
   )
 }
 
-/** The name of the chapter being read, for under the book's title; nothing
- * before the first chapter. */
-export function ChapterName({ chapters }: { chapters: BookChapter[] }) {
+/** Under the book's title: its author and the chapter being read, either
+ * alone when the other is missing (no clean author, or before the first
+ * chapter), and nothing when both are. */
+export function Byline({ author, chapters }: { author?: string; chapters: BookChapter[] }) {
   const index = useEngineIndex()
-  const chapter = chapters[chapterAt(chapters, index)]
-  if (!chapter) return null
+  const chapter = chapters[chapterAt(chapters, index)]?.title
+  const line = [author, chapter].filter(Boolean).join(' · ')
+  if (!line) return null
   return (
-    <span data-testid="chapter-name" className="max-w-[40vw] truncate text-xs text-text-dim">
-      {chapter.title}
+    <span data-testid="byline" className="max-w-[40vw] truncate text-xs text-text-dim">
+      {line}
     </span>
   )
 }

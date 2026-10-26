@@ -1146,3 +1146,13 @@ a click between lines still picks a word.
 **Rejected:** fixed two-column pages turned with buttons (the design canvas's look). It needs
 page breaking that matches what CSS columns lay out, and the reflowed page's job is reading on
 and picking a word, which scrolling does without it.
+
+## 2026-10-26: a book's author is kept only when it is clean
+
+The EPUB parser has always read `dc:creator`, but the import dropped it. It is now kept on the
+book row (`BookRecord.author`, a field that already existed for old Gutendex imports, so no schema
+version), and shown beside a tile's status, on the Continue reading card and under the title in
+the reader. `parse/author.ts` decides what counts: spaces tidied, and nothing that is a
+placeholder ("Unknown", "Anonymous", "N/A", a tool's name), a path, a file name, an address, or no
+letters at all. A book without a clean author shows nothing in its place, never "Unknown author".
+Books imported before keep none: finding theirs would mean reading the file again.

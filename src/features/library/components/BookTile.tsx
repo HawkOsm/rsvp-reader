@@ -50,8 +50,16 @@ export function BookTile({
             onRemove={onRemove}
           />
         </div>
-        <span className="flex items-center gap-1.5 text-[11px] text-text-dim sm:text-xs">
-          <span data-testid="book-progress">{statusLabel(percent)}</span>
+        <span className="flex min-w-0 items-center gap-1.5 text-[11px] text-text-dim sm:text-xs">
+          {book.author && (
+            <>
+              <span className="min-w-0 truncate">{book.author}</span>
+              <span aria-hidden>·</span>
+            </>
+          )}
+          <span data-testid="book-progress" className="shrink-0">
+            {statusLabel(percent)}
+          </span>
           {book.ocr && (
             <span
               className="rounded border border-border px-1"
@@ -89,6 +97,7 @@ export function BookListRow({
         <span className="truncate text-sm font-medium" title={book.title}>
           {book.title}
         </span>
+        {book.author && <span className="truncate text-xs text-text-dim">{book.author}</span>}
         <div className="flex items-center gap-3">
           <div className="max-w-64 flex-1">
             <ProgressBar percent={percent} />

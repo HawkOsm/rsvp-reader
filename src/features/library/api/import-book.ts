@@ -44,6 +44,7 @@ export async function importLocalFile(
     layout: result.layout,
     page: result.page,
     chapters: result.chapters,
+    author: result.author,
     ocr: result.ocr,
   })
   const bookId = book.id as number
@@ -56,6 +57,7 @@ export async function importLocalFile(
       layout: result.layout,
       page: result.page,
       chapters: result.chapters ?? [],
+      author: result.author,
       ocr: result.ocr,
     })
   }

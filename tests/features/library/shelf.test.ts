@@ -133,3 +133,15 @@ describe('statusLabel', () => {
     expect(statusLabel(100)).toBe('Finished')
   })
 })
+
+describe('shelve, searching', () => {
+  it('matches the author too', () => {
+    const list = [
+      { title: 'Emma', author: 'Jane Austen', p: 0 },
+      { title: 'Walden', p: 0 },
+    ]
+    const on = { section: 'all', sort: 'recent' } as const
+    expect(titles(shelve(list, percent, { ...on, query: 'austen' }))).toEqual(['Emma'])
+    expect(titles(shelve(list, percent, { ...on, query: 'walden' }))).toEqual(['Walden'])
+  })
+})
