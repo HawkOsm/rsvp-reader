@@ -507,5 +507,30 @@ Where the code differs from the design above, and why.
   what this device last saved (a book never saved counts as word 0). Declining an offer uses
   `keepProgress`, which records the place even though it didn't move.
 
-Not built: book files, device list, purge and snapshots (`Transport` has no `delete` until purge
-needs it), notes, and sign-in on desktop and Android.
+### Phase 6
+
+- **Snapshots** (`sync/compaction.ts`, file names in `sync/files.ts`). After a push, a device
+  that knows of `SNAPSHOT_EVERY` (1,000) or more changes beyond the newest snapshot writes
+  `snapshot-<wall>-<count>-<device>-<total>.json`: every register it holds that has been sent,
+  and `covers`, the highest sequence number included from each device. `total` is the sum of
+  `covers`, in the name so that "how much has happened since" needs no download. Deletions
+  older than the retention window (90 days) are left out. Each device deletes its own older
+  snapshots once a newer one exists.
+- **Purge.** A device deletes only its own log files (single writer), never its newest one
+  (the next push carries on its numbering), and only once the newest snapshot covers the file
+  and either every active device has read it (`cursors` in their `device-*.json`) or its last
+  change is older than 90 days. Active means seen within 30 days and not removed since.
+- **Full resync.** A device whose cursor points into a log file that was purged
+  (`needsSnapshot`) reads the newest snapshot first, merging its registers as if they were
+  changes, then reads the logs on from `covers`. Its own unsent changes are registers, so the
+  newer of the two versions wins as usual.
+- **Removing a device** is a synced register, `device:<id>`. A removed device is left out of
+  the device list and doesn't hold back purging. If it syncs again after the removal, it is
+  back, since nothing stops it writing its own files.
+- **Format version 2.** A version 1 device (phase 2) would miss whatever is purged, so a
+  version 2 device raises `meta.json` to 2, and version 1 then stops and asks for an update.
+- Applying thousands of changes at once (a new device reading a snapshot) was found to take
+  minutes for bookmarks, which re-read every bookmark of their book each time. Each book's are
+  now read once per run.
+
+Not built: book files, notes, and sign-in on desktop and Android.

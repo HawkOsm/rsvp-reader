@@ -46,6 +46,9 @@ export type Change =
   /** `shelf` is the shelf's own random id. */
   | { kind: 'shelf'; shelf: string; value: SyncedShelf | null }
   | { kind: 'bookmark'; book: SyncId; wordIndex: number; value: SyncedBookmark | null }
+  /** The user removed a device from sync. It stays removed until it syncs
+   * again after the removal; `null` undoes it. */
+  | { kind: 'device'; device: string; value: { removed: true } | null }
 
 /** One change as a device published it. `seq` counts up from 1 per device. */
 export interface SyncOp {
@@ -74,6 +77,8 @@ export function keyOf(change: Change): string {
       return `shelf:${change.shelf}`
     case 'bookmark':
       return `bookmark:${change.book}:${change.wordIndex}`
+    case 'device':
+      return `device:${change.device}`
   }
 }
 
