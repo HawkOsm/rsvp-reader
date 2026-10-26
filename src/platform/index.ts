@@ -2,7 +2,7 @@ import { isTauri } from '@tauri-apps/api/core'
 import type { Platform } from './types'
 import { webPlatform } from './web'
 
-export type { Platform, PlatformKind, ScreenLock } from './types'
+export type { Platform, PlatformKind, ScreenLock, SyncAuth, SyncAuthState } from './types'
 
 let current: Promise<Platform> | null = null
 

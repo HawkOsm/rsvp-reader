@@ -24,6 +24,8 @@ export const capacitorPlatform: Platform = {
   ...webPlatform,
   kind: 'android',
   selfUpdates: false, // a new version is a new APK
+  // Google blocks sign-in in a webview: phase 5 signs in through the system browser.
+  syncAuth: null,
   onBackButton,
   exit: () => void App.exitApp(),
   setChromeColor: (background, isDark) => {

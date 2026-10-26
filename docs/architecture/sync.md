@@ -399,9 +399,11 @@ Assumptions made while recording these (correct me if wrong):
 2. Web/PWA token renewal UX, given no refresh token in the browser.
 3. Whether book-file sync should be Wi-Fi-only by default on Android.
 
-## 18. As built (phase 1)
+## 18. As built
 
-Where the code differs from the design above, and why:
+Where the code differs from the design above, and why.
+
+### Phase 1
 
 - **Registers, not an op outbox.** Progress, settings and books are all "newest wins" values, so
   each is a register (`syncRegisters`): the newest known version, marked `pending` until sent.
@@ -427,7 +429,18 @@ Where the code differs from the design above, and why:
 - **A book added on another device** is recorded but not shown: its file doesn't sync until
   phase 4. A removal does propagate.
 
-Not built: Drive transport and auth (phase 2), the sync log view, book files, device list,
-purge and snapshots (`Transport` has no `delete` until purge needs it), notes. Phase 2 also has
-to amend invariant 1 in ARCHITECTURE.md ("no network at runtime") to allow the opt-in Drive
-calls.
+### Phase 2 (web only, behind the `sync` flag)
+
+- **Auth** is `Platform.syncAuth` (`platform/types.ts`): `getToken`, `renewToken`, `signIn`,
+  `signOut`, and a `state` the UI subscribes to (`signed-out`, `signing-in`, `signed-in`,
+  `needs-reconnect`). The web one (`platform/google-auth.ts`) uses Google Identity Services'
+  token flow with the `drive.appdata` scope. Google's script is added to the page when the user
+  presses Connect, never before. The token lives in memory only; what is remembered (in
+  localStorage) is that the user connected, so a reopened app shows "Reconnect". The browser
+  flow has no refresh token and a new token needs a click, so `renewToken` on the web always
+  gives up and sync waits in `needs-reconnect`. Desktop and Android have `syncAuth: null` until
+  phase 5. The client ID is `GOOGLE_CLIENT_ID` in `platform/web.ts` (a placeholder until the
+  real one is filled in; `VITE_GOOGLE_CLIENT_ID` overrides it for local testing).
+
+Not built: book files, device list, purge and snapshots (`Transport` has no `delete` until purge
+needs it), notes, and sign-in on desktop and Android.
