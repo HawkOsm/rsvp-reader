@@ -1,3 +1,4 @@
+import type { SaveProgressInput } from '@/storage/library'
 import { getDb } from '@/storage/schema'
 import * as offers from '@/sync/offers'
 
@@ -12,3 +13,6 @@ export async function progressOfferFor(bookId: number): Promise<offers.ProgressO
 
 export const acceptProgressOffer = (offer: offers.ProgressOffer) =>
   offers.acceptProgressOffer(getDb(), offer)
+
+export const declineProgressOffer = (offer: offers.ProgressOffer, here: SaveProgressInput) =>
+  offers.declineProgressOffer(getDb(), offer, here)

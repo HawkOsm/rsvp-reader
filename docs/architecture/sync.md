@@ -494,6 +494,12 @@ Where the code differs from the design above, and why.
   after every run that brought changes in. Jump there moves the reader and saves the place
   without recording a change; the × (Stay here) saves this device's place again, which makes
   it the newer one everywhere. The reader never moves on its own.
+- **An idle device sends nothing, enforced at the save.** The reader saves the place when a
+  book opens, on pause and when it closes, so a device that opened a book and left without
+  reading used to record its old place as a newer change than another device's, and send it.
+  `saveProgress` now records a change only when the place, speed or mode actually moved from
+  what this device last saved (a book never saved counts as word 0). Declining an offer uses
+  `keepProgress`, which records the place even though it didn't move.
 
 Not built: book files, device list, purge and snapshots (`Transport` has no `delete` until purge
 needs it), notes, and sign-in on desktop and Android.

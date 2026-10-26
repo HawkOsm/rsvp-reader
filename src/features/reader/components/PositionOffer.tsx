@@ -4,10 +4,10 @@ import { Button } from '@/components/Button'
 import { Icon } from '@/components/Icon'
 import {
   acceptProgressOffer,
+  declineProgressOffer,
   progressOfferFor,
   type ProgressOffer,
 } from '@/features/reader/api/sync'
-import { saveProgress } from '@/features/reader/api/book'
 import { useEngine } from '@/features/reader/engine-context'
 import { offerMessage } from '@/features/reader/offer-text'
 import { logError } from '@/lib/error-log'
@@ -48,8 +48,8 @@ export function PositionOffer({ bookId, layout }: { bookId: number; layout: Cont
   const stay = () => {
     setOffer(null)
     const mode = useAppStore.getState().mode
-    saveProgress(bookId, { wordIndex: engine.index, wpm: engine.wpm, mode }).catch((err: unknown) =>
-      logError('sync: offer', err),
+    declineProgressOffer(offer, { wordIndex: engine.index, wpm: engine.wpm, mode }).catch(
+      (err: unknown) => logError('sync: offer', err),
     )
   }
 

@@ -157,6 +157,30 @@ export async function saveProgress(
   input: SaveProgressInput,
 ): Promise<void> {
   await db.transaction('rw', [db.progress, db.books, ...syncTables(db)], async () => {
+    const before = await db.progress.get(bookId)
+    await db.progress.put({ bookId, ...input, updatedAt: Date.now() })
+    // Saving the place this device was already at is not a change. The
+    // reader saves on opening and leaving a book, and a device that only did
+    // that must not send its old place over a newer one from another device
+    // (docs/architecture/sync.md, section 8). A book never saved before
+    // starts at word 0.
+    const unmoved = before
+      ? before.wordIndex === input.wordIndex &&
+        before.wpm === input.wpm &&
+        before.mode === input.mode
+      : input.wordIndex === 0
+    if (!unmoved) await recordProgress(db, bookId, input)
+  })
+}
+
+/** Record this device's place as the newest, whether or not it moved: for
+ * declining another device's place. */
+export async function keepProgress(
+  db: RsvpDatabase,
+  bookId: number,
+  input: SaveProgressInput,
+): Promise<void> {
+  await db.transaction('rw', [db.progress, db.books, ...syncTables(db)], async () => {
     await db.progress.put({ bookId, ...input, updatedAt: Date.now() })
     await recordProgress(db, bookId, input)
   })

@@ -94,6 +94,23 @@ describe('syncOnce', () => {
     expect(await progressOffers(b)).toEqual([])
   })
 
+  it('does not send a place the reader opened a book at and left without moving', async () => {
+    const onA = await importBook(a)
+    const onB = await importBook(b)
+    await read(a, onA, 3)
+    await syncOnce(a, store)
+    await syncOnce(b, store)
+
+    // B opens the book and closes it again: the reader saves where it is.
+    clock += 1000
+    await saveProgress(b, onB, { wordIndex: 0, wpm: 300, mode: 'rsvp' })
+    await saveProgress(b, onB, { wordIndex: 0, wpm: 300, mode: 'rsvp' })
+    expect((await syncOnce(b, store)).pushed).toBe(0)
+    await syncOnce(a, store)
+    expect(await progressOffers(a)).toEqual([])
+    expect((await progressOffers(b))[0]).toMatchObject({ progress: { wordIndex: 3 } })
+  })
+
   it('declining an offer is a newer change that wins everywhere', async () => {
     const onA = await importBook(a)
     const onB = await importBook(b)
