@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SyncLog } from '@/features/settings/components/SyncLog'
-import { addSyncRun, saveSeenDevices } from '@/lib/sync-runs'
+import { addSyncRun, readSeenDevices, saveSeenDevices } from '@/lib/sync-runs'
+import { getDb } from '@/storage/schema'
 
 beforeEach(() => localStorage.clear())
 
@@ -36,5 +37,28 @@ describe('SyncLog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy log' }))
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining('Chrome on Android'))
     expect(await screen.findByRole('button', { name: 'Copied' })).toBeInTheDocument()
+  })
+
+  it('marks a device not seen for a month, and removes one everywhere', async () => {
+    const now = Date.now()
+    saveSeenDevices([
+      { device: 'old-tablet', name: 'Safari on iOS', lastSeen: now - 40 * 24 * 60 * 60 * 1000 },
+      { device: 'phone', name: 'Chrome on Android', lastSeen: now },
+    ])
+    render(<SyncLog />)
+    const list = screen.getByRole('list', { name: 'Other devices' })
+    expect(within(list).getByText(/Safari on iOS/).parentElement).toHaveTextContent('dormant')
+    expect(within(list).getByText(/Chrome on Android/).parentElement).not.toHaveTextContent(
+      'dormant',
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Safari on iOS old-tabl' }))
+    await waitFor(() => expect(within(list).queryByText(/Safari on iOS/)).not.toBeInTheDocument())
+    expect(readSeenDevices().map((d) => d.device)).toEqual(['phone'])
+    expect((await getDb().syncRegisters.get('device:old-tablet'))?.change).toEqual({
+      kind: 'device',
+      device: 'old-tablet',
+      value: { removed: true },
+    })
   })
 })

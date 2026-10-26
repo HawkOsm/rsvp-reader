@@ -524,7 +524,8 @@ Where the code differs from the design above, and why.
   (`needsSnapshot`) reads the newest snapshot first, merging its registers as if they were
   changes, then reads the logs on from `covers`. Its own unsent changes are registers, so the
   newer of the two versions wins as usual.
-- **Removing a device** is a synced register, `device:<id>`. A removed device is left out of
+- **Removing a device** (a Remove button beside each device in the sync log, which also marks
+  one not seen for 30 days "dormant") is a synced register, `device:<id>`. A removed device is left out of
   the device list and doesn't hold back purging. If it syncs again after the removal, it is
   back, since nothing stops it writing its own files.
 - **Format version 2.** A version 1 device (phase 2) would miss whatever is purged, so a

@@ -5,15 +5,18 @@ import {
   addSyncRun,
   clearSyncLog,
   deviceName,
+  readSeenDevices,
   readSyncRuns,
   saveSeenDevices,
 } from '@/lib/sync-runs'
 import { getPlatform, type SyncAuth, type SyncAuthState } from '@/platform'
 import {
   createSyncRunner,
+  DORMANT_MS,
   driveTransport,
   isExpected,
   phaseOf,
+  removeSyncDevice,
   runRecord,
   runSync,
   type SyncPhase,
@@ -56,6 +59,8 @@ interface SyncStore {
   syncSoon: () => void
   /** Sync before the app updates, if connected, for a few seconds at most. */
   finalSync: () => Promise<void>
+  /** Take another device off the list, on every device. */
+  removeDevice: (device: string) => Promise<void>
 }
 
 let auth: SyncAuth | null = null
@@ -173,6 +178,13 @@ export const useSyncStore = create<SyncStore>((set, get) => {
     syncNow: () => runner?.now() ?? Promise.resolve(),
     syncSoon: () => runner?.soon(),
 
+    async removeDevice(device) {
+      await removeSyncDevice(device)
+      saveSeenDevices(readSeenDevices().filter((d) => d.device !== device))
+      set((s) => ({ revision: s.revision + 1 }))
+      await runner?.now()
+    },
+
     async finalSync() {
       if (!runner || get().auth !== 'signed-in') return
       await Promise.race([
@@ -183,6 +195,7 @@ export const useSyncStore = create<SyncStore>((set, get) => {
   }
 })
 
+export { DORMANT_MS }
 export type { SyncPhase }
 
 /** Where sync stands, for Settings. */
