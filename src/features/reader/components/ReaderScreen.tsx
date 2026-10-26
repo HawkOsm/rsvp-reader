@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { createEngine } from '@/core/engine'
 import { BookControls } from './BookControls'
 import { BookmarkButton } from './BookmarkButton'
+import { ReaderMenu } from './ReaderMenu'
 import { Byline, ContentsPanel } from './ContentsPanel'
 import { DisplayPanel } from './DisplayPanel'
 import { Button } from '@/components/Button'
@@ -108,6 +109,64 @@ function ReaderBody({ book }: { book: BookRecord }) {
     if (mode === 'book') engine.pause()
   }, [mode, engine])
 
+  // Beside the title on a wide screen; behind the "⋯" menu on a phone.
+  const controls = (
+    <>
+      <div
+        role="group"
+        aria-label="Reading mode"
+        className="flex rounded-lg border border-border bg-bg-raised p-0.5"
+      >
+        {MODES.map(({ value, label, icon, title }) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={mode === value}
+            onClick={() => setMode(value)}
+            title={title}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1 ${
+              mode === value ? 'bg-bg-hover font-medium text-text' : 'text-text-dim hover:text-text'
+            }`}
+          >
+            <Icon name={icon} size={14} />
+            {label}
+          </button>
+        ))}
+      </div>
+      {hasContents && (
+        <button
+          type="button"
+          aria-label="Contents"
+          aria-expanded={contentsOpen}
+          title="Chapters"
+          onClick={() => setContentsOpen(!contentsOpen)}
+          className={`flex h-9 w-9 items-center justify-center rounded-lg hover:bg-bg-hover ${
+            contentsOpen ? 'text-text' : 'text-text-dim hover:text-text'
+          }`}
+        >
+          <Icon name="contents" size={17} />
+        </button>
+      )}
+      {mode === 'rsvp' && (
+        <Button
+          className="flex items-center gap-1.5"
+          aria-label={panelOpen && overlay ? 'Hide page' : 'Show page'}
+          onClick={() => setPanelOpen(!panelOpen)}
+          disabled={overlay === null}
+          title={
+            overlay === null
+              ? 'No room for the page without covering the word: use a smaller text size, or turn the screen upright'
+              : 'Show the page you are on  (P)'
+          }
+        >
+          <Icon name="page" size={16} />
+          <span>{panelOpen && overlay ? 'Page ‹' : 'Page ›'}</span>
+        </Button>
+      )}
+      <BookmarkButton bookId={bookId} />
+    </>
+  )
+
   return (
     <div className="flex h-screen flex-col bg-bg text-text">
       <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-border px-2 py-2 text-sm sm:gap-3 sm:px-4">
@@ -127,62 +186,18 @@ function ReaderBody({ book }: { book: BookRecord }) {
           </span>
           <Byline author={book.author} chapters={book.chapters} />
         </span>
-        <div className="flex items-center justify-end gap-0.5 sm:gap-2">
-          <div
-            role="group"
-            aria-label="Reading mode"
-            className="flex rounded-lg border border-border bg-bg-raised p-0.5"
-          >
-            {MODES.map(({ value, label, icon, title }) => (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={mode === value}
-                onClick={() => setMode(value)}
-                title={title}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1 ${
-                  mode === value
-                    ? 'bg-bg-hover font-medium text-text'
-                    : 'text-text-dim hover:text-text'
-                }`}
-              >
-                <Icon name={icon} size={14} />
-                <span className="sr-only sm:not-sr-only">{label}</span>
-              </button>
-            ))}
-          </div>
-          {hasContents && (
-            <button
-              type="button"
-              aria-label="Contents"
-              aria-expanded={contentsOpen}
-              title="Chapters"
-              onClick={() => setContentsOpen(!contentsOpen)}
-              className={`flex h-9 w-9 items-center justify-center rounded-lg hover:bg-bg-hover ${
-                contentsOpen ? 'text-text' : 'text-text-dim hover:text-text'
-              }`}
-            >
-              <Icon name="contents" size={17} />
-            </button>
+        <div className="flex items-center justify-end gap-2">
+          {wide ? (
+            <>
+              {controls}
+              <DisplayPanel />
+            </>
+          ) : (
+            <>
+              <DisplayPanel />
+              <ReaderMenu>{controls}</ReaderMenu>
+            </>
           )}
-          {mode === 'rsvp' && (
-            <Button
-              className="flex items-center gap-1.5"
-              aria-label={panelOpen && overlay ? 'Hide page' : 'Show page'}
-              onClick={() => setPanelOpen(!panelOpen)}
-              disabled={overlay === null}
-              title={
-                overlay === null
-                  ? 'No room for the page without covering the word: use a smaller text size, or turn the screen upright'
-                  : 'Show the page you are on  (P)'
-              }
-            >
-              <Icon name="page" size={16} />
-              <span className="hidden sm:inline">{panelOpen && overlay ? 'Page ‹' : 'Page ›'}</span>
-            </Button>
-          )}
-          <BookmarkButton bookId={bookId} />
-          <DisplayPanel />
         </div>
       </header>
 

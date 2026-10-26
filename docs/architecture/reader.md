@@ -14,6 +14,8 @@ ReaderScreen
      ├─ PagePanel                paged → PdfPagePanel/PdfPageView, reflow → TextReflowPanel
      │   └─ inside PageOverlay   in RSVP mode, the page shown over the reading area
      ├─ BookmarkButton           marks the current word (the library lists the marks)
+     ├─ ReaderMenu               on a phone, the "⋯" holding the mode switch, Contents, page
+     │                               view and bookmark, which the header has no room for
      ├─ ContentsPanel            a book with chapters: jump to one, current marked; beside
      │                               the page in book mode on a wide screen, over it otherwise
      ├─ TransportBar / BookControls   play, seek, WPM / page turn, scale, spread; chapter
