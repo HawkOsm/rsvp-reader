@@ -84,6 +84,8 @@ describe('DriveTransport', () => {
     await expect(store.write('a.json', 'a')).rejects.toThrow(DriveError)
     drive.failNext(0, 4)
     await expect(store.write('a.json', 'a')).rejects.toThrow(OfflineError)
+    drive.failNext(403, 1, 'accessNotConfigured')
+    await expect(store.write('a.json', 'a')).rejects.toThrow(/Drive API isn’t enabled/)
     drive.failNext(403, 1, 'storageQuotaExceeded')
     sleeps = []
     await expect(store.write('a.json', 'a')).rejects.toThrow(DriveFullError)

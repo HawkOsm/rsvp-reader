@@ -206,9 +206,16 @@ export class DriveTransport implements Transport {
         reason === 'rateLimitExceeded' ||
         reason === 'userRateLimitExceeded'
       if (transient && (await retry())) continue
-      throw new DriveError(response.status, reason || response.statusText)
+      throw new DriveError(response.status, REASONS[reason] ?? (reason || response.statusText))
     }
   }
+}
+
+/** What to tell the user for the errors that only the app's owner can fix,
+ * in the Google Cloud project behind the client ID. */
+const REASONS: Record<string, string> = {
+  accessNotConfigured:
+    'the Google Drive API isn’t enabled for this app’s Google Cloud project (accessNotConfigured)',
 }
 
 /** The `reason` Drive gives for an error, e.g. `storageQuotaExceeded`. */
