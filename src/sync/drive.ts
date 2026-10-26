@@ -1,4 +1,4 @@
-import type { Transport } from './transport'
+import type { StoreUsage, Transport } from './transport'
 
 // The shared store on Google Drive (docs/architecture/sync.md, section 6):
 // the files of `Transport` kept in the app's hidden `appDataFolder`, through
@@ -69,6 +69,7 @@ export interface DriveOptions {
 
 export class DriveTransport implements Transport {
   private ids: Map<string, string> | null = null
+  private sizes = new Map<string, number>()
   private readonly auth: TokenSource
   private readonly fetch: typeof fetch
   private readonly sleep: (ms: number) => Promise<void>
@@ -86,11 +87,12 @@ export class DriveTransport implements Transport {
 
   async list(): Promise<string[]> {
     const ids = new Map<string, string>()
+    const sizes = new Map<string, number>()
     let pageToken = ''
     do {
       const query = new URLSearchParams({
         spaces: FOLDER,
-        fields: 'nextPageToken,files(id,name)',
+        fields: 'nextPageToken,files(id,name,size)',
         pageSize: '1000',
         // If two devices ever create the same name at once (meta.json), all
         // devices settle on the same, older, file.
@@ -99,13 +101,18 @@ export class DriveTransport implements Transport {
       if (pageToken) query.set('pageToken', pageToken)
       const response = await this.request('GET', `${API}/files?${query}`)
       const page = (await response.json()) as {
-        files: { id: string; name: string }[]
+        files: { id: string; name: string; size?: string }[]
         nextPageToken?: string
       }
-      for (const file of page.files) if (!ids.has(file.name)) ids.set(file.name, file.id)
+      for (const file of page.files) {
+        if (ids.has(file.name)) continue
+        ids.set(file.name, file.id)
+        sizes.set(file.name, Number(file.size ?? 0))
+      }
       pageToken = page.nextPageToken ?? ''
     } while (pageToken)
     this.ids = ids
+    this.sizes = sizes
     return [...ids.keys()]
   }
 
@@ -120,13 +127,39 @@ export class DriveTransport implements Transport {
     return response.text()
   }
 
-  async write(name: string, data: string): Promise<void> {
+  async readBlob(name: string): Promise<Blob | null> {
+    const id = await this.idOf(name)
+    if (!id) return null
+    const response = await this.request('GET', `${API}/files/${id}?alt=media`)
+    if (response.status === 404) {
+      this.ids?.delete(name)
+      return null
+    }
+    return response.blob()
+  }
+
+  async write(name: string, data: string | Blob): Promise<void> {
+    const type = typeof data === 'string' ? 'application/json' : 'application/octet-stream'
     const id = await this.idOf(name)
     if (id) {
       const url = `${UPLOAD}/files/${id}?uploadType=media`
-      const response = await this.request('PATCH', url, data, 'application/json')
+      const response = await this.request('PATCH', url, data, type)
       if (response.status !== 404) return
       this.ids?.delete(name) // deleted on Drive since it was listed: make it again
+    }
+    if (typeof data !== 'string') {
+      // Bytes don't fit a text multipart body: make the file, then fill it.
+      const metadata = JSON.stringify({ name, parents: [FOLDER] })
+      const made = await this.request(
+        'POST',
+        `${API}/files?fields=id`,
+        metadata,
+        'application/json',
+      )
+      const created = (await made.json()) as { id: string }
+      this.ids?.set(name, created.id)
+      await this.request('PATCH', `${UPLOAD}/files/${created.id}?uploadType=media`, data, type)
+      return
     }
     const boundary = `rsvp-${Math.floor(this.random() * 1e12)}`
     const metadata = JSON.stringify({ name, parents: [FOLDER] })
@@ -161,6 +194,21 @@ export class DriveTransport implements Transport {
     this.ids?.delete(name)
   }
 
+  async usage(): Promise<StoreUsage> {
+    await this.list()
+    const used = [...this.sizes.values()].reduce((sum, size) => sum + size, 0)
+    const response = await this.request('GET', `${API}/about?fields=storageQuota`)
+    const { storageQuota } = (await response.json()) as {
+      storageQuota?: { limit?: string; usage?: string }
+    }
+    // No limit is given for an account with unlimited storage.
+    const free =
+      storageQuota?.limit === undefined
+        ? null
+        : Math.max(0, Number(storageQuota.limit) - Number(storageQuota.usage ?? 0))
+    return { used, free }
+  }
+
   private async idOf(name: string): Promise<string | undefined> {
     if (!this.ids) await this.list()
     return this.ids?.get(name)
@@ -172,7 +220,7 @@ export class DriveTransport implements Transport {
   private async request(
     method: string,
     url: string,
-    body?: string,
+    body?: string | Blob,
     contentType?: string,
   ): Promise<Response> {
     let renewed = false

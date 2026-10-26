@@ -77,6 +77,22 @@ describe('DriveTransport', () => {
     expect(await transport().list()).toEqual([])
   })
 
+  it('stores bytes as they are, and says how much it holds and how much room is left', async () => {
+    const store = transport()
+    const bytes = new Uint8Array([0, 255, 1, 128, 10, 13])
+    await store.write('bookfile-x', new Blob([bytes]))
+    await store.write('bookfile-x', new Blob([bytes, bytes])) // replaced, not added
+    await store.write('meta.json', '{}')
+    const read = await transport().readBlob('bookfile-x')
+    expect(new Uint8Array(await read!.arrayBuffer())).toEqual(new Uint8Array([...bytes, ...bytes]))
+    expect(drive.files.map((f) => f.name)).toEqual(['bookfile-x', 'meta.json'])
+    expect(await store.readBlob('missing')).toBeNull()
+
+    expect(await store.usage()).toEqual({ used: 14, free: null })
+    drive.free = 1000
+    expect(await store.usage()).toEqual({ used: 14, free: 1000 })
+  })
+
   it('backs off and retries on rate limits and server errors', async () => {
     const store = transport()
     await store.list()
