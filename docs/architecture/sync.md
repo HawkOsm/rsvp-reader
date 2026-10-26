@@ -534,4 +534,25 @@ Where the code differs from the design above, and why.
   minutes for bookmarks, which re-read every bookmark of their book each time. Each book's are
   now read once per run.
 
-Not built: book files, notes, and sign-in on desktop and Android.
+### Phase 4
+
+- **What a book is on Drive** (`sync/book-files.ts`). Not the original file alone: an EPUB or
+  text book keeps no file here, only its words. So each book is `book-<syncId>.json.gz`, its
+  record (title, author, format, layout, page size, chapters, fingerprint) and its words,
+  gzipped with the browser's own `CompressionStream`; and for a paged book also
+  `bookfile-<syncId>`, the original file its pages are drawn from. A downloaded book is
+  therefore never parsed or recognised again (invariant 2). Both files are named by the sync
+  id, a hash of the content, so any device that has the book may write them; this is the one
+  exception to "one writer per file", and harmless since they come out the same. The package is
+  written after the file, so a device that sees the package can count on the file.
+- **Download on demand.** `remoteBooks` lists books recorded by another device and not here,
+  and whether their files are up yet; `downloadBook` adds one, then applies the shelf and
+  bookmark registers that mention it (`applyBookRegisters`), which closes the phase 2 gap of a
+  book arriving after its shelf. Its place stays an offer, as for any other device's.
+- **Removing a book** deletes its files from Drive (`deleteRemovedBooks`). Any device may: a
+  removal propagates everywhere, and a device that adds the book again uploads it again.
+- `Transport` now reads and writes bytes (`readBlob`, `write` of a `Blob`) and reports `usage`:
+  the app folder's size and the user's free Drive space.
+
+Not built: notes, and sign-in on desktop and Android. Book files have no per-book "don't sync
+this" switch, and no Wi-Fi-only option (Android, phase 5).

@@ -237,6 +237,22 @@ async function merge(
   })
 }
 
+/** Apply what is already known about a book that has only now arrived here
+ * (downloaded from Drive): the shelves it is on, and its bookmarks. */
+export async function applyBookRegisters(db: RsvpDatabase, syncId: string): Promise<void> {
+  const tables = [...syncTables(db), ...bookTables(db), db.settings]
+  await db.transaction('rw', tables, async () => {
+    const marks = new Map<number, Map<number, number>>()
+    for (const register of await db.syncRegisters.toArray()) {
+      const { change } = register
+      const about =
+        (change.kind === 'shelf' && change.value?.books.includes(syncId)) ||
+        (change.kind === 'bookmark' && change.book === syncId)
+      if (about) await applyToLibrary(db, register, marks)
+    }
+  })
+}
+
 /** Make another device's change real here. Progress is left for the user to
  * accept (`progressOffers`): the reader never jumps on its own. Returns what
  * changed, if anything did. `marks` holds each book's bookmarks (word index
