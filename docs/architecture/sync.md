@@ -445,8 +445,8 @@ Where the code differs from the design above, and why.
   localStorage) is that the user connected, so a reopened app shows "Reconnect". The browser
   flow has no refresh token and a new token needs a click, so `renewToken` on the web always
   gives up and sync waits in `needs-reconnect`. Desktop and Android have `syncAuth: null` until
-  phase 5. The client ID is `GOOGLE_CLIENT_ID` in `platform/web.ts` (a placeholder until the
-  real one is filled in; `VITE_GOOGLE_CLIENT_ID` overrides it for local testing).
+  phase 5. The client ID is `GOOGLE_CLIENT_ID` in `platform/web.ts` (`VITE_GOOGLE_CLIENT_ID`
+  overrides it for local testing).
 - **Drive transport** (`sync/drive.ts`): `DriveTransport` implements `Transport` with plain
   `fetch` against Drive v3 in `appDataFolder`; no Google library. Drive names files by id, so
   ids are learned from `list` (ordered by creation time, so if two devices ever made the same

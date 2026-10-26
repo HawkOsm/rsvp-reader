@@ -36,9 +36,9 @@ function browserStorage(): Storage | null {
 
 /** The Google OAuth client (type "Web application") sync signs in with. A
  * client ID is a public identifier and belongs in the build; a client secret
- * never does. Placeholder until the real one is filled in;
- * `VITE_GOOGLE_CLIENT_ID` in `.env.local` overrides it for local testing. */
-const GOOGLE_CLIENT_ID = ''
+ * never does. `VITE_GOOGLE_CLIENT_ID` in `.env.local` overrides it for local
+ * testing. */
+const GOOGLE_CLIENT_ID = '78238404718-b5e9n4fqr0j398r9ikojujijdu3bchqt.apps.googleusercontent.com'
 
 export const webPlatform: Platform = {
   kind: 'web',
