@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { addBookmark, bookmarksOf, listBookmarks, removeBookmark } from '@/storage/bookmarks'
-import { addBook, removeBook } from '@/storage/library'
+import { addBook, bookTables, deleteBookRows, removeBook } from '@/storage/library'
 import { getDb, type RsvpDatabase } from '@/storage/schema'
 import { TEXT_BOOK } from './fixtures'
 
@@ -49,5 +49,15 @@ describe('bookmarks', () => {
     await addBookmark(db, 999, 3, 'kept')
     await removeBook(db, book.id as number)
     expect((await listBookmarks(db)).map((m) => m.excerpt)).toEqual(['kept'])
+  })
+
+  it('goes with its book when another device removed it, as do its shelf places', async () => {
+    const book = await addBook(db, { title: 'B', source: 'local', fingerprint: 'r', ...TEXT_BOOK })
+    const bookId = book.id as number
+    await addBookmark(db, bookId, 3, 'gone')
+    await db.shelves.add({ name: 'S', color: 'accent', bookIds: [bookId, 77], createdAt: 1 })
+    await db.transaction('rw', bookTables(db), () => deleteBookRows(db, bookId))
+    expect(await listBookmarks(db)).toEqual([])
+    expect((await db.shelves.toArray()).map((s) => s.bookIds)).toEqual([[77]])
   })
 })

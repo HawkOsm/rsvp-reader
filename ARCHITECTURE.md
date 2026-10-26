@@ -49,6 +49,8 @@ src/
   pdf/                the only code that touches MuPDF; one long-lived PDF worker
   ocr/                Tesseract for scanned PDFs, opt-in
   storage/            Dexie (IndexedDB): schema, migrations, small accessor functions
+  sync/               cross-device sync: the pull/merge/push run over a Transport (no transport
+                      ships yet; see docs/architecture/sync.md)
 tests/                mirrors src/; tests/e2e/ is the Playwright test of the built app (tests/features/reader/… tests src/features/reader/…)
 ```
 
@@ -77,7 +79,7 @@ components · lib · stores · platform   shared; never import a feature or app
   │                └─ stores/api/   the store's door to settings storage
   │                         platform/ is the only code that imports @tauri-apps or @capacitor
   │
-parse · pdf · ocr · storage      the "backend"; never import UI code
+parse · pdf · ocr · storage · sync   the "backend"; never import UI code
   │
 core                     pure; imports nothing in src/ but core
 ```

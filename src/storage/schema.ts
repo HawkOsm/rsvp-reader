@@ -1,6 +1,8 @@
 import Dexie, { type Table, type Transaction } from 'dexie'
 import { DEFAULT_WPM } from '@/core/pacing'
 import { DEFAULT_PAGE, type PageSpec } from '@/core/page-spec'
+import type { Hlc } from '@/core/sync/hlc'
+import type { Register } from '@/core/sync/merge'
 import type { ContentLayout, FormatId, Token } from '@/core/types'
 
 /** Bumped whenever the packed token format changes, so caches written by an
@@ -46,6 +48,10 @@ export interface BookRecord {
   /** The words were recognised from page images (OCR), not read from a
    * text layer. */
   ocr?: true
+  /** The same book's id on every device: a hash of its content
+   * (`storage/sync-id.ts`). Missing on books added before sync existed until
+   * `ensureSyncIds` fills it in. */
+  syncId?: string
   addedAt: number
   lastOpenedAt: number | null
 }
@@ -136,6 +142,27 @@ export interface BookmarkRecord {
   createdAt: number
 }
 
+/** The newest known version of one synced value (`core/sync/merge.ts`).
+ * `pending` marks a local change other devices haven't been sent yet; it's a
+ * number, not a boolean, so Dexie can index it. */
+export interface SyncRegisterRecord extends Register {
+  pending?: 1
+}
+
+/** This device's side of sync. One row, under `id: 'local'`. */
+export interface SyncStateRecord {
+  id: 'local'
+  /** Random, made once per install. */
+  device: string
+  clock: Hlc | null
+  /** The sequence number this device's next published change gets. */
+  nextSeq: number
+  /** Per other device, the highest sequence number applied here. */
+  cursors: Record<string, number>
+  /** Whatever was here before sync existed has been queued to send. */
+  seeded: boolean
+}
+
 export interface FileRecord {
   bookId: number
   blob: Blob
@@ -175,6 +202,8 @@ export class RsvpDatabase extends Dexie {
   covers!: Table<CoverRecord, number>
   shelves!: Table<ShelfRecord, number>
   bookmarks!: Table<BookmarkRecord, number>
+  syncRegisters!: Table<SyncRegisterRecord, string>
+  syncState!: Table<SyncStateRecord, string>
 
   constructor(name = 'rsvp-reader') {
     super(name)
@@ -254,6 +283,15 @@ export class RsvpDatabase extends Dexie {
             book.chapters ??= []
           }),
       )
+
+    // Sync (docs/architecture/sync.md). New tables, and books indexed by
+    // `syncId`. No upgrade: a sync id is a hash, and hashing can't run inside
+    // an IndexedDB transaction, so `ensureSyncIds` fills them in later.
+    this.version(9).stores({
+      books: '++id, source, sourceId, fingerprint, addedAt, lastOpenedAt, syncId',
+      syncRegisters: 'key, pending',
+      syncState: 'id',
+    })
   }
 }
 

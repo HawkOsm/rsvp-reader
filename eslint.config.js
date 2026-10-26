@@ -19,7 +19,7 @@ import tseslint from 'typescript-eslint'
 // named api/ is a door to the backend; nothing else in the UI may open one.
 
 const FEATURES = ['library', 'reader', 'settings']
-const BACKEND = ['parse', 'pdf', 'ocr', 'storage']
+const BACKEND = ['parse', 'pdf', 'ocr', 'storage', 'sync']
 const UI = ['app', 'features', 'stores', 'components', 'lib']
 
 /** An import of one of `folders` under src/, by alias or relative path. */

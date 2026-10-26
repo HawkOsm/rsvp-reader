@@ -1156,3 +1156,33 @@ the reader. `parse/author.ts` decides what counts: spaces tidied, and nothing th
 placeholder ("Unknown", "Anonymous", "N/A", a tool's name), a path, a file name, an address, or no
 letters at all. A book without a clean author shows nothing in its place, never "Unknown author".
 Books imported before keep none: finding theirs would mean reading the file again.
+
+## 2026-10-25: Sync phase 1, as registers
+
+Phase 1 of docs/architecture/sync.md is built: the clock, the merge, the change log, book ids, an
+in-memory transport and `syncOnce`, tested with two simulated devices. Nothing in the app calls
+it, so no flag is needed yet; the one visible effect is that saving progress, a synced setting or
+a book now also writes a row to `syncRegisters`, in the same transaction.
+
+Every value phase 1 syncs is "newest wins", so the log is a set of registers, one per book or
+setting, each with the clock of its last local change, rather than an append-only outbox. The
+queue stays bounded however often progress is saved. A change takes its clock when it is saved,
+not sent, so an offline change can't win by arriving late. Sequence numbers are given at send
+time, and a device that crashed mid-send reads its own log back rather than reuse one.
+
+Reflowed books are hashed from their words, not their file: they keep no file, and a book added
+before sync has to be given the same id later from what it keeps. Schema v6 has no upgrade
+function, because hashing can't run inside an IndexedDB transaction; `ensureSyncIds` fills ids
+in at the start of each sync run.
+
+**Rejected:** a Drive transport now. It needs a Google OAuth client, which only the owner can
+make, and it ends invariant 1 for anyone who connects, which deserves its own change.
+
+## 2026-10-26: sync's schema version is v9, not v6
+
+Sync phase 1 was built on a branch alongside shelves, bookmarks and chapters, and both took schema
+v6. Neither had shipped, so on merging, sync's tables and the `books.syncId` index became **v9**,
+after shelves (v6), bookmarks (v7) and chapters (v8); the entry above that says v6 means v9.
+Nothing else about it changed. `bookTables` and `deleteBookRows` now include bookmarks and
+shelves, so a book removed by another device loses its bookmarks and leaves every shelf, as a
+local removal does. Shelves and bookmarks themselves are not synced yet.
