@@ -10,4 +10,8 @@ describe('formatBytes', () => {
   it('rounds to MB above', () => {
     expect(formatBytes(182.4 * 1024 * 1024)).toBe('182 MB')
   })
+
+  it('gives GB to a tenth above a gigabyte', () => {
+    expect(formatBytes(14.23 * 1024 * 1024 * 1024)).toBe('14.2 GB')
+  })
 })
