@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
 
 // The OCR files are served at fixed URLs, so the cache they are kept in is
@@ -15,12 +16,26 @@ const tesseractVersion = (
   ) as { version: string }
 ).version
 
+// The desktop OAuth client's secret, for sync sign-in (docs/architecture/
+// sync.md). Never committed: it comes from GOOGLE_DESKTOP_CLIENT_SECRET in the
+// environment or .env.local. Built in only when Tauri is building (it sets
+// TAURI_ENV_PLATFORM), so a web or Android build never carries it. Without the
+// VITE_ prefix, Vite never exposes it on its own.
+const desktopClientSecret = process.env.TAURI_ENV_PLATFORM
+  ? (process.env.GOOGLE_DESKTOP_CLIENT_SECRET ??
+    loadEnv('', process.cwd(), 'GOOGLE_').GOOGLE_DESKTOP_CLIENT_SECRET ??
+    '')
+  : ''
+
 const appVersion = (JSON.parse(readFileSync('package.json', 'utf8')) as { version: string }).version
 
 // https://vite.dev/config/
 export default defineConfig({
   // The version, for the error log (src/lib/error-log.ts).
-  define: { __APP_VERSION__: JSON.stringify(appVersion) },
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion),
+    __DESKTOP_CLIENT_SECRET__: JSON.stringify(desktopClientSecret),
+  },
   // Must match `devUrl` in src-tauri/tauri.conf.json, or `pnpm tauri dev`
   // waits forever on a port nothing is listening on.
   server: { port: 5180, strictPort: true },

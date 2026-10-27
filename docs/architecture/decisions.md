@@ -1225,3 +1225,12 @@ desktop client's secret never reach GitHub. It is now read at build time from
 inside the installed app, since the token endpoint needs it; that is unavoidable for a desktop
 client and accepted. A pull request's check builds without it, so its desktop build can't sign
 in, which a check never needs to.
+
+## 2026-10-27: only a Tauri build carries the desktop client secret
+
+The entry above read the secret as `VITE_GOOGLE_DESKTOP_CLIENT_SECRET`. Vite inlines every
+`VITE_` variable the code reads, and the desktop module is part of every build, so a web or
+Android build made on a machine with the secret set contained it too (found by searching
+`dist/` after a local build). Now it is `GOOGLE_DESKTOP_CLIENT_SECRET`, which Vite never exposes
+by itself, and `vite.config.ts` defines it only when `TAURI_ENV_PLATFORM` is set, which Tauri
+does for the builds it runs.

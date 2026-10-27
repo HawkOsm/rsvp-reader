@@ -574,9 +574,10 @@ Where the code differs from the design above, and why.
   store subscribes, so with sync off nothing asks to unlock it. Each Rust command does one
   fixed thing: listen once, open only Google's sign-in page, POST only to Google's token and
   revoke endpoints, and read or write only this app's keychain entry; none takes a URL.
-- **The Desktop client's secret is not in the repository.** It is read at build time from
-  `VITE_GOOGLE_DESKTOP_CLIENT_SECRET`: `.env.local` (git-ignored) for local builds, the
-  `GOOGLE_DESKTOP_CLIENT_SECRET` Actions secret for release builds. It still ends up inside the
+- **The Desktop client's secret is not in the repository.** `vite.config.ts` builds it in
+  from `GOOGLE_DESKTOP_CLIENT_SECRET` (`.env.local`, git-ignored, for local builds; the Actions
+  secret of that name for release builds), and only when Tauri is building, so the web and
+  Android builds never contain it. It still ends up inside the
   installed app, which Google accepts for desktop clients; see decisions.md. The client ID is
   `DESKTOP_CLIENT_ID` in `platform/tauri.ts`.
 - Android is not built yet: Google no longer allows custom-scheme redirects for new Android
