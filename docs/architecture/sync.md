@@ -457,7 +457,14 @@ Where the code differs from the design above, and why.
   (`SyncAuth.signInError`) and shown under "Google Drive" even when it fails after the 20
   seconds, which a real sign-in usually takes. On the desktop, each step is logged to the
   terminal running `tauri dev` (listening, browser back, Google's status and error name; never
-  a code or token). None of this touches the device's
+  a code or token).
+- **When the browser gets in the way.** A privacy extension (ClearURLs was the case found) can
+  stop Google's sign-in from ever returning to the app, with Google showing only "Something went
+  wrong". The app can't detect or fix another program's extensions, so, as other desktop apps
+  do, Settings offers the sign-in under way as a link (`SyncAuth.signInLink`, desktop only) with
+  "Copy sign-in link", to finish in a private window or another browser: it returns to the same
+  loopback address, which listens for five minutes. On the web, Google's window is opened by its
+  script, so there is no link to give. None of this touches the device's
   id: that is made once per install (`localSyncState`) and never changes on retries,
   disconnecting or reconnecting, so a device is registered on Drive once.
 - **Drive transport** (`sync/drive.ts`): `DriveTransport` implements `Transport` with plain

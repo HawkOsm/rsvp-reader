@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { DRIVE_SCOPE } from '@/platform/google-auth'
 import { createPkceAuth, pkcePair, type PkceNative } from '@/platform/pkce-auth'
 
@@ -165,5 +165,36 @@ describe('desktop sign-in (PKCE, loopback)', () => {
     expect(fake.posts).toHaveLength(1)
     expect(fake.posts[0]!.form.code).toBe('c2')
     expect(auth.state()).toBe('signed-in')
+  })
+
+  it('offers the sign-in link while waiting, past the 20 seconds, and drops it once done', async () => {
+    let answer!: (query: string) => void
+    const fake = fakeNative()
+    fake.native.listen = async () => ({
+      port: 4321,
+      callback: () => new Promise<string>((resolve) => (answer = resolve)),
+    })
+    const auth = createPkceAuth({ clientId: 'desk', native: fake.native, signInTimeoutMs: 20 })
+    const heard = vi.fn()
+    auth.subscribe(heard)
+    expect(auth.signInLink()).toBeNull()
+    const result = auth.signIn()
+    await settle()
+    expect(auth.signInLink()).toBe(fake.opened()!.toString())
+    expect(heard).toHaveBeenCalled()
+
+    await expect(result).rejects.toThrow(/hasn’t finished/)
+    expect(auth.signInLink()).toBe(fake.opened()!.toString()) // still good to finish elsewhere
+
+    answer(`code=c1&state=${fake.opened()!.searchParams.get('state')}`)
+    await vi.waitFor(() => expect(auth.state()).toBe('signed-in'))
+    expect(auth.signInLink()).toBeNull()
+  })
+
+  it('drops the link when the sign-in fails or is signed out of', async () => {
+    const denied = fakeNative((url) => `error=access_denied&state=${url.searchParams.get('state')}`)
+    const auth = createPkceAuth({ clientId: 'desk', native: denied.native })
+    await expect(auth.signIn()).rejects.toThrow()
+    expect(auth.signInLink()).toBeNull()
   })
 })

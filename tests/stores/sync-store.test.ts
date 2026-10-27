@@ -44,6 +44,7 @@ function fakeAuth(initial: SyncAuthState): SyncAuth & { set(state: SyncAuthState
     signIn: async () => set('signed-in'),
     signOut: async () => set('signed-out'),
     signInError: () => null,
+    signInLink: () => null,
   }
 }
 
@@ -146,6 +147,20 @@ describe('a sign-in that fails late', () => {
     failure = 'Google refused the code (invalid_grant).'
     auth.set('signed-out') // the auth tells its subscribers
     expect(useSyncStore.getState().connectError).toBe('Google refused the code (invalid_grant).')
+  })
+
+  it('passes on the sign-in link while a sign-in waits', async () => {
+    auth = fakeAuth('signed-out')
+    let link: string | null = null
+    auth.signInLink = () => link
+    stop = useSyncStore.getState().start()
+    await settle()
+    link = 'https://accounts.google.com/o/oauth2/v2/auth?x'
+    auth.set('signing-in')
+    expect(useSyncStore.getState().signInLink).toBe(link)
+    link = null
+    auth.set('signed-out')
+    expect(useSyncStore.getState().signInLink).toBeNull()
   })
 })
 

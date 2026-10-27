@@ -36,6 +36,10 @@ export interface SyncAuth {
   /** Why the newest sign-in failed, even if it failed after `signIn` had
    * stopped waiting; `null` otherwise. Subscribers hear when it changes. */
   signInError(): string | null
+  /** The address of the sign-in under way, where the shell opened one in the
+   * browser (desktop), for the user to open somewhere else if their browser
+   * gets in the way (a privacy extension). `null` otherwise. */
+  signInLink(): string | null
 }
 
 export interface Platform {

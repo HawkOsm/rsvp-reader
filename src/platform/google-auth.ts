@@ -107,6 +107,8 @@ export function createGoogleAuth({
   return {
     state: () => state,
     signInError: () => attempts.failure(),
+    // Google's window is opened by its script, from the page: no link to give.
+    signInLink: () => null,
     subscribe(listener) {
       listeners.add(listener)
       return () => void listeners.delete(listener)

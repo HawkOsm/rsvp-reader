@@ -76,6 +76,9 @@ export function createPkceAuth({
   let state: SyncAuthState = 'signed-out'
   let access: { value: string; expiresAt: number } | null = null
   let refresh: string | null = null
+  /** The current attempt's sign-in address, while it waits for the browser. */
+  let link: string | null = null
+  const notify = () => listeners.forEach((listener) => listener())
 
   function setState(next: SyncAuthState) {
     if (next === state) return
@@ -83,10 +86,7 @@ export function createPkceAuth({
     listeners.forEach((listener) => listener())
   }
 
-  const attempts = createSignInAttempts(
-    { state: () => state, setState, notify: () => listeners.forEach((listener) => listener()) },
-    signInTimeoutMs,
-  )
+  const attempts = createSignInAttempts({ state: () => state, setState, notify }, signInTimeoutMs)
 
   // A refresh token kept from last time means still connected. Read only
   // once something subscribes (the sync store, with sync on): reading the
@@ -144,9 +144,65 @@ export function createPkceAuth({
     return access!.value
   }
 
+  /** One sign-in through the browser. It keeps what it gets only while it
+   * is the current attempt. */
+  async function signInFlow(isCurrent: () => boolean): Promise<void> {
+    const { verifier, challenge } = await pkcePair(randomBytes)
+    const expected = base64Url(randomBytes(16))
+    const { port, callback } = await native.listen()
+    const redirect = `http://127.0.0.1:${port}`
+    const url = new URL(AUTH_URL)
+    url.search = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirect,
+      response_type: 'code',
+      scope: DRIVE_SCOPE,
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
+      state: expected,
+      // A refresh token, every time: an earlier one may have been lost.
+      access_type: 'offline',
+      prompt: 'consent',
+    }).toString()
+    if (isCurrent()) {
+      link = url.toString()
+      notify()
+    }
+    await native.openBrowser(url.toString())
+
+    const query = new URLSearchParams(await callback())
+    // Connect was pressed again since: this answer is for nobody.
+    if (!isCurrent()) return
+    if (query.get('state') !== expected) throw new Error('Sign-in came back for another request.')
+    const error = query.get('error')
+    if (error === 'access_denied') throw new Error('Google Drive access wasn’t allowed.')
+    if (error) throw new Error(`Google sign-in failed (${error}).`)
+    const body = await tokenRequest({
+      grant_type: 'authorization_code',
+      code: query.get('code') ?? '',
+      code_verifier: verifier,
+      redirect_uri: redirect,
+    })
+    if (!body.access_token) {
+      throw new Error(body.error_description ?? `Google sign-in failed (${body.error}).`)
+    }
+    if (!body.scope?.split(' ').includes(DRIVE_SCOPE)) {
+      throw new Error('Google Drive access wasn’t allowed, so there is nowhere to sync to.')
+    }
+    if (!isCurrent()) return
+    keep(body)
+    if (body.refresh_token) {
+      refresh = body.refresh_token
+      // Without a keychain the app still syncs; it just asks again next launch.
+      await native.secrets.set(REFRESH_KEY, refresh).catch(() => {})
+    }
+    setState('signed-in')
+  }
+
   return {
     state: () => state,
     signInError: () => attempts.failure(),
+    signInLink: () => link,
     subscribe(listener) {
       listeners.add(listener)
       void load()
@@ -170,58 +226,21 @@ export function createPkceAuth({
         throw new Error('This build has no Google client ID, so it can’t connect to Drive.')
       }
       return attempts.run(async (isCurrent) => {
-        const { verifier, challenge } = await pkcePair(randomBytes)
-        const expected = base64Url(randomBytes(16))
-        const { port, callback } = await native.listen()
-        const redirect = `http://127.0.0.1:${port}`
-        const url = new URL(AUTH_URL)
-        url.search = new URLSearchParams({
-          client_id: clientId,
-          redirect_uri: redirect,
-          response_type: 'code',
-          scope: DRIVE_SCOPE,
-          code_challenge: challenge,
-          code_challenge_method: 'S256',
-          state: expected,
-          // A refresh token, every time: an earlier one may have been lost.
-          access_type: 'offline',
-          prompt: 'consent',
-        }).toString()
-        await native.openBrowser(url.toString())
-
-        const query = new URLSearchParams(await callback())
-        // Connect was pressed again since: this answer is for nobody.
-        if (!isCurrent()) return
-        if (query.get('state') !== expected)
-          throw new Error('Sign-in came back for another request.')
-        const error = query.get('error')
-        if (error === 'access_denied') throw new Error('Google Drive access wasn’t allowed.')
-        if (error) throw new Error(`Google sign-in failed (${error}).`)
-        const body = await tokenRequest({
-          grant_type: 'authorization_code',
-          code: query.get('code') ?? '',
-          code_verifier: verifier,
-          redirect_uri: redirect,
-        })
-        if (!body.access_token) {
-          throw new Error(body.error_description ?? `Google sign-in failed (${body.error}).`)
+        try {
+          await signInFlow(isCurrent)
+        } finally {
+          // Used, refused or abandoned: the link no longer leads anywhere.
+          if (isCurrent() && link !== null) {
+            link = null
+            notify()
+          }
         }
-        if (!body.scope?.split(' ').includes(DRIVE_SCOPE)) {
-          throw new Error('Google Drive access wasn’t allowed, so there is nowhere to sync to.')
-        }
-        if (!isCurrent()) return
-        keep(body)
-        if (body.refresh_token) {
-          refresh = body.refresh_token
-          // Without a keychain the app still syncs; it just asks again next launch.
-          await native.secrets.set(REFRESH_KEY, refresh).catch(() => {})
-        }
-        setState('signed-in')
       })
     },
 
     async signOut() {
       attempts.abandon()
+      link = null
       const token = refresh ?? access?.value
       access = null
       refresh = null

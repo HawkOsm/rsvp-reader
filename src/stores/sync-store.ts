@@ -55,6 +55,8 @@ interface SyncStore {
   error: string | null
   /** Why the last sign-in didn't finish: a closed window, a blocked pop-up. */
   connectError: string | null
+  /** The address of the sign-in under way, to open elsewhere (desktop). */
+  signInLink: string | null
   /** Counts runs that brought changes in, so screens that show synced data
    * read it again when it changes. */
   revision: number
@@ -181,6 +183,7 @@ export const useSyncStore = create<SyncStore>((set, get) => {
     lastSyncedAt: lastSynced(),
     error: null,
     connectError: null,
+    signInLink: null,
     revision: 0,
     bookFiles: bookFilesSetting(),
     upload: null,
@@ -201,7 +204,7 @@ export const useSyncStore = create<SyncStore>((set, get) => {
           const uploads = createSyncRunner(booksTask)
           books = uploads
           const onAuth = () => {
-            set({ auth: signIn.state() })
+            set({ auth: signIn.state(), signInLink: signIn.signInLink() })
             // A sign-in can fail after Connect stopped waiting (a slow
             // sign-in, then Google refusing): say why, not "hasn't finished".
             const failure = signIn.signInError()
