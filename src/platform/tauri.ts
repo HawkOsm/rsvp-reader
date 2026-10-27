@@ -22,12 +22,12 @@ async function takeLaunchFile(): Promise<File | null> {
 }
 
 /** The Google OAuth client (type "Desktop app") the desktop app signs in
- * with. The ID is public and belongs here (a placeholder until filled in).
+ * with. The ID is public and belongs here.
  * The secret is never committed: it comes in at build time from
  * `VITE_GOOGLE_DESKTOP_CLIENT_SECRET` (`.env.local`, or a GitHub Actions
  * secret for release builds). A build without one can't sign in on the
  * desktop. */
-const DESKTOP_CLIENT_ID = ''
+const DESKTOP_CLIENT_ID = '78238404718-4o4p5d7rted07porvrio0d92d9t9imvj.apps.googleusercontent.com'
 const DESKTOP_CLIENT_SECRET = import.meta.env.VITE_GOOGLE_DESKTOP_CLIENT_SECRET ?? ''
 
 /** Sign-in's native half: the commands in src-tauri/src/oauth.rs. */
