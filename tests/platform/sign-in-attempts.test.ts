@@ -12,7 +12,11 @@ afterEach(() => vi.useRealTimers())
 /** A host whose state the test reads, and an attempt the test finishes. */
 function setup(initial: SyncAuthState = 'signed-out') {
   let state = initial
-  const host = { state: () => state, setState: (next: SyncAuthState) => void (state = next) }
+  const host = {
+    state: () => state,
+    setState: (next: SyncAuthState) => void (state = next),
+    notify: vi.fn(),
+  }
   const attempts = createSignInAttempts(host)
   /** An attempt that signs in when the test calls `finish`, if still current. */
   function pending() {
@@ -28,7 +32,7 @@ function setup(initial: SyncAuthState = 'signed-out') {
       })
     return { flow, finish: () => finish(), fail: (e: Error) => fail(e) }
   }
-  return { attempts, pending, state: () => state }
+  return { attempts, pending, state: () => state, notify: host.notify }
 }
 
 describe('sign-in attempts', () => {
@@ -106,5 +110,27 @@ describe('sign-in attempts', () => {
     one.finish()
     await vi.advanceTimersByTimeAsync(0)
     expect(state()).not.toBe('signed-in')
+  })
+
+  it('keeps why the newest attempt failed, even after the wait was up', async () => {
+    const { attempts, pending, notify } = setup()
+    const slow = pending()
+    const result = attempts.run(slow.flow)
+    expect(attempts.failure()).toBeNull()
+    const timedOut = expect(result).rejects.toBeInstanceOf(SignInTimeoutError)
+    await vi.advanceTimersByTimeAsync(SIGN_IN_TIMEOUT_MS)
+    await timedOut
+    expect(attempts.failure()).toMatch(/hasn’t finished/)
+
+    notify.mockClear()
+    slow.fail(new Error('Google refused the code (invalid_grant).'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(attempts.failure()).toBe('Google refused the code (invalid_grant).')
+    expect(notify).toHaveBeenCalled()
+
+    // A new attempt starts clean, and an abandoned one's failure isn't kept.
+    const next = pending()
+    void attempts.run(next.flow)
+    expect(attempts.failure()).toBeNull()
   })
 })

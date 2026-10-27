@@ -43,10 +43,18 @@ pub fn oauth_listen(state: tauri::State<Callback>) -> Result<u16, String> {
   *state.answer.lock().unwrap() = Some(receive);
   let started = Arc::clone(&state.started);
   let this = started.fetch_add(1, Ordering::SeqCst) + 1;
+  log::info!("sign-in: listening on 127.0.0.1:{port}");
   std::thread::spawn(move || {
     let still_wanted = || started.load(Ordering::SeqCst) == this;
-    if let Some(query) = serve_once(&listener, Instant::now() + WAIT, still_wanted) {
-      let _ = send.send(query);
+    match serve_once(&listener, Instant::now() + WAIT, still_wanted) {
+      Some(query) => {
+        log::info!(
+          "sign-in: the browser came back on port {port} with {}",
+          describe(&query)
+        );
+        let _ = send.send(query);
+      }
+      None => log::info!("sign-in: stopped listening on port {port} (replaced, or timed out)"),
     }
   });
   Ok(port)
@@ -94,6 +102,16 @@ fn serve_once(
   None
 }
 
+/// What the browser brought back, for the log: Google's error, or "a code"
+/// (never the code itself).
+fn describe(query: &str) -> String {
+  query
+    .split('&')
+    .find_map(|p| p.strip_prefix("error="))
+    .map(|error| format!("error {error}"))
+    .unwrap_or_else(|| "a code".into())
+}
+
 /// The query string of a request line ("GET /?code=…&state=… HTTP/1.1")
 /// that carries Google's answer, a `code` or an `error`.
 fn answer_of(request_line: &str) -> Option<String> {
@@ -125,10 +143,12 @@ pub fn oauth_open(app: tauri::AppHandle, url: String) -> Result<(), String> {
   if !url.starts_with(AUTH_PREFIX) {
     return Err("Only Google's sign-in page can be opened.".into());
   }
-  app
-    .opener()
-    .open_url(url, None::<&str>)
-    .map_err(|e| e.to_string())
+  let opened = app.opener().open_url(url, None::<&str>);
+  match &opened {
+    Ok(()) => log::info!("sign-in: opened Google's page in the browser"),
+    Err(e) => log::warn!("sign-in: couldn't open the browser: {e}"),
+  }
+  opened.map_err(|e| e.to_string())
 }
 
 /// POST a form to Google's token or revoke endpoint. Returns the status and
@@ -158,10 +178,19 @@ pub async fn oauth_post(
       .body_mut()
       .read_to_string()
       .map_err(|e| e.to_string())?;
+    // The status, and Google's error name if any; never tokens.
+    let error = serde_json::from_str::<serde_json::Value>(&body)
+      .ok()
+      .and_then(|v| v.get("error").and_then(|e| e.as_str()).map(str::to_string));
+    log::info!(
+      "sign-in: Google's {endpoint} endpoint answered {status}{}",
+      error.map(|e| format!(", error {e}")).unwrap_or_default()
+    );
     Ok((status, body))
   })
   .await
   .map_err(|e| e.to_string())?
+  .inspect_err(|e: &String| log::warn!("sign-in: couldn't reach Google's endpoint: {e}"))
 }
 
 fn entry(key: &str) -> Result<keyring::Entry, String> {
@@ -179,7 +208,10 @@ pub fn secret_get(key: String) -> Result<Option<String>, String> {
 
 #[tauri::command]
 pub fn secret_set(key: String, value: String) -> Result<(), String> {
-  entry(&key)?.set_password(&value).map_err(|e| e.to_string())
+  entry(&key)?.set_password(&value).map_err(|e| {
+    log::warn!("sign-in: couldn't save to the keychain: {e}");
+    e.to_string()
+  })
 }
 
 #[tauri::command]
@@ -248,5 +280,14 @@ mod tests {
     assert_eq!(answer_of("GET /favicon.ico HTTP/1.1"), None);
     assert_eq!(answer_of("GET /?notcode=1 HTTP/1.1"), None);
     assert_eq!(answer_of(""), None);
+  }
+
+  #[test]
+  fn logs_googles_error_but_never_the_code() {
+    assert_eq!(super::describe("state=s&code=4%2F0Ab"), "a code");
+    assert_eq!(
+      super::describe("error=access_denied&state=s"),
+      "error access_denied"
+    );
   }
 }

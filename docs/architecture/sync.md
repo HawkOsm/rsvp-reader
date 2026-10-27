@@ -453,7 +453,11 @@ Where the code differs from the design above, and why.
   again starts a new attempt and abandons the earlier one: whatever it brings back later is
   ignored, and on the desktop its loopback listener stops and frees its port. If the newest
   attempt finishes after the 20 seconds (a password and a second step take time), it still
-  signs in. Signing out abandons every attempt still out. None of this touches the device's
+  signs in. Signing out abandons every attempt still out. Why the newest attempt failed is kept
+  (`SyncAuth.signInError`) and shown under "Google Drive" even when it fails after the 20
+  seconds, which a real sign-in usually takes. On the desktop, each step is logged to the
+  terminal running `tauri dev` (listening, browser back, Google's status and error name; never
+  a code or token). None of this touches the device's
   id: that is made once per install (`localSyncState`) and never changes on retries,
   disconnecting or reconnecting, so a device is registered on Drive once.
 - **Drive transport** (`sync/drive.ts`): `DriveTransport` implements `Transport` with plain

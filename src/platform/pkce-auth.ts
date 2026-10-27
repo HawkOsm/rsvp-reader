@@ -83,7 +83,10 @@ export function createPkceAuth({
     listeners.forEach((listener) => listener())
   }
 
-  const attempts = createSignInAttempts({ state: () => state, setState }, signInTimeoutMs)
+  const attempts = createSignInAttempts(
+    { state: () => state, setState, notify: () => listeners.forEach((listener) => listener()) },
+    signInTimeoutMs,
+  )
 
   // A refresh token kept from last time means still connected. Read only
   // once something subscribes (the sync store, with sync on): reading the
@@ -143,6 +146,7 @@ export function createPkceAuth({
 
   return {
     state: () => state,
+    signInError: () => attempts.failure(),
     subscribe(listener) {
       listeners.add(listener)
       void load()

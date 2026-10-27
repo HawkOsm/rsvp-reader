@@ -33,6 +33,9 @@ export interface SyncAuth {
   signIn(): Promise<void>
   /** Forget the token, and that the user ever connected. */
   signOut(): Promise<void>
+  /** Why the newest sign-in failed, even if it failed after `signIn` had
+   * stopped waiting; `null` otherwise. Subscribers hear when it changes. */
+  signInError(): string | null
 }
 
 export interface Platform {

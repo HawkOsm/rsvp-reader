@@ -93,7 +93,10 @@ export function createGoogleAuth({
     listeners.forEach((listener) => listener())
   }
 
-  const attempts = createSignInAttempts({ state: () => state, setState }, signInTimeoutMs)
+  const attempts = createSignInAttempts(
+    { state: () => state, setState, notify: () => listeners.forEach((listener) => listener()) },
+    signInTimeoutMs,
+  )
 
   /** The token is gone; the user has to sign in again to sync. */
   function lose() {
@@ -103,6 +106,7 @@ export function createGoogleAuth({
 
   return {
     state: () => state,
+    signInError: () => attempts.failure(),
     subscribe(listener) {
       listeners.add(listener)
       return () => void listeners.delete(listener)

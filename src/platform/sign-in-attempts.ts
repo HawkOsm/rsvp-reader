@@ -22,6 +22,8 @@ export class SignInTimeoutError extends Error {
 export interface SignInHost {
   state(): SyncAuthState
   setState(next: SyncAuthState): void
+  /** Something changed without the state changing: a failure came in. */
+  notify(): void
 }
 
 /** `flow` is one attempt. It must keep what it gets (a token, the signed-in
@@ -32,6 +34,15 @@ export function createSignInAttempts(host: SignInHost, timeoutMs = SIGN_IN_TIMEO
   let newest = 0
   /** Where the state goes back to: what it was before the first attempt. */
   let resting: SyncAuthState = 'signed-out'
+  /** Why the newest attempt failed, if it did. Kept apart from the caller's
+   * rejection, which nobody hears once the wait is up: a failure after
+   * that would otherwise be lost. */
+  let failure: string | null = null
+
+  function fail(error: unknown) {
+    failure = error instanceof Error ? error.message : String(error)
+    host.notify()
+  }
 
   /** Run an attempt. Settles as `flow` does, or rejects with
    * `SignInTimeoutError` after `timeoutMs` while `flow` carries on. Once
@@ -39,6 +50,7 @@ export function createSignInAttempts(host: SignInHost, timeoutMs = SIGN_IN_TIMEO
   function run(flow: SignInFlow): Promise<void> {
     const attempt = ++newest
     const isCurrent = () => attempt === newest
+    failure = null
     if (host.state() !== 'signing-in') resting = host.state()
     host.setState('signing-in')
     const giveBack = () => {
@@ -49,14 +61,18 @@ export function createSignInAttempts(host: SignInHost, timeoutMs = SIGN_IN_TIMEO
     // abandoned reports nothing: its caller has moved on.
     const outcome = flow(isCurrent).catch((error: unknown) => {
       giveBack()
-      if (isCurrent()) throw error
+      if (!isCurrent()) return
+      fail(error)
+      throw error
     })
     let timer: ReturnType<typeof setTimeout> | undefined
     const waited = new Promise<void>((resolve, reject) => {
       timer = setTimeout(() => {
         if (!isCurrent()) return resolve()
         giveBack()
-        reject(new SignInTimeoutError())
+        const error = new SignInTimeoutError()
+        fail(error)
+        reject(error)
       }, timeoutMs)
     })
     return Promise.race([outcome, waited]).finally(() => clearTimeout(timer))
@@ -64,6 +80,9 @@ export function createSignInAttempts(host: SignInHost, timeoutMs = SIGN_IN_TIMEO
 
   return {
     run,
+    /** Why the newest attempt failed: after the wait too, unlike `run`'s
+     * rejection. `null` while it is running, or once it signed in. */
+    failure: () => failure,
     /** Drop every attempt still out (on signing out): whatever they bring
      * back is ignored. */
     abandon() {

@@ -202,6 +202,10 @@ export const useSyncStore = create<SyncStore>((set, get) => {
           books = uploads
           const onAuth = () => {
             set({ auth: signIn.state() })
+            // A sign-in can fail after Connect stopped waiting (a slow
+            // sign-in, then Google refusing): say why, not "hasn't finished".
+            const failure = signIn.signInError()
+            if (failure) set({ connectError: failure })
             if (signIn.state() === 'signed-in') void local.now()
           }
           stops.push(signIn.subscribe(onAuth))
