@@ -114,4 +114,25 @@ describe('Google sign-in for sync', () => {
     await expect(auth.signIn()).rejects.toThrow(/client ID/)
     expect(loadGis).not.toHaveBeenCalled()
   })
+
+  it('gives the Connect button back when Google’s window never answers, and connects on a retry', async () => {
+    let answer: ((r: TokenResponse) => void) | null = null
+    const gis = fakeGis((cb) => void (answer = cb)).gis
+    const auth = createGoogleAuth({
+      clientId: 'id',
+      loadGis: async () => gis,
+      storage: null,
+      signInTimeoutMs: 20,
+    })
+    await expect(auth.signIn()).rejects.toThrow(/hasn’t finished/)
+    expect(auth.state()).toBe('signed-out')
+    const stale = answer!
+
+    const retry = auth.signIn()
+    stale({ access_token: 'old', expires_in: 3599 }) // the first window, late
+    expect(auth.state()).toBe('signing-in')
+    answer!({ access_token: 'tok', expires_in: 3599 })
+    await retry
+    expect(await auth.getToken()).toBe('tok')
+  })
 })

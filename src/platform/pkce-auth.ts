@@ -1,4 +1,5 @@
 import { DRIVE_SCOPE } from './google-auth'
+import { createSignInAttempts } from './sign-in-attempts'
 import type { SyncAuth, SyncAuthState } from './types'
 
 // Sign-in for sync in an installed app (docs/architecture/sync.md, section
@@ -37,6 +38,8 @@ export interface PkceAuthOptions {
   native: PkceNative
   now?: () => number
   randomBytes?: (count: number) => Uint8Array
+  /** How long Connect waits before giving the button back. */
+  signInTimeoutMs?: number
 }
 
 const base64Url = (bytes: Uint8Array) =>
@@ -67,6 +70,7 @@ export function createPkceAuth({
   native,
   now = Date.now,
   randomBytes = (count) => crypto.getRandomValues(new Uint8Array(count)),
+  signInTimeoutMs,
 }: PkceAuthOptions): SyncAuth {
   const listeners = new Set<() => void>()
   let state: SyncAuthState = 'signed-out'
@@ -78,6 +82,8 @@ export function createPkceAuth({
     state = next
     listeners.forEach((listener) => listener())
   }
+
+  const attempts = createSignInAttempts({ state: () => state, setState }, signInTimeoutMs)
 
   // A refresh token kept from last time means still connected. Read only
   // once something subscribes (the sync store, with sync on): reading the
@@ -159,9 +165,7 @@ export function createPkceAuth({
       if (!clientId) {
         throw new Error('This build has no Google client ID, so it can’t connect to Drive.')
       }
-      const before = state
-      setState('signing-in')
-      try {
+      return attempts.run(async (isCurrent) => {
         const { verifier, challenge } = await pkcePair(randomBytes)
         const expected = base64Url(randomBytes(16))
         const { port, callback } = await native.listen()
@@ -182,6 +186,8 @@ export function createPkceAuth({
         await native.openBrowser(url.toString())
 
         const query = new URLSearchParams(await callback())
+        // Connect was pressed again since: this answer is for nobody.
+        if (!isCurrent()) return
         if (query.get('state') !== expected)
           throw new Error('Sign-in came back for another request.')
         const error = query.get('error')
@@ -199,6 +205,7 @@ export function createPkceAuth({
         if (!body.scope?.split(' ').includes(DRIVE_SCOPE)) {
           throw new Error('Google Drive access wasn’t allowed, so there is nowhere to sync to.')
         }
+        if (!isCurrent()) return
         keep(body)
         if (body.refresh_token) {
           refresh = body.refresh_token
@@ -206,13 +213,11 @@ export function createPkceAuth({
           await native.secrets.set(REFRESH_KEY, refresh).catch(() => {})
         }
         setState('signed-in')
-      } catch (err) {
-        setState(before === 'signing-in' ? 'signed-out' : before)
-        throw err
-      }
+      })
     },
 
     async signOut() {
+      attempts.abandon()
       const token = refresh ?? access?.value
       access = null
       refresh = null

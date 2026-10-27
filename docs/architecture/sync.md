@@ -447,6 +447,15 @@ Where the code differs from the design above, and why.
   gives up and sync waits in `needs-reconnect`. Desktop and Android have `syncAuth: null` until
   phase 5. The client ID is `GOOGLE_CLIENT_ID` in `platform/web.ts` (`VITE_GOOGLE_CLIENT_ID`
   overrides it for local testing).
+- **Pressing Connect** (`platform/sign-in-attempts.ts`, used by the web and the desktop sign-in
+  alike). An attempt that hasn't finished after 20 seconds gives the button back with a message,
+  so a sign-in window that never reports back can't leave it stuck on "Connecting…". Pressing
+  again starts a new attempt and abandons the earlier one: whatever it brings back later is
+  ignored, and on the desktop its loopback listener stops and frees its port. If the newest
+  attempt finishes after the 20 seconds (a password and a second step take time), it still
+  signs in. Signing out abandons every attempt still out. None of this touches the device's
+  id: that is made once per install (`localSyncState`) and never changes on retries,
+  disconnecting or reconnecting, so a device is registered on Drive once.
 - **Drive transport** (`sync/drive.ts`): `DriveTransport` implements `Transport` with plain
   `fetch` against Drive v3 in `appDataFolder`; no Google library. Drive names files by id, so
   ids are learned from `list` (ordered by creation time, so if two devices ever made the same

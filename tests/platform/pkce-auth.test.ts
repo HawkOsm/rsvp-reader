@@ -142,4 +142,28 @@ describe('desktop sign-in (PKCE, loopback)', () => {
     expect(fake.posts.at(-1)).toEqual({ endpoint: 'revoke', form: { token: 'r1' } })
     expect(await auth.getToken()).toBeNull()
   })
+
+  it('a retried sign-in drops the first browser answer without using its code', async () => {
+    const answers: ((query: string) => void)[] = []
+    const fake = fakeNative()
+    fake.native.listen = async () => ({
+      port: 4321,
+      callback: () => new Promise<string>((resolve) => answers.push(resolve)),
+    })
+    const auth = createPkceAuth({ clientId: 'desk', native: fake.native, signInTimeoutMs: 20 })
+    await expect(auth.signIn()).rejects.toThrow(/hasn’t finished/)
+    expect(auth.state()).toBe('signed-out')
+
+    const retry = auth.signIn()
+    await settle()
+    const state = (n: number) => fake.opened()!.searchParams.get('state') ?? String(n)
+    answers[0]!(`code=stale&state=${state(0)}`) // the first tab comes back
+    await settle()
+    expect(fake.posts).toEqual([])
+    answers[1]!(`code=c2&state=${state(1)}`)
+    await retry
+    expect(fake.posts).toHaveLength(1)
+    expect(fake.posts[0]!.form.code).toBe('c2')
+    expect(auth.state()).toBe('signed-in')
+  })
 })
