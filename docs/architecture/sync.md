@@ -404,6 +404,11 @@ Assumptions made while recording these (correct me if wrong):
 1. How drawings anchor in reflowed (non-PDF) text (section 9).
 2. Web/PWA token renewal UX, given no refresh token in the browser.
 3. Whether book-file sync should be Wi-Fi-only by default on Android.
+4. A code sign-in on the desktop (Google's device flow: show a code, enter it at
+   google.com/device), as a sure route when a browser extension blocks the loopback sign-in.
+   Google allows it for `drive.appdata`. It needs a "TVs and Limited Input devices" client,
+   whose secret is handled like the desktop one, and the keychain would have to remember which
+   client a refresh token belongs to. Deferred (2026-10-27): the copy-link fallback covers it.
 
 ## 18. As built
 
