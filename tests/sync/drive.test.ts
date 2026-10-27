@@ -4,6 +4,7 @@ import { addBook, getProgress, saveProgress, saveTokens } from '@/storage/librar
 import { getDb, type RsvpDatabase } from '@/storage/schema'
 import { getSetting, setSetting } from '@/storage/settings'
 import { syncIdOf } from '@/storage/sync-id'
+import { localSyncState } from '@/storage/sync-log'
 import { syncOnce } from '@/sync/coordinator'
 import {
   backoffDelay,
@@ -168,6 +169,27 @@ describe('two devices syncing through Drive', () => {
     await saveTokens(db, book.id as number, TOKENS, 'f')
     return book.id as number
   }
+
+  it('registers a device once, however often it connects, fails and reconnects', async () => {
+    const onA = await importBook(a)
+    const { device } = await localSyncState(a)
+    // A first attempt that fails partway (offline), then one that works.
+    drive.failNext(0, 4)
+    await expect(syncOnce(a, transport())).rejects.toThrow(OfflineError)
+    await syncOnce(a, transport())
+    // Disconnect and connect again: a new transport, nothing remembered.
+    await saveProgress(a, onA, { wordIndex: 2, wpm: 300, mode: 'rsvp' })
+    await syncOnce(a, transport())
+    await syncOnce(a, transport())
+
+    expect((await localSyncState(a)).device).toBe(device)
+    expect(await a.syncState.count()).toBe(1)
+    const deviceFiles = drive.files.filter((f) => f.name.startsWith('device-'))
+    expect(deviceFiles.map((f) => f.name)).toEqual([`device-${device}.json`])
+    const logs = drive.files.filter((f) => f.name.startsWith('log-')).map((f) => f.name)
+    expect(new Set(logs).size).toBe(logs.length)
+    expect(logs.every((name) => name.startsWith(`log-${device}-`))).toBe(true)
+  })
 
   it('converge on progress and settings', async () => {
     const onA = await importBook(a)
