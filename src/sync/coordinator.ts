@@ -2,6 +2,7 @@ import { compareHlc, receive, type Hlc } from '@/core/sync/hlc'
 import type { DeviceInfo } from '@/core/sync/run'
 import { keyOf, newerRegisters, type Register, type SyncOp } from '@/core/sync/merge'
 import { bookTables, deleteBookRows } from '@/storage/library'
+import { refoldNote } from '@/storage/notes'
 import { SHELF_COLORS, type RsvpDatabase, type ShelfColor } from '@/storage/schema'
 import { localSyncState, syncTables } from '@/storage/sync-log'
 import { compact, needsSnapshot, readSnapshot } from './compaction'
@@ -238,7 +239,7 @@ async function merge(
 }
 
 /** Apply what is already known about a book that has only now arrived here
- * (downloaded from Drive): the shelves it is on, and its bookmarks. */
+ * (downloaded from Drive): the shelves it is on, its bookmarks and notes. */
 export async function applyBookRegisters(db: RsvpDatabase, syncId: string): Promise<void> {
   const tables = [...syncTables(db), ...bookTables(db), db.settings]
   await db.transaction('rw', tables, async () => {
@@ -247,7 +248,8 @@ export async function applyBookRegisters(db: RsvpDatabase, syncId: string): Prom
       const { change } = register
       const about =
         (change.kind === 'shelf' && change.value?.books.includes(syncId)) ||
-        (change.kind === 'bookmark' && change.book === syncId)
+        (change.kind === 'bookmark' && change.book === syncId) ||
+        (change.kind === 'note' && change.value.book === syncId)
       if (about) await applyToLibrary(db, register, marks)
     }
   })
@@ -321,6 +323,9 @@ async function applyToLibrary(
       here.set(change.wordIndex, added)
       return 'library'
     }
+    case 'note':
+      await refoldNote(db, change.note)
+      return 'library'
     case 'progress':
     case 'device':
       return null

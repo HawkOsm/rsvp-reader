@@ -62,7 +62,7 @@ describe('foldNote', () => {
     expect(foldNote([made, edit('d', 'A', 2, 'e1', null)])).toBeNull()
 
     const note = foldNote([made, edit('d', 'A', 2, 'e1', null), edit('x', 'B', 3, 'e1', 'kept')])
-    expect(note).toMatchObject({ shown: { body: 'kept' }, deleteLost: true, conflicts: [] })
+    expect(note).toMatchObject({ shown: { body: 'kept' }, lostDeletes: ['d'], conflicts: [] })
     // Deleting it again, from the version that won, deletes it.
     expect(
       foldNote([
@@ -88,7 +88,7 @@ describe('foldNote', () => {
     expect(foldNote(edits)).toMatchObject({
       shown: { edit: 'c' },
       conflicts: [],
-      deleteLost: true,
+      lostDeletes: ['d'],
     })
   })
 

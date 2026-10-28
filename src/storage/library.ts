@@ -86,6 +86,7 @@ export const bookTables = (db: RsvpDatabase) => [
   db.covers,
   db.bookmarks,
   db.shelves,
+  db.notes,
 ]
 
 /** Delete a book's rows, recording nothing: for a removal that came from
@@ -97,6 +98,8 @@ export async function deleteBookRows(db: RsvpDatabase, bookId: number): Promise<
   await db.files.delete(bookId)
   await db.covers.delete(bookId)
   await db.bookmarks.where('bookId').equals(bookId).delete()
+  // The rows only: a note's edits stay, and come back with the book.
+  await db.notes.where('bookId').equals(bookId).delete()
   // A later book can take this id, and must not inherit its shelves or bookmarks.
   await db.shelves.toCollection().modify((shelf) => {
     shelf.bookIds = shelf.bookIds.filter((id) => id !== bookId)

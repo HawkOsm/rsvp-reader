@@ -15,6 +15,7 @@ account.
 | `covers`        | `bookId`                  | the library grid's cover image; not backed up, it comes back from the file               |
 | `shelves`       | `id`, indexed by `syncId` | `ShelfRecord`: a name, a colour token, the ids of the books on it, and a random sync id  |
 | `bookmarks`     | `id`, indexed by `bookId` | `BookmarkRecord`: a word index and the few words from it                                 |
+| `notes`         | `id`, `noteId`, `bookId`  | `NoteRecord`: a note as shown, the fold of its edits (kept in `syncRegisters`)           |
 | `syncRegisters` | `key`                     | the newest known version of each synced value; `pending` until sent                      |
 | `syncState`     | `id`                      | one row: this device's id, clock, next sequence number, cursors                          |
 
@@ -53,7 +54,7 @@ list (empty for books imported before it: they are not parsed again to find thei
 adds the sync tables and indexes `books.syncId`. v9 has no upgrade: hashing can't run inside an
 IndexedDB transaction, so `ensureSyncIds` (`src/sync/identity.ts`) fills in older books' ids when
 sync runs. **v10** gives every shelf a random `syncId` (the same shelf's id on every device) and
-indexes it.
+indexes it. **v11** adds the `notes` table.
 
 Rules for changing the schema:
 

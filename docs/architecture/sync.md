@@ -610,5 +610,24 @@ Where the code differs from the design above, and why.
   clients, so it needs a native sign-in plugin and an Android OAuth client with the release
   keystore's SHA-1.
 
-Not built: notes, and sign-in on Android. Book files have no per-book "don't sync
+### Phase 7 (text notes; there are no drawings)
+
+- **A note is its edits** (`core/sync/notes.ts`, `storage/notes.ts`). Every add, edit,
+  delete or settled conflict is a new edit, synced as its own register
+  (`note:<noteId>:<editId>`), never replaced, and naming the edit it was made from (`base`),
+  plus any others it settles (`resolves`). This is section 5's `baseVersion`, by edit id rather
+  than a counter. The note is the fold of its edits: the edits nothing was made from are its
+  "heads". One head is the note; two non-deleted heads are a conflict, both kept, the newer
+  shown; a delete head beside a living one lost (section 7: the edit wins) and is shown as a
+  notice until the next edit made here, which settles it. The fold is the same on every
+  device whatever order the edits came in (tested over every order). Edits name their book by
+  sync id; a book from before sync is given one when its first note is made (`giveSyncId`, moved
+  out of `sync/identity.ts` for this).
+- **The `notes` table** (schema v11) holds each note as shown, refolded whenever an edit is made
+  here or arrives. A note on a book that isn't here has edits but no row until the book is
+  downloaded (`applyBookRegisters` refolds its notes). Removing a book removes its rows only.
+- Deletes never expire from snapshots (a note edit is never a `null` register), so a note
+  deleted long ago can't come back from a device that was away.
+
+Not built: sign-in on Android; notes have no screen yet. Book files have no per-book "don't sync
 this" switch, and no Wi-Fi-only option (Android, phase 5).

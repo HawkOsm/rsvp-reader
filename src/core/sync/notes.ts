@@ -61,9 +61,10 @@ export interface FoldedNote {
   /** Versions made alongside it, from the same one, newest first: a
    * conflict for the reader to settle. Empty almost always. */
   conflicts: NoteVersion[]
-  /** A delete came in for a version that another device then edited: the
-   * edit won and the note is still here, which the reader should be told. */
-  deleteLost: boolean
+  /** Deletes that lost to an edit made alongside them: the note is still
+   * here, which the reader should be told. The next edit made here settles
+   * them. Empty almost always. */
+  lostDeletes: string[]
   /** When the note was first made. */
   createdAt: number
 }
@@ -94,7 +95,7 @@ export function foldNote(edits: readonly NoteEditRecord[]): FoldedNote | null {
     anchor: newest!.value.anchor,
     shown: version(newest!),
     conflicts: others.map(version),
-    deleteLost: heads.length > living.length,
+    lostDeletes: heads.filter((e) => e.value.body === null).map((e) => e.edit),
     createdAt: first.value.at,
   }
 }
