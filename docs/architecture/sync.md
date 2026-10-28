@@ -401,7 +401,8 @@ Assumptions made while recording these (correct me if wrong):
 
 ## 17. Still open
 
-1. How drawings anchor in reflowed (non-PDF) text (section 9).
+1. ~~How drawings anchor in reflowed (non-PDF) text (section 9).~~ Settled: there are no
+   drawings, only text notes (decisions.md, 2026-10-28).
 2. Web/PWA token renewal UX, given no refresh token in the browser.
 3. Whether book-file sync should be Wi-Fi-only by default on Android.
 4. A code sign-in on the desktop (Google's device flow: show a code, enter it at

@@ -1234,3 +1234,14 @@ Android build made on a machine with the secret set contained it too (found by s
 `dist/` after a local build). Now it is `GOOGLE_DESKTOP_CLIENT_SECRET`, which Vite never exposes
 by itself, and `vite.config.ts` defines it only when `TAURI_ENV_PLATFORM` is set, which Tauri
 does for the builds it runs.
+
+## 2026-10-28: notes are text only; no drawings
+
+Phase 7 of sync.md planned notes and freehand drawings. The owner chose text notes only, with no
+drawings, on any book. This settles sync.md's open question of how a drawing would anchor in
+reflowed text (it won't), drops strokes from the data model, and leaves the Markdown export
+without images. Text notes are built first and behind a `notes` flag.
+
+Each note edit is its own immutable record pointing at the version it was made from, not a
+"newest wins" value: two devices editing the same note both keep their text, and the reader is
+shown both (sync.md section 7). A delete that races an edit loses to the edit.
