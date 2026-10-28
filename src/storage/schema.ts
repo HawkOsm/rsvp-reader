@@ -125,6 +125,8 @@ export type ShelfColor = (typeof SHELF_COLORS)[number]
  * so a book on no shelf costs nothing and a book row never changes. */
 export interface ShelfRecord {
   id?: number
+  /** The same shelf's id on every device: random, made with the shelf. */
+  syncId: string
   name: string
   color: ShelfColor
   bookIds: number[]
@@ -292,6 +294,19 @@ export class RsvpDatabase extends Dexie {
       syncRegisters: 'key, pending',
       syncState: 'id',
     })
+
+    // Shelves sync, so each gets an id that is the same on every device.
+    // Books on them are matched by `syncId` when a shelf is sent.
+    this.version(10)
+      .stores({ shelves: '++id, syncId' })
+      .upgrade((tx) =>
+        tx
+          .table<ShelfRecord, number>('shelves')
+          .toCollection()
+          .modify((shelf) => {
+            shelf.syncId ??= crypto.randomUUID()
+          }),
+      )
   }
 }
 

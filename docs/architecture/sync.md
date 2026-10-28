@@ -1,16 +1,22 @@
 # Sync design (draft)
 
-Status: phase 1 (section 15) is built and tested: identity, clock, merge, the change log, an
-in-memory transport and the sync run. Nothing calls it yet: there is no Drive transport, no auth
-and no UI, so the app still makes no network calls. Scope: cross-device sync of reading state and
-a new notes/drawing feature, using the user's own Google Drive as the only shared storage.
+Status: phases 1-3 (section 15) are built for the web, behind the `sync` flag (Settings →
+Advanced → Experimental): identity, clock, merge, the change log, sign-in with Google, the Drive
+transport, sync while the app is open, position offers, Settings → Sync and the sync log.
+Progress, settings, shelves, bookmarks and book removals sync; book files don't yet. With the
+flag off, or until the user connects, the app makes no network calls. Scope: cross-device sync
+of reading state and a new notes/drawing feature, using the user's own Google Drive as the only
+shared storage.
 
 **Where the code is:** `core/sync/hlc.ts` (clock), `core/sync/merge.ts` (changes and the merge
-rule), `storage/sync-log.ts` (recording local changes), `storage/sync-id.ts` (book identity),
-`sync/coordinator.ts` (`syncOnce`), `sync/identity.ts` (filling in older books), `sync/offers.ts`
-(other devices' positions, offered, never applied), `sync/transport.ts` (`Transport`,
-`MemoryTransport`). See "As built" at the end of this page for where phase 1 differs from the
-design below.
+rule), `core/sync/run.ts` (a run as the log keeps it), `storage/sync-log.ts` (recording local
+changes), `storage/sync-id.ts` (book identity), `sync/coordinator.ts` (`syncOnce`),
+`sync/identity.ts` (filling in older books), `sync/offers.ts` (other devices' positions, offered,
+never applied), `sync/transport.ts` (`Transport`, `MemoryTransport`), `sync/drive.ts`
+(`DriveTransport`), `sync/runner.ts` and `sync/status.ts` (when runs happen, what they came to),
+`platform/google-auth.ts` (sign-in on the web), `stores/sync-store.ts` (running it in the app),
+`lib/sync-runs.ts` (the sync log). See "As built" at the end of this page for where the code
+differs from the design below.
 
 ## 1. Goals and non-goals
 
@@ -399,9 +405,11 @@ Assumptions made while recording these (correct me if wrong):
 2. Web/PWA token renewal UX, given no refresh token in the browser.
 3. Whether book-file sync should be Wi-Fi-only by default on Android.
 
-## 18. As built (phase 1)
+## 18. As built
 
-Where the code differs from the design above, and why:
+Where the code differs from the design above, and why.
+
+### Phase 1
 
 - **Registers, not an op outbox.** Progress, settings and books are all "newest wins" values, so
   each is a register (`syncRegisters`): the newest known version, marked `pending` until sent.
@@ -427,7 +435,77 @@ Where the code differs from the design above, and why:
 - **A book added on another device** is recorded but not shown: its file doesn't sync until
   phase 4. A removal does propagate.
 
-Not built: Drive transport and auth (phase 2), the sync log view, book files, device list,
-purge and snapshots (`Transport` has no `delete` until purge needs it), notes. Phase 2 also has
-to amend invariant 1 in ARCHITECTURE.md ("no network at runtime") to allow the opt-in Drive
-calls.
+### Phase 2 (web only, behind the `sync` flag)
+
+- **Auth** is `Platform.syncAuth` (`platform/types.ts`): `getToken`, `renewToken`, `signIn`,
+  `signOut`, and a `state` the UI subscribes to (`signed-out`, `signing-in`, `signed-in`,
+  `needs-reconnect`). The web one (`platform/google-auth.ts`) uses Google Identity Services'
+  token flow with the `drive.appdata` scope. Google's script is added to the page when the user
+  presses Connect, never before. The token lives in memory only; what is remembered (in
+  localStorage) is that the user connected, so a reopened app shows "Reconnect". The browser
+  flow has no refresh token and a new token needs a click, so `renewToken` on the web always
+  gives up and sync waits in `needs-reconnect`. Desktop and Android have `syncAuth: null` until
+  phase 5. The client ID is `GOOGLE_CLIENT_ID` in `platform/web.ts` (`VITE_GOOGLE_CLIENT_ID`
+  overrides it for local testing).
+- **Drive transport** (`sync/drive.ts`): `DriveTransport` implements `Transport` with plain
+  `fetch` against Drive v3 in `appDataFolder`; no Google library. Drive names files by id, so
+  ids are learned from `list` (ordered by creation time, so if two devices ever made the same
+  name, every device uses the older file). 429, 5xx, Drive's rate-limit 403s and a lost
+  connection are retried with full-jitter exponential backoff, six tries in all. A 401 asks
+  auth for a new token once, then throws `NeedsReconnectError`; `storageQuotaExceeded` throws
+  `DriveFullError`; no answer at all throws `OfflineError`. Any of these leaves unsent changes
+  pending, since a register is only marked sent after its log file is written. Tested against
+  an in-memory fake of the Drive API (`tests/sync/fake-drive.ts`), never the real one.
+- **Shelves and bookmarks sync** (new `Change` kinds in `core/sync/merge.ts`). A shelf is one
+  register, `shelf:<shelf syncId>`, so the newest version wins whole (name, colour, books); its
+  books are listed by book `syncId`. Each shelf has a random `syncId` from schema v10. A book on
+  the shelf on another device but not on this one stays in the list when this device changes
+  the shelf, and is left off the shelf here until it exists here. Bookmarks are a set:
+  `bookmark:<book syncId>:<word index>`, and a removal is a tombstone. Both are recorded in the
+  same transaction as the local write (`storage/shelves.ts`, `storage/bookmarks.ts`), and what
+  existed before is seeded by `ensureSyncIds` with its `createdAt`. Known gaps: two devices that
+  each made a "Favourites" shelf before syncing end up with two; a book added after a shelf
+  arrived (or a bookmark for it) isn't put on the shelf until the shelf next changes; a book
+  with no `syncId` yet can't be named on a shelf. There is no UI to delete a shelf yet, so
+  shelf tombstones are only applied, never made. `SyncResult.libraryChanged` says the library
+  should be read again.
+- **Running sync** (`stores/sync-store.ts`, started by `app/hooks/useSync.ts` only with the
+  `sync` flag on). Runs when the app opens, when the user connects, when it comes back online
+  or to the front, every five minutes while in front, and five quiet seconds after a pause in
+  reading or leaving the reader (`useAutosaveProgress`); not "after a batch of local changes"
+  as such. `sync/runner.ts` keeps it to one run at a time: anything asked for during a run gets
+  one more run after it. A run needs a signed-in token; without one nothing is sent and no
+  request is made. Each run is added to the sync log; a failure goes to the error log too,
+  unless it is offline or needs-reconnect, which sync just waits out. Before the PWA applies an
+  update, the Reload button waits for one last run, at most ten seconds (decision 4). A run that
+  brings changes in bumps `revision`, which the library and the reader watch, and reloads the
+  settings if a synced setting changed.
+- **Device names.** Each `device-<id>.json` now has a `name` from the browser's user agent
+  ("Firefox on Linux"), and a run reads the other devices' files to list them in the sync log.
+- **Settings → Sync** (`features/settings/components/SyncSection.tsx`, only with the flag on):
+  Connect / Reconnect / Disconnect, where sync stands (off, connecting, syncing, synced at a
+  time, needs reconnect, offline, Drive full, failed; `sync-text.ts`), Sync now, and a plain
+  statement of what goes to Drive and that Google can read it (section 12). Disconnecting
+  forgets the token, the sync log and that the user connected; the data already on Drive and
+  in the local registers stays. On a phone, Settings now also links to the Experimental flags,
+  which it had no way to reach before.
+- **Sync log** (phase 3, `features/settings/components/SyncLog.tsx`; below the Sync card on a
+  wide screen, its own page on a phone): the last 50 runs (time, outcome, sent, received,
+  skewed, error), this device's id, the other devices seen and when, and Copy log. Kept in
+  localStorage by `lib/sync-runs.ts`, like the error log. Token state is the Sync card's status
+  line; the log doesn't repeat it.
+- **Position offers** (`features/reader/components/PositionOffer.tsx`): a bar under the
+  reader's header, "Chrome on Android is 3 pages further on. Jump there?", in pages for a paged
+  book and words for a reflowed one (`offer-text.ts`). It is looked for when the book opens and
+  after every run that brought changes in. Jump there moves the reader and saves the place
+  without recording a change; the × (Stay here) saves this device's place again, which makes
+  it the newer one everywhere. The reader never moves on its own.
+- **An idle device sends nothing, enforced at the save.** The reader saves the place when a
+  book opens, on pause and when it closes, so a device that opened a book and left without
+  reading used to record its old place as a newer change than another device's, and send it.
+  `saveProgress` now records a change only when the place, speed or mode actually moved from
+  what this device last saved (a book never saved counts as word 0). Declining an offer uses
+  `keepProgress`, which records the place even though it didn't move.
+
+Not built: book files, device list, purge and snapshots (`Transport` has no `delete` until purge
+needs it), notes, and sign-in on desktop and Android.

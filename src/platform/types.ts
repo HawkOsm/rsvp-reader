@@ -10,6 +10,31 @@ export interface ScreenLock {
   release(): void
 }
 
+/** Where sync's sign-in stands (docs/architecture/sync.md, section 3).
+ * `needs-reconnect`: the user connected before, but there is no good token
+ * now (it expired, was refused, or the app was reopened), and getting one
+ * needs them to press Reconnect. Reading carries on either way. */
+export type SyncAuthState = 'signed-out' | 'signing-in' | 'signed-in' | 'needs-reconnect'
+
+/** Access to the user's Google Drive for sync. The sync engine only ever
+ * sees a token; how one is got depends on the shell. */
+export interface SyncAuth {
+  state(): SyncAuthState
+  /** Call `listener` whenever the state changes. Returns a function that
+   * stops calling it. */
+  subscribe(listener: () => void): () => void
+  /** A token that is still good, or `null`. Never asks the user. */
+  getToken(): Promise<string | null>
+  /** The last token was refused (a 401). A new one, if it can be had without
+   * asking the user; otherwise `null`, and the state is `needs-reconnect`. */
+  renewToken(): Promise<string | null>
+  /** Ask the user to sign in. Call it from a click: it opens Google's window.
+   * Rejects with a message to show if they don't finish. */
+  signIn(): Promise<void>
+  /** Forget the token, and that the user ever connected. */
+  signOut(): Promise<void>
+}
+
 export interface Platform {
   readonly kind: PlatformKind
 
@@ -39,4 +64,7 @@ export interface Platform {
   /** Keep the screen from dimming while reading. `null` if the device
    * refuses or cannot; losing it is an inconvenience, not an error. */
   keepScreenOn(): Promise<ScreenLock | null>
+
+  /** Sign-in for sync, or `null` where this shell can't sign in yet. */
+  readonly syncAuth: SyncAuth | null
 }

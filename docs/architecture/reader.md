@@ -16,6 +16,8 @@ ReaderScreen
      ├─ BookmarkButton           marks the current word (the library lists the marks)
      ├─ ReaderMenu               on a phone, the "⋯" holding the mode switch, Contents, page
      │                               view and bookmark, which the header has no room for
+     ├─ PositionOffer            with sync on: another device's newer place, offered under
+     │                               the header ("Jump there?"); never applied unasked
      ├─ ContentsPanel            a book with chapters: jump to one, current marked; beside
      │                               the page in book mode on a wide screen, over it otherwise
      ├─ TransportBar / BookControls   play, seek, WPM / page turn, scale, spread; chapter

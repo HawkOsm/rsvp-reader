@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,6 +7,7 @@ import { addBook, getProgress, saveProgress } from '@/storage/library'
 import { getDb } from '@/storage/schema'
 import { LibraryScreen } from '@/features/library/components/LibraryScreen'
 import { useAppStore } from '@/stores/app-store'
+import { useSyncStore } from '@/stores/sync-store'
 import { TEXT_BOOK } from '../../storage/fixtures'
 
 async function clearDb() {
@@ -62,6 +63,14 @@ describe('LibraryScreen', () => {
   it('shows an empty state with no books', async () => {
     renderLibrary()
     expect(await screen.findByText(/No books yet/i)).toBeInTheDocument()
+  })
+
+  it('reads the library again when sync brings a change in', async () => {
+    renderLibrary()
+    expect(await screen.findByText(/No books yet/i)).toBeInTheDocument()
+    await addBook(getDb(), { title: 'Arrived', source: 'local', fingerprint: 'a', ...TEXT_BOOK })
+    act(() => useSyncStore.setState((s) => ({ revision: s.revision + 1 })))
+    expect(await findRow('Arrived')).toBeInTheDocument()
   })
 
   it('lists a book with its title and progress', async () => {

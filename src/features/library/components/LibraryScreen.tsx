@@ -50,6 +50,7 @@ import { PhoneTabBar } from '@/components/PhoneTabBar'
 import { logError } from '@/lib/error-log'
 import { useMediaQuery, WIDE } from '@/lib/media'
 import { useAppStore, type LibraryView } from '@/stores/app-store'
+import { useSyncStore } from '@/stores/sync-store'
 
 const VIEWS: { value: LibraryView; label: string; icon: 'grid' | 'list' }[] = [
   { value: 'grid', label: 'Grid view', icon: 'grid' },
@@ -115,9 +116,11 @@ export function LibraryScreen() {
       .catch((err) => logError('storage usage', err))
   }, [])
 
+  // Again whenever sync brings a change in: a shelf, a bookmark, a removal.
+  const syncRevision = useSyncStore((s) => s.revision)
   useEffect(() => {
     void refresh()
-  }, [refresh])
+  }, [refresh, syncRevision])
 
   // Leaving the screen ends an import: OCR can run for minutes, and the
   // reader should not be pulled into a book they walked away from.

@@ -24,6 +24,8 @@ export const tauriPlatform: Platform = {
   ...webPlatform,
   kind: 'desktop',
   selfUpdates: false, // a new version is a new installer
+  // Google blocks sign-in in a webview: phase 5 signs in through the system browser.
+  syncAuth: null,
   takeLaunchFile,
   setChromeColor: () => {}, // the window frame is the system's
 }

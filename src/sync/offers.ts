@@ -1,4 +1,5 @@
 import type { SyncedProgress } from '@/core/sync/merge'
+import { keepProgress, type SaveProgressInput } from '@/storage/library'
 import type { RsvpDatabase } from '@/storage/schema'
 import { localSyncState } from '@/storage/sync-log'
 
@@ -41,3 +42,11 @@ export async function progressOffers(db: RsvpDatabase): Promise<ProgressOffer[]>
 export async function acceptProgressOffer(db: RsvpDatabase, offer: ProgressOffer): Promise<void> {
   await db.progress.put({ bookId: offer.bookId, ...offer.progress, updatedAt: Date.now() })
 }
+
+/** Stay where this device is: its place becomes the newest, here and on
+ * every device that syncs next. */
+export const declineProgressOffer = (
+  db: RsvpDatabase,
+  offer: ProgressOffer,
+  here: SaveProgressInput,
+) => keepProgress(db, offer.bookId, here)

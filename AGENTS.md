@@ -8,7 +8,7 @@ Instructions for AI coding agents working in this repository. Humans: see
 RSVP Reader: a client-only, offline speed-reading app (React 19 + Vite + TypeScript strict,
 Dexie, zustand, MuPDF WASM, Tesseract). One web build is shipped as a PWA, a Tauri desktop app
 and a Capacitor Android app. **There is no server, and there must never be a network call at
-runtime.**
+runtime**, except the opt-in Google Drive sync the user turns on (`docs/architecture/sync.md`).
 
 Read [ARCHITECTURE.md](ARCHITECTURE.md) and
 [docs/architecture/principles.md](docs/architecture/principles.md) before structural changes. The subsystem docs are in

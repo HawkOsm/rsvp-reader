@@ -13,6 +13,7 @@ import { resolvePage } from '@/core/page-spec'
 import type { BookRecord } from '@/features/reader/api/book'
 import { PageOverlay } from './PageOverlay'
 import { PagePanel } from './PagePanel'
+import { PositionOffer } from './PositionOffer'
 import { ReaderHints } from './ReaderHints'
 import { RsvpCanvas } from './RsvpCanvas'
 import { TransportBar } from './TransportBar'
@@ -200,6 +201,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
           )}
         </div>
       </header>
+      <PositionOffer bookId={bookId} layout={layout} />
 
       <div ref={areaRef} className="relative flex min-h-0 flex-1">
         {mode === 'rsvp' && (

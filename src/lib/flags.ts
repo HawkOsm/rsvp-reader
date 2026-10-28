@@ -12,7 +12,9 @@ export interface FlagInfo {
 }
 
 /** Every flag that exists. Add one here before writing the code it guards. */
-export const FLAGS = {} as const satisfies Record<string, FlagInfo>
+export const FLAGS = {
+  sync: { description: 'Sync with Google Drive' },
+} as const satisfies Record<string, FlagInfo>
 
 export type Flag = keyof typeof FLAGS
 

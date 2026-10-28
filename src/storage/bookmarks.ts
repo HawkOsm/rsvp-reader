@@ -1,4 +1,5 @@
 import type { BookmarkRecord, RsvpDatabase } from './schema'
+import { recordChange, syncTables } from './sync-log'
 
 /** Every bookmark in the library, newest first. */
 export async function listBookmarks(db: RsvpDatabase): Promise<BookmarkRecord[]> {
@@ -19,13 +20,33 @@ export async function addBookmark(
   wordIndex: number,
   excerpt: string,
 ): Promise<BookmarkRecord> {
-  const existing = (await bookmarksOf(db, bookId)).find((m) => m.wordIndex === wordIndex)
-  if (existing) return existing
-  const mark: BookmarkRecord = { bookId, wordIndex, excerpt, createdAt: Date.now() }
-  const id = await db.bookmarks.add(mark)
-  return { ...mark, id }
+  return db.transaction('rw', [db.bookmarks, db.books, ...syncTables(db)], async () => {
+    const existing = (await bookmarksOf(db, bookId)).find((m) => m.wordIndex === wordIndex)
+    if (existing) return existing
+    const mark: BookmarkRecord = { bookId, wordIndex, excerpt, createdAt: Date.now() }
+    const id = await db.bookmarks.add(mark)
+    await recordBookmark(db, mark, { excerpt, createdAt: mark.createdAt })
+    return { ...mark, id }
+  })
 }
 
 export async function removeBookmark(db: RsvpDatabase, bookmarkId: number): Promise<void> {
-  await db.bookmarks.delete(bookmarkId)
+  await db.transaction('rw', [db.bookmarks, db.books, ...syncTables(db)], async () => {
+    const mark = await db.bookmarks.get(bookmarkId)
+    await db.bookmarks.delete(bookmarkId)
+    if (mark) await recordBookmark(db, mark, null)
+  })
+}
+
+/** A book with no sync id yet has its bookmarks sent once it gets one
+ * (`ensureSyncIds`). */
+async function recordBookmark(
+  db: RsvpDatabase,
+  { bookId, wordIndex }: BookmarkRecord,
+  value: { excerpt: string; createdAt: number } | null,
+) {
+  const book = await db.books.get(bookId)
+  if (book?.syncId) {
+    await recordChange(db, { kind: 'bookmark', book: book.syncId, wordIndex, value })
+  }
 }
