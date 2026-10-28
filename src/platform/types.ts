@@ -72,6 +72,13 @@ export interface Platform {
    * refuses or cannot; losing it is an inconvenience, not an error. */
   keepScreenOn(): Promise<ScreenLock | null>
 
+  /** Whether `saveTextFile` can save here. Where it can't, offer a copy. */
+  readonly savesFiles: boolean
+
+  /** Save text as a file the user keeps (an export). Resolves once handed
+   * over; does nothing where `savesFiles` is false. */
+  saveTextFile(name: string, text: string, type: string): Promise<void>
+
   /** Sign-in for sync, or `null` where this shell can't sign in yet. */
   readonly syncAuth: SyncAuth | null
 }

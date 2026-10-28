@@ -38,4 +38,17 @@ describe('the web platform', () => {
       '#fafafa',
     )
   })
+
+  it('saves text as a browser download', async () => {
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const created = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:notes')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    expect(webPlatform.savesFiles).toBe(true)
+    await webPlatform.saveTextFile('Book - notes.md', '# Notes', 'text/markdown')
+    const link = click.mock.instances[0] as unknown as HTMLAnchorElement
+    expect(link.download).toBe('Book - notes.md')
+    expect(link.href).toBe('blob:notes')
+    expect(await (created.mock.calls[0]![0] as Blob).text()).toBe('# Notes')
+    vi.restoreAllMocks()
+  })
 })

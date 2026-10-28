@@ -18,6 +18,9 @@ ReaderScreen
      │                               view and bookmark, which the header has no room for
      ├─ PositionOffer            with sync on: another device's newer place, offered under
      │                               the header ("Jump there?"); never applied unasked
+     ├─ NotesPanel               with the notes flag on: add a note on the word being read,
+     │                               list, jump, edit, delete, settle a conflict, export
+     │                               (copy as Markdown; save as .md where `savesFiles`)
      ├─ ContentsPanel            a book with chapters: jump to one, current marked; beside
      │                               the page in book mode on a wide screen, over it otherwise
      ├─ TransportBar / BookControls   play, seek, WPM / page turn, scale, spread; chapter

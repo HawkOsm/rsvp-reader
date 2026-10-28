@@ -24,6 +24,9 @@ export const capacitorPlatform: Platform = {
   ...webPlatform,
   kind: 'android',
   selfUpdates: false, // a new version is a new APK
+  // A webview ignores download links; saving would need the Filesystem plugin.
+  savesFiles: false,
+  saveTextFile: async () => {},
   // Google blocks sign-in in a webview: phase 5 signs in through the system browser.
   syncAuth: null,
   onBackButton,

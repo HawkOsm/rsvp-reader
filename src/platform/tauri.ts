@@ -52,6 +52,9 @@ export const tauriPlatform: Platform = {
   ...webPlatform,
   kind: 'desktop',
   selfUpdates: false, // a new version is a new installer
+  // A webview ignores download links; a save dialog would need the dialog plugin.
+  savesFiles: false,
+  saveTextFile: async () => {},
   // Google blocks sign-in inside a webview, so this goes through the system
   // browser (src/platform/pkce-auth.ts).
   syncAuth: createPkceAuth({

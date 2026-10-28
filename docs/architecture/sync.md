@@ -628,6 +628,15 @@ Where the code differs from the design above, and why.
   downloaded (`applyBookRegisters` refolds its notes). Removing a book removes its rows only.
 - Deletes never expire from snapshots (a note edit is never a `null` register), so a note
   deleted long ago can't come back from a device that was away.
+- **In the reader** (`features/reader/components/NotesPanel.tsx`, behind the `notes` flag): a
+  note is added on the word being read, quoting the next twelve words (and its PDF page). A
+  conflict shows every version with its time: keep one, keep all as separate notes, or merge by
+  hand. A lost delete shows "deleted on another device while it was being edited, so it was
+  kept", with Delete it / Keep it.
+- **Markdown export** (`notes-markdown.ts`, section 9): the place (page, or word and percent),
+  the passage as a quote, the note, and every version of an unsettled conflict. Copy as
+  Markdown everywhere; Save as .md where the platform can save a file (`Platform.savesFiles`:
+  the web only for now; desktop would need Tauri's dialog plugin).
 
-Not built: sign-in on Android; notes have no screen yet. Book files have no per-book "don't sync
+Not built: sign-in on Android. Book files have no per-book "don't sync
 this" switch, and no Wi-Fi-only option (Android, phase 5).

@@ -40,6 +40,17 @@ function browserStorage(): Storage | null {
  * testing. */
 const GOOGLE_CLIENT_ID = '78238404718-b5e9n4fqr0j398r9ikojujijdu3bchqt.apps.googleusercontent.com'
 
+/** A browser download of `text`, named `name`. */
+async function downloadText(name: string, text: string, type: string): Promise<void> {
+  const url = URL.createObjectURL(new Blob([text], { type }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = name
+  link.click()
+  // The download has its own copy; the URL can go once the click is handled.
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
 export const webPlatform: Platform = {
   kind: 'web',
   selfUpdates: true,
@@ -49,6 +60,8 @@ export const webPlatform: Platform = {
   setChromeColor: (background) => setThemeColorMeta(background),
   ready: () => {},
   keepScreenOn: requestWakeLock,
+  savesFiles: true,
+  saveTextFile: downloadText,
   // A build without a client ID still shows Connect, and says why it can't.
   syncAuth: createGoogleAuth({
     clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID,
