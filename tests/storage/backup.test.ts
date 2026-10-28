@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { addBook, saveProgress } from '@/storage/library'
 import { setSetting } from '@/storage/settings'
-import { exportBackup, importBackup } from '@/storage/backup'
+import { exportBackup, importBackup, type Backup } from '@/storage/backup'
+import { addNote, editNote, notesOf } from '@/storage/notes'
 import { getDb, type RsvpDatabase } from '@/storage/schema'
 import { TEXT_BOOK } from './fixtures'
 
@@ -96,5 +97,30 @@ describe('backup', () => {
     })
 
     expect(await db.covers.get(bookId)).toBeUndefined()
+  })
+
+  it('carries notes, as their edits, and rebuilds them on restore', async () => {
+    const book = await addBook(db, {
+      title: 'T',
+      source: 'local',
+      fingerprint: 'f1',
+      syncId: 's1',
+      ...TEXT_BOOK,
+    })
+    const noteId = await addNote(db, book.id as number, { wordIndex: 4, quote: 'q' }, 'first')
+    await editNote(db, noteId, 'second')
+    const backup = JSON.parse(JSON.stringify(await exportBackup(db))) as Backup
+    expect(backup.noteEdits).toHaveLength(2)
+
+    const fresh = getDb(`restore-${Math.random().toString(36).slice(2)}`)
+    await importBackup(fresh, backup)
+    expect(await notesOf(fresh, book.id as number)).toMatchObject([
+      { noteId, shown: { body: 'second' }, anchor: { wordIndex: 4 } },
+    ])
+    expect(await fresh.syncRegisters.where('pending').equals(1).count()).toBe(2)
+    // Restoring the same backup again changes nothing.
+    await importBackup(fresh, backup)
+    expect(await fresh.syncRegisters.count()).toBe(2)
+    expect(await fresh.notes.count()).toBe(1)
   })
 })

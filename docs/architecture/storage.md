@@ -72,6 +72,6 @@ Rules for changing the schema:
 
 - `backup.ts` (`exportBackup` / `importBackup`) is implemented and tested but **not wired into
   the UI**.
-- Backups leave out shelves and bookmarks.
+- Backups leave out shelves and bookmarks. They include notes, as their edits (`noteEdits`), which a restore puts back and refolds.
 - `BookSource` still lists `'gutendex'`, even though Gutendex import has been removed. Kept so
   old rows still type-check.
