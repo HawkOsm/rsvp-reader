@@ -4,6 +4,8 @@
 #   rsvp-reader-windows-x86_64-setup.exe
 #   rsvp-reader-macos-universal.dmg
 #   rsvp-reader.apk
+#   install.sh                            (Linux: installs this release's AppImage)
+#   SHA256SUMS                            (checksums of all of the above)
 # The Actions token has been refused permission to *create* a release
 # (see docs/architecture/decisions.md's v0.2 log), so the publish job uploads into a draft
 # you created yourself if it can't create one.
@@ -26,10 +28,23 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           path: out
           merge-multiple: true
+
+      # The installer installs exactly this release, so it gets this tag
+      # written in; then every download is checksummed, which it checks.
+      - name: Add install.sh and SHA256SUMS
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          sed "s/@VERSION@/$TAG/" scripts/install.sh > out/install.sh
+          grep -q "^VERSION=\"$TAG\"\$" out/install.sh
+          (cd out && sha256sum $(ls | grep -v '^SHA256SUMS$') > SHA256SUMS)
+          cat out/SHA256SUMS
 
       - name: Attach to a draft release
         env:
