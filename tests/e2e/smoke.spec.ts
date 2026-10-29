@@ -1,5 +1,13 @@
 import { expect, test } from '@playwright/test'
-import { PDF, PDF_TITLE, TEXT, addBook, collectErrors, wordNumber } from './helpers.ts'
+import {
+  PDF,
+  PDF_TITLE,
+  TEXT,
+  addBook,
+  collectErrors,
+  savedWordIndexes,
+  wordNumber,
+} from './helpers.ts'
 
 // The two-minute smoke test from CONTRIBUTING.md.
 
@@ -40,6 +48,8 @@ test('a PDF imports, reads in both modes, and resumes after a reload', async ({ 
   await page.keyboard.press('Space')
   await page.keyboard.press('Space')
   const saved = await wordNumber(page)
+  // The save is a write the reload would cut short: wait for it to land.
+  await expect.poll(() => savedWordIndexes(page)).toContain(saved - 1)
   await page.reload()
   await expect.poll(() => wordNumber(page), { timeout: 15_000 }).toBe(saved)
 

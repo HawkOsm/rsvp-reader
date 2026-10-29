@@ -7,6 +7,7 @@ import { addBook, removeBook, resetProgress, saveProgress, saveTokens } from '@/
 import { getDb, type RsvpDatabase } from '@/storage/schema'
 import { addBookmark, removeBookmark } from '@/storage/bookmarks'
 import { setSetting } from '@/storage/settings'
+import { localSyncState } from '@/storage/sync-log'
 import { createShelf, setOnShelf } from '@/storage/shelves'
 import { syncIdOf } from '@/storage/sync-id'
 import { TEXT_BOOK } from './fixtures'
@@ -30,6 +31,14 @@ async function syncedBook() {
   await saveTokens(db, book.id as number, [makeToken('a')], 'f')
   return book.id as number
 }
+
+describe('localSyncState', () => {
+  it('makes one state when asked twice at once on a new device', async () => {
+    const [first, second] = await Promise.all([localSyncState(db), localSyncState(db)])
+    expect(second.device).toBe(first.device)
+    expect(await db.syncState.count()).toBe(1)
+  })
+})
 
 describe('recording local changes', () => {
   it('records a synced book once its words are saved', async () => {

@@ -401,9 +401,15 @@ Assumptions made while recording these (correct me if wrong):
 
 ## 17. Still open
 
-1. How drawings anchor in reflowed (non-PDF) text (section 9).
+1. ~~How drawings anchor in reflowed (non-PDF) text (section 9).~~ Settled: there are no
+   drawings, only text notes (decisions.md, 2026-10-28).
 2. Web/PWA token renewal UX, given no refresh token in the browser.
 3. Whether book-file sync should be Wi-Fi-only by default on Android.
+4. A code sign-in on the desktop (Google's device flow: show a code, enter it at
+   google.com/device), as a sure route when a browser extension blocks the loopback sign-in.
+   Google allows it for `drive.appdata`. It needs a "TVs and Limited Input devices" client,
+   whose secret is handled like the desktop one, and the keychain would have to remember which
+   client a refresh token belongs to. Deferred (2026-10-27): the copy-link fallback covers it.
 
 ## 18. As built
 
@@ -447,6 +453,26 @@ Where the code differs from the design above, and why.
   gives up and sync waits in `needs-reconnect`. Desktop and Android have `syncAuth: null` until
   phase 5. The client ID is `GOOGLE_CLIENT_ID` in `platform/web.ts` (`VITE_GOOGLE_CLIENT_ID`
   overrides it for local testing).
+- **Pressing Connect** (`platform/sign-in-attempts.ts`, used by the web and the desktop sign-in
+  alike). An attempt that hasn't finished after 20 seconds gives the button back with a message,
+  so a sign-in window that never reports back can't leave it stuck on "Connecting…". Pressing
+  again starts a new attempt and abandons the earlier one: whatever it brings back later is
+  ignored, and on the desktop its loopback listener stops and frees its port. If the newest
+  attempt finishes after the 20 seconds (a password and a second step take time), it still
+  signs in. Signing out abandons every attempt still out. Why the newest attempt failed is kept
+  (`SyncAuth.signInError`) and shown under "Google Drive" even when it fails after the 20
+  seconds, which a real sign-in usually takes. On the desktop, each step is logged to the
+  terminal running `tauri dev` (listening, browser back, Google's status and error name; never
+  a code or token).
+- **When the browser gets in the way.** A privacy extension (ClearURLs was the case found) can
+  stop Google's sign-in from ever returning to the app, with Google showing only "Something went
+  wrong". The app can't detect or fix another program's extensions, so, as other desktop apps
+  do, Settings offers the sign-in under way as a link (`SyncAuth.signInLink`, desktop only) with
+  "Copy sign-in link", to finish in a private window or another browser: it returns to the same
+  loopback address, which listens for five minutes. On the web, Google's window is opened by its
+  script, so there is no link to give. None of this touches the device's
+  id: that is made once per install (`localSyncState`) and never changes on retries,
+  disconnecting or reconnecting, so a device is registered on Drive once.
 - **Drive transport** (`sync/drive.ts`): `DriveTransport` implements `Transport` with plain
   `fetch` against Drive v3 in `appDataFolder`; no Google library. Drive names files by id, so
   ids are learned from `list` (ordered by creation time, so if two devices ever made the same
@@ -507,5 +533,110 @@ Where the code differs from the design above, and why.
   what this device last saved (a book never saved counts as word 0). Declining an offer uses
   `keepProgress`, which records the place even though it didn't move.
 
-Not built: book files, device list, purge and snapshots (`Transport` has no `delete` until purge
-needs it), notes, and sign-in on desktop and Android.
+### Phase 6
+
+- **Snapshots** (`sync/compaction.ts`, file names in `sync/files.ts`). After a push, a device
+  that knows of `SNAPSHOT_EVERY` (1,000) or more changes beyond the newest snapshot writes
+  `snapshot-<wall>-<count>-<device>-<total>.json`: every register it holds that has been sent,
+  and `covers`, the highest sequence number included from each device. `total` is the sum of
+  `covers`, in the name so that "how much has happened since" needs no download. Deletions
+  older than the retention window (90 days) are left out. Each device deletes its own older
+  snapshots once a newer one exists.
+- **Purge.** A device deletes only its own log files (single writer), never its newest one
+  (the next push carries on its numbering), and only once the newest snapshot covers the file
+  and either every active device has read it (`cursors` in their `device-*.json`) or its last
+  change is older than 90 days. Active means seen within 30 days and not removed since.
+- **Full resync.** A device whose cursor points into a log file that was purged
+  (`needsSnapshot`) reads the newest snapshot first, merging its registers as if they were
+  changes, then reads the logs on from `covers`. Its own unsent changes are registers, so the
+  newer of the two versions wins as usual.
+- **Removing a device** (a Remove button beside each device in the sync log, which also marks
+  one not seen for 30 days "dormant") is a synced register, `device:<id>`. A removed device is left out of
+  the device list and doesn't hold back purging. If it syncs again after the removal, it is
+  back, since nothing stops it writing its own files.
+- **Format version 2.** A version 1 device (phase 2) would miss whatever is purged, so a
+  version 2 device raises `meta.json` to 2, and version 1 then stops and asks for an update.
+- Applying thousands of changes at once (a new device reading a snapshot) was found to take
+  minutes for bookmarks, which re-read every bookmark of their book each time. Each book's are
+  now read once per run.
+
+### Phase 4
+
+- **What a book is on Drive** (`sync/book-files.ts`). Not the original file alone: an EPUB or
+  text book keeps no file here, only its words. So each book is `book-<syncId>.json.gz`, its
+  record (title, author, format, layout, page size, chapters, fingerprint) and its words,
+  gzipped with the browser's own `CompressionStream`; and for a paged book also
+  `bookfile-<syncId>`, the original file its pages are drawn from. A downloaded book is
+  therefore never parsed or recognised again (invariant 2). Both files are named by the sync
+  id, a hash of the content, so any device that has the book may write them; this is the one
+  exception to "one writer per file", and harmless since they come out the same. The package is
+  written after the file, so a device that sees the package can count on the file.
+- **Download on demand.** `remoteBooks` lists books recorded by another device and not here,
+  and whether their files are up yet; `downloadBook` adds one, then applies the shelf and
+  bookmark registers that mention it (`applyBookRegisters`), which closes the phase 2 gap of a
+  book arriving after its shelf. Its place stays an offer, as for any other device's.
+- **Removing a book** deletes its files from Drive (`deleteRemovedBooks`). Any device may: a
+  removal propagates everywhere, and a device that adds the book again uploads it again.
+- **In the app** (`stores/sync-store.ts`). After each successful run a second runner, so a
+  big upload never holds up syncing a reading position, deletes removed books' files, uploads
+  this device's books that aren't on Drive yet (one at a time, oldest first, with "Uploading
+  books: 1 of 3 done" in Settings), lists other devices' books, and reads Drive's usage.
+  Settings → Sync → Book files switches uploading off for this device (decision 9: on by
+  default); downloading still works. The library shows other devices' books under "On your
+  other devices", with Download, which opens the book once it is here.
+- `Transport` now reads and writes bytes (`readBlob`, `write` of a `Blob`) and reports `usage`:
+  the app folder's size and the user's free Drive space.
+
+### Phase 5 (desktop so far)
+
+- **Desktop sign-in** (`platform/pkce-auth.ts`, native half in `src-tauri/src/oauth.rs`).
+  OAuth 2.0 with PKCE (S256) in the system browser, back to `http://127.0.0.1:<free port>`,
+  as Google's guide for desktop apps asks; custom URI schemes and copy-and-paste codes are no
+  longer allowed. `access_type=offline` gets a refresh token, kept in the OS keychain
+  (`keyring` crate: Keychain on macOS, Credential Manager on Windows, Secret Service on Linux),
+  so the app stays connected across restarts and `renewToken` really renews, without asking.
+  If Google refuses the refresh token (revoked, or expired after 7 days in Testing mode), it
+  is forgotten and sync waits in `needs-reconnect`. The keychain is first read when the sync
+  store subscribes, so with sync off nothing asks to unlock it. Each Rust command does one
+  fixed thing: listen once, open only Google's sign-in page, POST only to Google's token and
+  revoke endpoints, and read or write only this app's keychain entry; none takes a URL.
+- **The Desktop client's secret is not in the repository.** `vite.config.ts` builds it in
+  from `GOOGLE_DESKTOP_CLIENT_SECRET` (`.env.local`, git-ignored, for local builds; the Actions
+  secret of that name for release builds), and only when Tauri is building, so the web and
+  Android builds never contain it. It still ends up inside the
+  installed app, which Google accepts for desktop clients; see decisions.md. The client ID is
+  `DESKTOP_CLIENT_ID` in `platform/tauri.ts`.
+- Android is not built yet: Google no longer allows custom-scheme redirects for new Android
+  clients, so it needs a native sign-in plugin and an Android OAuth client with the release
+  keystore's SHA-1.
+
+### Phase 7 (text notes; there are no drawings)
+
+- **A note is its edits** (`core/sync/notes.ts`, `storage/notes.ts`). Every add, edit,
+  delete or settled conflict is a new edit, synced as its own register
+  (`note:<noteId>:<editId>`), never replaced, and naming the edit it was made from (`base`),
+  plus any others it settles (`resolves`). This is section 5's `baseVersion`, by edit id rather
+  than a counter. The note is the fold of its edits: the edits nothing was made from are its
+  "heads". One head is the note; two non-deleted heads are a conflict, both kept, the newer
+  shown; a delete head beside a living one lost (section 7: the edit wins) and is shown as a
+  notice until the next edit made here, which settles it. The fold is the same on every
+  device whatever order the edits came in (tested over every order). Edits name their book by
+  sync id; a book from before sync is given one when its first note is made (`giveSyncId`, moved
+  out of `sync/identity.ts` for this).
+- **The `notes` table** (schema v11) holds each note as shown, refolded whenever an edit is made
+  here or arrives. A note on a book that isn't here has edits but no row until the book is
+  downloaded (`applyBookRegisters` refolds its notes). Removing a book removes its rows only.
+- Deletes never expire from snapshots (a note edit is never a `null` register), so a note
+  deleted long ago can't come back from a device that was away.
+- **In the reader** (`features/reader/components/NotesPanel.tsx`, behind the `notes` flag): a
+  note is added on the word being read, quoting the next twelve words (and its PDF page). A
+  conflict shows every version with its time: keep one, keep all as separate notes, or merge by
+  hand. A lost delete shows "deleted on another device while it was being edited, so it was
+  kept", with Delete it / Keep it.
+- **Markdown export** (`notes-markdown.ts`, section 9): the place (page, or word and percent),
+  the passage as a quote, the note, and every version of an unsettled conflict. Copy as
+  Markdown everywhere; Save as .md where the platform can save a file (`Platform.savesFiles`:
+  the web only for now; desktop would need Tauri's dialog plugin).
+
+Not built: sign-in on Android. Book files have no per-book "don't sync
+this" switch, and no Wi-Fi-only option (Android, phase 5).

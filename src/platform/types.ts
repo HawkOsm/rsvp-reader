@@ -33,6 +33,13 @@ export interface SyncAuth {
   signIn(): Promise<void>
   /** Forget the token, and that the user ever connected. */
   signOut(): Promise<void>
+  /** Why the newest sign-in failed, even if it failed after `signIn` had
+   * stopped waiting; `null` otherwise. Subscribers hear when it changes. */
+  signInError(): string | null
+  /** The address of the sign-in under way, where the shell opened one in the
+   * browser (desktop), for the user to open somewhere else if their browser
+   * gets in the way (a privacy extension). `null` otherwise. */
+  signInLink(): string | null
 }
 
 export interface Platform {
@@ -64,6 +71,13 @@ export interface Platform {
   /** Keep the screen from dimming while reading. `null` if the device
    * refuses or cannot; losing it is an inconvenience, not an error. */
   keepScreenOn(): Promise<ScreenLock | null>
+
+  /** Whether `saveTextFile` can save here. Where it can't, offer a copy. */
+  readonly savesFiles: boolean
+
+  /** Save text as a file the user keeps (an export). Resolves once handed
+   * over; does nothing where `savesFiles` is false. */
+  saveTextFile(name: string, text: string, type: string): Promise<void>
 
   /** Sign-in for sync, or `null` where this shell can't sign in yet. */
   readonly syncAuth: SyncAuth | null

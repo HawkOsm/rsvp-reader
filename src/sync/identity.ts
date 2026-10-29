@@ -1,8 +1,6 @@
-import { getTokens } from '@/storage/library'
 import { shelfChange } from '@/storage/shelves'
-import { loadFile } from '@/storage/files'
 import type { RsvpDatabase } from '@/storage/schema'
-import { syncIdOf } from '@/storage/sync-id'
+import { giveSyncId } from '@/storage/sync-id'
 import { localSyncState, seedChange, SYNCED_SETTINGS, syncTables } from '@/storage/sync-log'
 
 /** Give every book that lacks one its sync id, and queue for sending what
@@ -12,25 +10,7 @@ import { localSyncState, seedChange, SYNCED_SETTINGS, syncTables } from '@/stora
  * device's settings win over this one's on first sync. */
 export async function ensureSyncIds(db: RsvpDatabase): Promise<void> {
   for (const book of await db.books.filter((b) => !b.syncId).toArray()) {
-    const bookId = book.id as number
-    const syncId = await syncIdOf(book.layout, {
-      file: (await loadFile(db, bookId))?.blob,
-      tokens: await getTokens(db, bookId),
-    })
-    // A restored or half-imported book has nothing to hash yet; it gets its
-    // id when it is next imported.
-    if (!syncId) continue
-    await db.transaction('rw', [db.books, db.progress, ...syncTables(db)], async () => {
-      await db.books.update(bookId, { syncId })
-      const value = { title: book.title, formatId: book.formatId, totalWords: book.totalWords }
-      await seedChange(db, { kind: 'book', book: syncId, value }, book.addedAt)
-      const progress = await db.progress.get(bookId)
-      if (progress) {
-        const { wordIndex, wpm, mode } = progress
-        const change = { kind: 'progress', book: syncId, value: { wordIndex, wpm, mode } } as const
-        await seedChange(db, change, progress.updatedAt)
-      }
-    })
+    await giveSyncId(db, book)
   }
 
   // Shelves and bookmarks made before they were recorded. Checked every run,

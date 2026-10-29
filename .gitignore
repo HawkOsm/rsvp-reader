@@ -25,6 +25,10 @@ assets/icon.icns
 node_modules/
 dist-ssr/
 *.local
+
+# OAuth client files downloaded from the Google Cloud console hold a client
+# secret. Never commit one (docs/architecture/decisions.md).
+client_secret*.json
 *.tsbuildinfo
 
 # Tauri

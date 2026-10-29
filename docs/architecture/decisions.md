@@ -1201,3 +1201,47 @@ it opt-in. Everything else (reading, OCR, import) stays offline.
 
 **Rejected:** a server of our own, or any third-party service besides Google Drive (sync.md
 decision 10).
+
+## 2026-10-26: the desktop OAuth client's secret is built into the app
+
+Desktop sign-in for sync uses a Google OAuth client of type "Desktop app", with PKCE and a
+loopback redirect. Google's token endpoint expects that client's secret, and Google's own
+documentation says an installed app's secret "is obviously not treated as a secret": anyone
+can read it out of the app. So, with the owner's agreement, it is committed in
+`src/platform/tauri.ts` beside the client ID, as the web client's ID already is. The rule that
+no secret is committed still holds for everything else (API keys, service accounts, signing
+keys). PKCE is what protects a sign-in, not the secret.
+
+**Rejected:** putting it in CI only and injecting it at build time. It would end up in the
+installer just the same, while making local builds unable to sign in.
+
+## 2026-10-26: the desktop client secret stays out of the repository after all
+
+Revises the entry above, the same day and before it was pushed: the owner asked that the
+desktop client's secret never reach GitHub. It is now read at build time from
+`VITE_GOOGLE_DESKTOP_CLIENT_SECRET`, set in `.env.local` locally and from the
+`GOOGLE_DESKTOP_CLIENT_SECRET` Actions secret in release builds, and `.gitignore` refuses
+`client_secret*.json`, the file the Cloud console offers for download. The secret still ships
+inside the installed app, since the token endpoint needs it; that is unavoidable for a desktop
+client and accepted. A pull request's check builds without it, so its desktop build can't sign
+in, which a check never needs to.
+
+## 2026-10-27: only a Tauri build carries the desktop client secret
+
+The entry above read the secret as `VITE_GOOGLE_DESKTOP_CLIENT_SECRET`. Vite inlines every
+`VITE_` variable the code reads, and the desktop module is part of every build, so a web or
+Android build made on a machine with the secret set contained it too (found by searching
+`dist/` after a local build). Now it is `GOOGLE_DESKTOP_CLIENT_SECRET`, which Vite never exposes
+by itself, and `vite.config.ts` defines it only when `TAURI_ENV_PLATFORM` is set, which Tauri
+does for the builds it runs.
+
+## 2026-10-28: notes are text only; no drawings
+
+Phase 7 of sync.md planned notes and freehand drawings. The owner chose text notes only, with no
+drawings, on any book. This settles sync.md's open question of how a drawing would anchor in
+reflowed text (it won't), drops strokes from the data model, and leaves the Markdown export
+without images. Text notes are built first and behind a `notes` flag.
+
+Each note edit is its own immutable record pointing at the version it was made from, not a
+"newest wins" value: two devices editing the same note both keep their text, and the reader is
+shown both (sync.md section 7). A delete that races an edit loses to the edit.

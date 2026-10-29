@@ -5,17 +5,29 @@ import {
   addSyncRun,
   clearSyncLog,
   deviceName,
+  readSeenDevices,
   readSyncRuns,
   saveSeenDevices,
 } from '@/lib/sync-runs'
 import { getPlatform, type SyncAuth, type SyncAuthState } from '@/platform'
 import {
+  booksToUpload,
   createSyncRunner,
+  deleteRemovedBooks,
+  DORMANT_MS,
+  downloadBook,
   driveTransport,
   isExpected,
+  outcomeOf,
+  packageFile,
   phaseOf,
+  remoteBooks,
+  removeSyncDevice,
   runRecord,
   runSync,
+  uploadBook,
+  type RemoteBook,
+  type StoreUsage,
   type SyncPhase,
   type SyncRunner,
 } from './api/sync'
@@ -31,6 +43,7 @@ import { useAppStore } from './app-store'
 const EVERY_MS = 5 * 60_000
 /** How long a final sync before an update may hold the update up. */
 const FINAL_SYNC_MS = 10_000
+const BOOK_FILES_KEY = 'rsvp-reader:sync-book-files'
 
 interface SyncStore {
   /** `null` where this shell can't sign in, or before `start`. */
@@ -42,9 +55,21 @@ interface SyncStore {
   error: string | null
   /** Why the last sign-in didn't finish: a closed window, a blocked pop-up. */
   connectError: string | null
+  /** The address of the sign-in under way, to open elsewhere (desktop). */
+  signInLink: string | null
   /** Counts runs that brought changes in, so screens that show synced data
    * read it again when it changes. */
   revision: number
+  /** Upload this device's books to Drive (on unless switched off here). */
+  bookFiles: boolean
+  /** Books being uploaded: how many are done of how many. */
+  upload: { done: number; total: number } | null
+  /** Why uploading or tidying book files last failed. */
+  bookError: string | null
+  /** Books on other devices that aren't here. */
+  remoteBooks: RemoteBook[]
+  /** The app's space on Drive, as of the last upload check. */
+  usage: StoreUsage | null
 
   /** Start syncing; returns a function that stops. */
   start: () => () => void
@@ -56,13 +81,29 @@ interface SyncStore {
   syncSoon: () => void
   /** Sync before the app updates, if connected, for a few seconds at most. */
   finalSync: () => Promise<void>
+  /** Take another device off the list, on every device. */
+  removeDevice: (device: string) => Promise<void>
+  setBookFiles: (on: boolean) => void
+  /** Bring a book from Drive into the library; returns its id. */
+  downloadBook: (syncId: string) => Promise<number>
 }
 
 let auth: SyncAuth | null = null
 let runner: SyncRunner | null = null
+/** Book uploads: their own runner, so a big upload doesn't hold up syncing
+ * reading positions. */
+let books: SyncRunner | null = null
 let transport: ReturnType<typeof driveTransport> | null = null
 
 const lastSynced = () => readSyncRuns().findLast((run) => run.outcome === 'synced')?.at ?? null
+
+function bookFilesSetting(): boolean {
+  try {
+    return localStorage.getItem(BOOK_FILES_KEY) !== 'off'
+  } catch {
+    return true // storage refused: the default
+  }
+}
 
 export const useSyncStore = create<SyncStore>((set, get) => {
   /** One sync run. Never rejects: what went wrong goes to the sync log, and
@@ -99,6 +140,40 @@ export const useSyncStore = create<SyncStore>((set, get) => {
       error: run.error ?? null,
       revision: result && result.applied > 0 ? s.revision + 1 : s.revision,
     }))
+    if (result) void books?.now()
+  }
+
+  /** Tidy, upload and list book files. Never rejects, like `task`. */
+  async function booksTask() {
+    if (!auth || auth.state() !== 'signed-in' || !transport) return
+    const store = transport
+    try {
+      const names = new Set(await store.list())
+      await deleteRemovedBooks(store, names)
+      if (get().bookFiles) {
+        const todo = await booksToUpload(names)
+        for (const [done, book] of todo.entries()) {
+          set({ upload: { done, total: todo.length } })
+          await uploadBook(store, book)
+          names.add(packageFile(book.syncId as string))
+        }
+      }
+      set({
+        upload: null,
+        bookError: null,
+        remoteBooks: await remoteBooks(names),
+        usage: await store.usage(),
+      })
+    } catch (err) {
+      const outcome = outcomeOf(err)
+      // Offline or signed out: the next run tries again; not a fault.
+      if (!isExpected(outcome)) logError('sync: books', err)
+      set({
+        upload: null,
+        bookError: err instanceof Error ? err.message : String(err),
+        ...(outcome === 'drive-full' && { lastOutcome: outcome }),
+      })
+    }
   }
 
   return {
@@ -108,7 +183,13 @@ export const useSyncStore = create<SyncStore>((set, get) => {
     lastSyncedAt: lastSynced(),
     error: null,
     connectError: null,
+    signInLink: null,
     revision: 0,
+    bookFiles: bookFilesSetting(),
+    upload: null,
+    bookError: null,
+    remoteBooks: [],
+    usage: null,
 
     start() {
       let stopped = false
@@ -120,8 +201,14 @@ export const useSyncStore = create<SyncStore>((set, get) => {
           auth = signIn
           const local = createSyncRunner(task)
           runner = local
+          const uploads = createSyncRunner(booksTask)
+          books = uploads
           const onAuth = () => {
-            set({ auth: signIn.state() })
+            set({ auth: signIn.state(), signInLink: signIn.signInLink() })
+            // A sign-in can fail after Connect stopped waiting (a slow
+            // sign-in, then Google refusing): say why, not "hasn't finished".
+            const failure = signIn.signInError()
+            if (failure) set({ connectError: failure })
             if (signIn.state() === 'signed-in') void local.now()
           }
           stops.push(signIn.subscribe(onAuth))
@@ -139,6 +226,7 @@ export const useSyncStore = create<SyncStore>((set, get) => {
             window.removeEventListener('online', onOnline)
             clearInterval(every)
             local.stop()
+            uploads.stop()
           })
         })
         .catch((err: unknown) => logError('sync: start', err))
@@ -147,6 +235,7 @@ export const useSyncStore = create<SyncStore>((set, get) => {
         stops.forEach((stop) => stop())
         auth = null
         runner = null
+        books = null
         set({ auth: null })
       }
     },
@@ -167,11 +256,46 @@ export const useSyncStore = create<SyncStore>((set, get) => {
       await auth?.signOut()
       transport = null
       clearSyncLog()
-      set({ lastOutcome: null, lastSyncedAt: null, error: null, connectError: null })
+      set({
+        lastOutcome: null,
+        lastSyncedAt: null,
+        error: null,
+        connectError: null,
+        remoteBooks: [],
+        usage: null,
+        bookError: null,
+      })
     },
 
     syncNow: () => runner?.now() ?? Promise.resolve(),
     syncSoon: () => runner?.soon(),
+
+    async removeDevice(device) {
+      await removeSyncDevice(device)
+      saveSeenDevices(readSeenDevices().filter((d) => d.device !== device))
+      set((s) => ({ revision: s.revision + 1 }))
+      await runner?.now()
+    },
+
+    setBookFiles(on) {
+      try {
+        localStorage.setItem(BOOK_FILES_KEY, on ? 'on' : 'off')
+      } catch {
+        // Storage refused: the switch holds until the app is reopened.
+      }
+      set({ bookFiles: on })
+      if (on) void books?.now()
+    },
+
+    async downloadBook(syncId) {
+      if (!transport) throw new Error('Connect Google Drive to download books.')
+      const bookId = await downloadBook(transport, syncId)
+      set((s) => ({
+        revision: s.revision + 1,
+        remoteBooks: s.remoteBooks.filter((b) => b.syncId !== syncId),
+      }))
+      return bookId
+    },
 
     async finalSync() {
       if (!runner || get().auth !== 'signed-in') return
@@ -183,6 +307,7 @@ export const useSyncStore = create<SyncStore>((set, get) => {
   }
 })
 
+export { DORMANT_MS }
 export type { SyncPhase }
 
 /** Where sync stands, for Settings. */

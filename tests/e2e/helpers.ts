@@ -48,3 +48,23 @@ export async function wordNumber(page: Page): Promise<number> {
   if (!match) throw new Error(`no word number in "${text}"`)
   return Number(match[1]!.replace(/,/g, ''))
 }
+
+/** The word indexes saved in the reading positions, read straight from
+ * IndexedDB: to wait for a save to land before reloading, since a reload
+ * aborts a write still under way. */
+export async function savedWordIndexes(page: Page): Promise<number[]> {
+  // A string, run in the page: this file has no DOM types to check it against.
+  return page.evaluate<number[]>(`new Promise((resolve, reject) => {
+    const open = indexedDB.open('rsvp-reader')
+    open.onerror = () => reject(open.error)
+    open.onsuccess = () => {
+      const db = open.result
+      const all = db.transaction('progress').objectStore('progress').getAll()
+      all.onsuccess = () => {
+        resolve(all.result.map((p) => p.wordIndex))
+        db.close()
+      }
+      all.onerror = () => reject(all.error)
+    }
+  })`)
+}

@@ -122,7 +122,8 @@ Versions are kept in step in `package.json`, `src-tauri/tauri.conf.json` and
    create releases, so the workflow uploads into a draft that already exists.
 3. Push the version tag (a `v` prefix, for example `v0.3`). `.github/workflows/release.yml`
    builds the AppImage, the Windows installer, the macOS dmg and the APK, and attaches them to
-   the draft.
+   the draft, with `SHA256SUMS` and `install.sh` (`scripts/install.sh` with the tag written in:
+   it installs that release's AppImage for one user, after checking its checksum).
 4. Check the downloads, then publish the draft by hand.
 
 The builds themselves are defined once, in `build-apps.yml`. `release.yml` calls it on a tag, and

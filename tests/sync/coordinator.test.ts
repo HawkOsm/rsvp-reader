@@ -6,6 +6,7 @@ import { addBookmark, listBookmarks, removeBookmark } from '@/storage/bookmarks'
 import { getSetting, setSetting } from '@/storage/settings'
 import { createShelf, listShelves, setOnShelf } from '@/storage/shelves'
 import { syncIdOf } from '@/storage/sync-id'
+import { localSyncState } from '@/storage/sync-log'
 import { SyncFormatError, syncOnce } from '@/sync/coordinator'
 import { acceptProgressOffer, progressOffers } from '@/sync/offers'
 import { MemoryTransport } from '@/sync/transport'
@@ -291,6 +292,38 @@ describe('syncing shelves and bookmarks', () => {
     await syncOnce(b, store)
     expect(await visible(b)).toEqual(await visible(a))
     expect((await visible(b)).shelves).toHaveLength(1)
+  })
+
+  it('applies a thousand bookmarks at once without slowing to a crawl', async () => {
+    const onA = await importBook(a)
+    await importBook(b)
+    // What 1,200 calls to addBookmark leave, written in bulk.
+    const { device } = await localSyncState(a)
+    const syncId = (await a.books.get(onA))!.syncId!
+    const words = Array.from({ length: 1200 }, (_, i) => i)
+    await a.bookmarks.bulkAdd(
+      words.map((i) => ({ bookId: onA, wordIndex: i, excerpt: 'x', createdAt: 1 })),
+    )
+    await a.syncRegisters.bulkPut(
+      words.map((i) => ({
+        key: `bookmark:${syncId}:${i}`,
+        hlc: { wall: clock, count: i, device },
+        change: {
+          kind: 'bookmark' as const,
+          book: syncId,
+          wordIndex: i,
+          value: { excerpt: 'x', createdAt: 1 },
+        },
+        pending: 1 as const,
+      })),
+    )
+    await syncOnce(a, store)
+    // Each bookmark used to read all of its book's bookmarks again: this
+    // took two minutes.
+    const started = performance.now()
+    await syncOnce(b, store)
+    expect(performance.now() - started).toBeLessThan(5000)
+    expect(await listBookmarks(b)).toHaveLength(1200)
   })
 
   it('converges on progress, settings, shelves and bookmarks changed on both sides', async () => {

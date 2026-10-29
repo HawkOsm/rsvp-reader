@@ -4,6 +4,7 @@ import { addBook, getProgress, saveProgress, saveTokens } from '@/storage/librar
 import { getDb, type RsvpDatabase } from '@/storage/schema'
 import { getSetting, setSetting } from '@/storage/settings'
 import { syncIdOf } from '@/storage/sync-id'
+import { localSyncState } from '@/storage/sync-log'
 import { syncOnce } from '@/sync/coordinator'
 import {
   backoffDelay,
@@ -63,6 +64,34 @@ describe('DriveTransport', () => {
     expect(await store.read('a.json')).toBeNull()
     await store.write('a.json', 'again')
     expect(drive.byName('a.json')).toBe('again')
+  })
+
+  it('deletes a file, and a file already gone is no error', async () => {
+    const store = transport()
+    await store.write('a.json', 'a')
+    await store.write('b.json', 'b')
+    await store.delete('a.json')
+    expect(drive.files.map((f) => f.name)).toEqual(['b.json'])
+    await store.delete('a.json')
+    drive.files.length = 0 // gone from Drive behind this transport's back
+    await store.delete('b.json')
+    expect(await transport().list()).toEqual([])
+  })
+
+  it('stores bytes as they are, and says how much it holds and how much room is left', async () => {
+    const store = transport()
+    const bytes = new Uint8Array([0, 255, 1, 128, 10, 13])
+    await store.write('bookfile-x', new Blob([bytes]))
+    await store.write('bookfile-x', new Blob([bytes, bytes])) // replaced, not added
+    await store.write('meta.json', '{}')
+    const read = await transport().readBlob('bookfile-x')
+    expect(new Uint8Array(await read!.arrayBuffer())).toEqual(new Uint8Array([...bytes, ...bytes]))
+    expect(drive.files.map((f) => f.name)).toEqual(['bookfile-x', 'meta.json'])
+    expect(await store.readBlob('missing')).toBeNull()
+
+    expect(await store.usage()).toEqual({ used: 14, free: null })
+    drive.free = 1000
+    expect(await store.usage()).toEqual({ used: 14, free: 1000 })
   })
 
   it('backs off and retries on rate limits and server errors', async () => {
@@ -140,6 +169,27 @@ describe('two devices syncing through Drive', () => {
     await saveTokens(db, book.id as number, TOKENS, 'f')
     return book.id as number
   }
+
+  it('registers a device once, however often it connects, fails and reconnects', async () => {
+    const onA = await importBook(a)
+    const { device } = await localSyncState(a)
+    // A first attempt that fails partway (offline), then one that works.
+    drive.failNext(0, 4)
+    await expect(syncOnce(a, transport())).rejects.toThrow(OfflineError)
+    await syncOnce(a, transport())
+    // Disconnect and connect again: a new transport, nothing remembered.
+    await saveProgress(a, onA, { wordIndex: 2, wpm: 300, mode: 'rsvp' })
+    await syncOnce(a, transport())
+    await syncOnce(a, transport())
+
+    expect((await localSyncState(a)).device).toBe(device)
+    expect(await a.syncState.count()).toBe(1)
+    const deviceFiles = drive.files.filter((f) => f.name.startsWith('device-'))
+    expect(deviceFiles.map((f) => f.name)).toEqual([`device-${device}.json`])
+    const logs = drive.files.filter((f) => f.name.startsWith('log-')).map((f) => f.name)
+    expect(new Set(logs).size).toBe(logs.length)
+    expect(logs.every((name) => name.startsWith(`log-${device}-`))).toBe(true)
+  })
 
   it('converge on progress and settings', async () => {
     const onA = await importBook(a)

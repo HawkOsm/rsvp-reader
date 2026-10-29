@@ -10,6 +10,9 @@ const result: SyncResult = {
   settingsChanged: false,
   libraryChanged: false,
   devices: [],
+  fromSnapshot: false,
+  snapshotWritten: false,
+  purged: 0,
 }
 
 describe('sync status', () => {

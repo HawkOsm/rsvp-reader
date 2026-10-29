@@ -2,42 +2,37 @@ import { compareHlc, receive, type Hlc } from '@/core/sync/hlc'
 import type { DeviceInfo } from '@/core/sync/run'
 import { keyOf, newerRegisters, type Register, type SyncOp } from '@/core/sync/merge'
 import { bookTables, deleteBookRows } from '@/storage/library'
-import {
-  SHELF_COLORS,
-  type RsvpDatabase,
-  type ShelfColor,
-  type SyncStateRecord,
-} from '@/storage/schema'
+import { refoldNote } from '@/storage/notes'
+import { SHELF_COLORS, type RsvpDatabase, type ShelfColor } from '@/storage/schema'
 import { localSyncState, syncTables } from '@/storage/sync-log'
+import { compact, needsSnapshot, readSnapshot } from './compaction'
+import {
+  DEVICE_NAME,
+  deviceFile,
+  LOG_NAME,
+  logFile,
+  META,
+  newestSnapshot,
+  segmentOf,
+  type DeviceFile,
+  type LogSegment,
+} from './files'
 import { ensureSyncIds } from './identity'
 import type { Transport } from './transport'
 
 // One sync run (docs/architecture/sync.md, section 8): pull what other
 // devices published, merge it in, then publish this device's own changes.
 // Every step can be retried from the top after a crash or a lost connection.
-// Not built yet: purging old logs, snapshots, and book files.
+// A device that fell behind what the logs still hold starts from the newest
+// snapshot; after pushing, `compact` keeps the store from growing forever.
+// Not built yet: book files.
 
 /** The version of the files below. A device that finds a newer one stops,
- * rather than write files a newer version can't read. */
-export const SYNC_FORMAT_VERSION = 1
+ * rather than write files a newer version can't read. 2 added snapshots and
+ * purging: a version 1 device would miss whatever was purged. */
+export const SYNC_FORMAT_VERSION = 2
 
-/** Changes per log file, so each stays small. */
-export const OPS_PER_SEGMENT = 500
-
-const META = 'meta.json'
-const deviceFile = (device: string) => `device-${device}.json`
-const logFile = (device: string, segment: number) =>
-  `log-${device}-${String(segment).padStart(6, '0')}.json`
-const LOG_NAME = /^log-(.+)-(\d{6})\.json$/
-const DEVICE_NAME = /^device-(.+)\.json$/
-
-/** The log segment that holds sequence number `seq`. */
-const segmentOf = (seq: number) => Math.floor((seq - 1) / OPS_PER_SEGMENT)
-
-interface LogSegment {
-  device: string
-  ops: SyncOp[]
-}
+export { OPS_PER_SEGMENT } from './files'
 
 export class SyncFormatError extends Error {
   constructor(found: number) {
@@ -62,8 +57,15 @@ export interface SyncResult {
   /** A book was removed, or a shelf or bookmark changed: the library should
    * be read again. */
   libraryChanged: boolean
-  /** Every other device that has synced, as it last described itself. */
+  /** Every other device that has synced, as it last described itself,
+   * except those the user removed since. */
   devices: DeviceInfo[]
+  /** This run started from a snapshot, having fallen behind the logs. */
+  fromSnapshot: boolean
+  /** This run wrote a snapshot. */
+  snapshotWritten: boolean
+  /** This device's own old log files deleted this run. */
+  purged: number
 }
 
 /** One sync run. `name` is how other devices will name this one. */
@@ -78,50 +80,109 @@ export async function syncOnce(
   const names = await transport.list()
   const state = await localSyncState(db)
 
-  const { ops, cursors } = await pull(transport, names, state)
-  const merged = await merge(db, ops, cursors, now())
-  const pushed = await push(db, transport, names, now(), name)
-  const devices = await otherDevices(transport, names, state.device)
-  return { ...merged, pushed, devices }
+  // Fallen behind what the logs hold: start from the newest snapshot, then
+  // read on from where it ends.
+  const latest = needsSnapshot(names, state.device, state.cursors) ? newestSnapshot(names) : null
+  const snapshot = latest ? await readSnapshot(transport, latest.name) : null
+  const start = { ...state.cursors }
+  for (const [device, seq] of Object.entries(snapshot?.covers ?? {})) {
+    if (device !== state.device) start[device] = Math.max(start[device] ?? 0, seq)
+  }
+  const fromSnapshot: SyncOp[] = (snapshot?.registers ?? []).map(({ hlc, change }) => ({
+    device: hlc.device,
+    seq: 0,
+    hlc,
+    change,
+  }))
+
+  const { ops, cursors } = await pull(transport, names, state.device, start)
+  const merged = await merge(db, [...fromSnapshot, ...ops], cursors, now())
+  const { pushed, written } = await push(db, transport, names, now(), name)
+  const peers = await otherDevices(transport, names, state.device)
+  const removed = await removedDevices(db)
+  const compacted = await compact(
+    db,
+    transport,
+    [...new Set([...names, ...written])],
+    peers,
+    removed,
+    now(),
+  )
+  const devices = peers
+    .filter((p) => !((removed.get(p.device) ?? -1) >= p.lastSeen))
+    .map(({ device, name, lastSeen }) => ({ device, name, lastSeen }))
+  return {
+    ...merged,
+    pushed,
+    devices,
+    fromSnapshot: snapshot !== null,
+    snapshotWritten: compacted.snapshot,
+    purged: compacted.purged,
+  }
 }
 
 async function otherDevices(
   transport: Transport,
   names: string[],
   self: string,
-): Promise<DeviceInfo[]> {
-  const devices: DeviceInfo[] = []
+): Promise<DeviceFile[]> {
+  const devices: DeviceFile[] = []
   for (const name of names) {
     const device = DEVICE_NAME.exec(name)?.[1]
     if (!device || device === self) continue
     const data = await transport.read(name)
     if (data !== null) {
-      const { name: label, lastSeen } = JSON.parse(data) as Partial<DeviceInfo>
-      devices.push({ device, name: label, lastSeen: lastSeen ?? 0 })
+      const file = JSON.parse(data) as Partial<DeviceFile>
+      devices.push({
+        device,
+        name: file.name,
+        lastSeen: file.lastSeen ?? 0,
+        cursors: file.cursors ?? {},
+      })
     }
   }
   return devices
 }
 
-async function checkFormat(transport: Transport): Promise<void> {
-  const meta = await transport.read(META)
-  if (meta === null) {
-    await transport.write(META, JSON.stringify({ formatVersion: SYNC_FORMAT_VERSION }))
-    return
+/** When the user removed each device they removed. */
+async function removedDevices(db: RsvpDatabase): Promise<Map<string, number>> {
+  const removed = new Map<string, number>()
+  for (const { change, hlc } of await db.syncRegisters
+    .where('key')
+    .startsWith('device:')
+    .toArray()) {
+    if (change.kind === 'device' && change.value) removed.set(change.device, hlc.wall)
   }
-  const { formatVersion } = JSON.parse(meta) as { formatVersion: number }
-  if (formatVersion > SYNC_FORMAT_VERSION) throw new SyncFormatError(formatVersion)
+  return removed
 }
 
-/** Every op other devices published since this one last pulled. */
-async function pull(transport: Transport, names: string[], state: SyncStateRecord) {
+async function checkFormat(transport: Transport): Promise<void> {
+  const meta = await transport.read(META)
+  const formatVersion =
+    meta === null ? 0 : (JSON.parse(meta) as { formatVersion: number }).formatVersion
+  if (formatVersion > SYNC_FORMAT_VERSION) throw new SyncFormatError(formatVersion)
+  // New, or written by an older version: raise it, so older versions stop
+  // before they miss anything this one purges.
+  if (formatVersion < SYNC_FORMAT_VERSION) {
+    await transport.write(META, JSON.stringify({ formatVersion: SYNC_FORMAT_VERSION }))
+  }
+}
+
+/** Every op other devices published after `start`, their sequence numbers
+ * this device has already read up to. */
+async function pull(
+  transport: Transport,
+  names: string[],
+  self: string,
+  start: Record<string, number>,
+) {
   const ops: SyncOp[] = []
-  const cursors = { ...state.cursors }
+  const cursors = { ...start }
   for (const name of names) {
     const match = LOG_NAME.exec(name)
     const [, device, segment] = match ?? []
-    if (!device || device === state.device) continue
-    const cursor = state.cursors[device] ?? 0
+    if (!device || device === self) continue
+    const cursor = start[device] ?? 0
     // Segments wholly at or below the cursor were read on an earlier run.
     if (Number(segment) < segmentOf(cursor + 1)) continue
     const data = await transport.read(name)
@@ -142,7 +203,7 @@ async function merge(
   ops: SyncOp[],
   cursors: Record<string, number>,
   now: number,
-): Promise<Omit<SyncResult, 'pushed' | 'devices'>> {
+): Promise<Pick<SyncResult, 'applied' | 'skewed' | 'settingsChanged' | 'libraryChanged'>> {
   const tables = [...syncTables(db), ...bookTables(db), db.settings]
   return db.transaction('rw', tables, async () => {
     const state = await localSyncState(db)
@@ -153,13 +214,14 @@ async function merge(
     }
 
     const winners = newerRegisters(current, ops)
+    const marks = new Map<number, Map<number, number>>()
     let settingsChanged = false
     let libraryChanged = false
     for (const register of winners) {
       // Stored without `pending`: a local change this replaces lost, and
       // there's no point sending it.
       await db.syncRegisters.put(register)
-      const changed = await applyToLibrary(db, register)
+      const changed = await applyToLibrary(db, register, marks)
       settingsChanged ||= changed === 'settings'
       libraryChanged ||= changed === 'library'
     }
@@ -176,12 +238,31 @@ async function merge(
   })
 }
 
+/** Apply what is already known about a book that has only now arrived here
+ * (downloaded from Drive): the shelves it is on, its bookmarks and notes. */
+export async function applyBookRegisters(db: RsvpDatabase, syncId: string): Promise<void> {
+  const tables = [...syncTables(db), ...bookTables(db), db.settings]
+  await db.transaction('rw', tables, async () => {
+    const marks = new Map<number, Map<number, number>>()
+    for (const register of await db.syncRegisters.toArray()) {
+      const { change } = register
+      const about =
+        (change.kind === 'shelf' && change.value?.books.includes(syncId)) ||
+        (change.kind === 'bookmark' && change.book === syncId) ||
+        (change.kind === 'note' && change.value.book === syncId)
+      if (about) await applyToLibrary(db, register, marks)
+    }
+  })
+}
+
 /** Make another device's change real here. Progress is left for the user to
  * accept (`progressOffers`): the reader never jumps on its own. Returns what
- * changed, if anything did. */
+ * changed, if anything did. `marks` holds each book's bookmarks (word index
+ * to row id) once read, since a new device can apply thousands in one go. */
 async function applyToLibrary(
   db: RsvpDatabase,
   { change }: Register,
+  marks: Map<number, Map<number, number>>,
 ): Promise<'settings' | 'library' | null> {
   switch (change.kind) {
     case 'setting':
@@ -224,16 +305,29 @@ async function applyToLibrary(
       const book = await db.books.where('syncId').equals(change.book).first()
       if (!book) return null
       const bookId = book.id as number
-      const marks = db.bookmarks
-        .where('bookId')
-        .equals(bookId)
-        .filter((m) => m.wordIndex === change.wordIndex)
-      if (change.value === null) return (await marks.delete()) > 0 ? 'library' : null
-      if ((await marks.count()) > 0) return null
-      await db.bookmarks.add({ bookId, wordIndex: change.wordIndex, ...change.value })
+      let here = marks.get(bookId)
+      if (!here) {
+        const rows = await db.bookmarks.where('bookId').equals(bookId).toArray()
+        here = new Map(rows.map((m) => [m.wordIndex, m.id as number]))
+        marks.set(bookId, here)
+      }
+      const id = here.get(change.wordIndex)
+      if (change.value === null) {
+        if (id === undefined) return null
+        await db.bookmarks.delete(id)
+        here.delete(change.wordIndex)
+        return 'library'
+      }
+      if (id !== undefined) return null
+      const added = await db.bookmarks.add({ bookId, wordIndex: change.wordIndex, ...change.value })
+      here.set(change.wordIndex, added)
       return 'library'
     }
+    case 'note':
+      await refoldNote(db, change.note)
+      return 'library'
     case 'progress':
+    case 'device':
       return null
   }
 }
@@ -245,7 +339,7 @@ async function push(
   names: string[],
   now: number,
   name: string | undefined,
-): Promise<number> {
+): Promise<{ pushed: number; written: string[] }> {
   const state = await localSyncState(db)
   const pending = (await db.syncRegisters.where('pending').equals(1).toArray()).sort((a, b) =>
     compareHlc(a.hlc, b.hlc),
@@ -268,9 +362,11 @@ async function push(
     segments.get(segment)!.push({ device: state.device, seq, hlc, change })
     seq++
   }
+  const written: string[] = []
   for (const [segment, ops] of segments) {
     const data: LogSegment = { device: state.device, ops }
     await transport.write(logFile(state.device, segment), JSON.stringify(data))
+    written.push(logFile(state.device, segment))
   }
 
   await db.transaction('rw', syncTables(db), async () => {
@@ -293,7 +389,7 @@ async function push(
     cursors: (await localSyncState(db)).cursors,
   }
   await transport.write(deviceFile(state.device), JSON.stringify(device))
-  return pending.length
+  return { pushed: pending.length, written }
 }
 
 async function readSegment(transport: Transport, name: string): Promise<LogSegment | null> {

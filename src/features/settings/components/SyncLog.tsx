@@ -4,7 +4,7 @@ import { SMALL_BUTTON } from '@/features/settings/settings-values'
 import { syncedTime } from '@/features/settings/sync-text'
 import { logError } from '@/lib/error-log'
 import { formatSyncLog, readSeenDevices, readSyncRuns } from '@/lib/sync-runs'
-import { useSyncStore } from '@/stores/sync-store'
+import { DORMANT_MS, useSyncStore } from '@/stores/sync-store'
 import { Row } from './SettingsControls'
 
 const OUTCOMES = {
@@ -19,8 +19,11 @@ const OUTCOMES = {
  * device, with "Copy log" for bug reports (docs/architecture/sync.md,
  * decision 15). */
 export function SyncLog() {
-  // Subscribed so the log is read again whenever a run starts or finishes.
+  // Subscribed so the log is read again whenever a run starts or finishes,
+  // or a device is removed.
   useSyncStore((s) => s.running)
+  useSyncStore((s) => s.revision)
+  const removeDevice = useSyncStore((s) => s.removeDevice)
   const runs = readSyncRuns()
   const devices = readSeenDevices()
   const [device, setDevice] = useState<string | null>(null)
@@ -50,16 +53,31 @@ export function SyncLog() {
       <div className="flex flex-col gap-1 px-[18px] py-3.5 text-[13px]">
         <span className="font-medium">Devices</span>
         <span className="text-text-dim">
+          Remove a device you no longer use, so old changes can be cleared from Drive without
+          waiting for it. If it syncs again, it comes back.
+        </span>
+        <span className="text-text-dim">
           This device: <code className="break-all">{device ?? '…'}</code>
         </span>
         {devices.length === 0 ? (
-          <span className="text-text-dim">No other device has synced yet.</span>
+          <span className="text-text-dim">No other devices.</span>
         ) : (
           <ul aria-label="Other devices" className="flex flex-col gap-0.5 text-text-dim">
             {devices.map((d) => (
-              <li key={d.device} className="flex flex-wrap justify-between gap-x-3">
+              <li key={d.device} className="flex flex-wrap items-center gap-x-3">
                 <span className="text-text">{d.name ?? 'Unnamed device'}</span>
-                <span>last seen {syncedTime(d.lastSeen, now)}</span>
+                <span className="flex-1">
+                  last seen {syncedTime(d.lastSeen, now)}
+                  {now - d.lastSeen > DORMANT_MS && ' · dormant'}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${d.name ?? 'device'} ${d.device.slice(0, 8)}`}
+                  className="rounded px-1.5 py-0.5 hover:bg-bg-hover hover:text-accent"
+                  onClick={() => void removeDevice(d.device)}
+                >
+                  Remove
+                </button>
               </li>
             ))}
           </ul>

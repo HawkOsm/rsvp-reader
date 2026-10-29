@@ -3,6 +3,7 @@ import { DEFAULT_WPM } from '@/core/pacing'
 import { DEFAULT_PAGE, type PageSpec } from '@/core/page-spec'
 import type { Hlc } from '@/core/sync/hlc'
 import type { Register } from '@/core/sync/merge'
+import type { NoteAnchor, NoteVersion } from '@/core/sync/notes'
 import type { ContentLayout, FormatId, Token } from '@/core/types'
 
 /** Bumped whenever the packed token format changes, so caches written by an
@@ -144,6 +145,22 @@ export interface BookmarkRecord {
   createdAt: number
 }
 
+/** A note, as the reader sees it: the fold of its edits, which are kept in
+ * `syncRegisters` (`storage/notes.ts`). */
+export interface NoteRecord {
+  id?: number
+  /** The same note's id on every device. */
+  noteId: string
+  bookId: number
+  anchor: NoteAnchor
+  shown: NoteVersion
+  /** Other versions made alongside the shown one: a conflict to settle. */
+  conflicts: NoteVersion[]
+  /** Deletes that lost to an edit; the reader is told. */
+  lostDeletes: string[]
+  createdAt: number
+}
+
 /** The newest known version of one synced value (`core/sync/merge.ts`).
  * `pending` marks a local change other devices haven't been sent yet; it's a
  * number, not a boolean, so Dexie can index it. */
@@ -204,6 +221,7 @@ export class RsvpDatabase extends Dexie {
   covers!: Table<CoverRecord, number>
   shelves!: Table<ShelfRecord, number>
   bookmarks!: Table<BookmarkRecord, number>
+  notes!: Table<NoteRecord, number>
   syncRegisters!: Table<SyncRegisterRecord, string>
   syncState!: Table<SyncStateRecord, string>
 
@@ -307,6 +325,9 @@ export class RsvpDatabase extends Dexie {
             shelf.syncId ??= crypto.randomUUID()
           }),
       )
+
+    // Notes. A new table only: there were none before.
+    this.version(11).stores({ notes: '++id, &noteId, bookId' })
   }
 }
 

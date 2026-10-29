@@ -37,6 +37,7 @@ const PATHS = {
       <circle cx="19" cy="12" r="1.3" fill="currentColor" />
     </>
   ),
+  note: <path d="M6 3h9l4 4v14H6zM15 3v4h4M9 12h7M9 16h5" />,
   bookmark: <path d="M6 3h12v18l-6-4.5L6 21z" />,
   close: <path d="M6 6l12 12M18 6L6 18" />,
   contents: <path d="M4 6h1M9 6h11M4 12h1M9 12h11M4 18h1M9 18h11" />,

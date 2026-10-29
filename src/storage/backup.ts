@@ -1,4 +1,6 @@
+import type { Change } from '@/core/sync/merge'
 import { arrayBufferToBase64, base64ToArrayBuffer } from './base64'
+import { refoldNote } from './notes'
 import {
   normalizeBookRecord,
   type BookRecord,
@@ -6,6 +8,7 @@ import {
   type RsvpDatabase,
   type SettingRecord,
   type StoredBookRecord,
+  type SyncRegisterRecord,
 } from './schema'
 
 // One JSON file with books metadata and progress — this is also the
@@ -13,7 +16,8 @@ import {
 // out: they're cheap to rebuild from the source (the included file, or a
 // re-added local file matched by fingerprint) and would otherwise make the
 // backup as large as the library itself. Covers are left out for the same
-// reason. See docs/architecture/decisions.md.
+// reason. Notes are in, as their edits: they are the reader's own writing.
+// See docs/architecture/decisions.md.
 
 const BACKUP_FORMAT_VERSION = 1
 
@@ -33,6 +37,9 @@ export interface Backup {
   progress: ProgressRecord[]
   settings: SettingRecord[]
   files?: Record<number, BackupFile>
+  /** Every edit of every note (storage/notes.ts): the notes themselves are
+   * folded from these. Missing from backups made before notes. */
+  noteEdits?: SyncRegisterRecord[]
 }
 
 export interface ExportOptions {
@@ -54,6 +61,7 @@ export async function exportBackup(db: RsvpDatabase, options: ExportOptions = {}
     books,
     progress,
     settings,
+    noteEdits: await db.syncRegisters.where('key').startsWith('note:').toArray(),
   }
 
   if (options.includeFiles) {
@@ -77,7 +85,15 @@ export async function importBackup(db: RsvpDatabase, backup: Backup): Promise<vo
   if (backup.formatVersion !== BACKUP_FORMAT_VERSION) {
     throw new Error(`Unsupported backup format version: ${backup.formatVersion}`)
   }
-  const tables = [db.books, db.progress, db.settings, db.files, db.covers]
+  const tables = [
+    db.books,
+    db.progress,
+    db.settings,
+    db.files,
+    db.covers,
+    db.notes,
+    db.syncRegisters,
+  ]
   await db.transaction('rw', tables, async () => {
     for (const book of backup.books) {
       const restored = normalizeBookRecord(book)
@@ -97,5 +113,14 @@ export async function importBackup(db: RsvpDatabase, backup: Backup): Promise<vo
         await db.files.put({ bookId, blob, fileName: file.fileName, mimeType: file.mimeType })
       }
     }
+    // Note edits are immutable, so one already here is the same edit. They
+    // are marked to send, in case the device that made them never synced.
+    const notes = new Set<string>()
+    for (const { key, hlc, change } of backup.noteEdits ?? []) {
+      if (change.kind !== 'note' || (await db.syncRegisters.get(key))) continue
+      await db.syncRegisters.put({ key, hlc, change: change as Change, pending: 1 })
+      notes.add(change.note)
+    }
+    for (const noteId of notes) await refoldNote(db, noteId)
   })
 }

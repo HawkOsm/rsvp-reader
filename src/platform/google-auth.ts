@@ -1,3 +1,4 @@
+import { createSignInAttempts } from './sign-in-attempts'
 import type { SyncAuth, SyncAuthState } from './types'
 
 // Sign-in for sync in the browser: Google Identity Services' token flow
@@ -41,6 +42,8 @@ export interface GoogleAuthOptions {
   loadGis: () => Promise<GoogleOAuth2>
   storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null
   now?: () => number
+  /** How long Connect waits before giving the button back. */
+  signInTimeoutMs?: number
 }
 
 /** What to tell the user when sign-in didn't finish. */
@@ -60,6 +63,7 @@ export function createGoogleAuth({
   loadGis,
   storage,
   now = Date.now,
+  signInTimeoutMs,
 }: GoogleAuthOptions): SyncAuth {
   const listeners = new Set<() => void>()
   let token: { value: string; expiresAt: number } | null = null
@@ -89,6 +93,11 @@ export function createGoogleAuth({
     listeners.forEach((listener) => listener())
   }
 
+  const attempts = createSignInAttempts(
+    { state: () => state, setState, notify: () => listeners.forEach((listener) => listener()) },
+    signInTimeoutMs,
+  )
+
   /** The token is gone; the user has to sign in again to sync. */
   function lose() {
     token = null
@@ -97,6 +106,9 @@ export function createGoogleAuth({
 
   return {
     state: () => state,
+    signInError: () => attempts.failure(),
+    // Google's window is opened by its script, from the page: no link to give.
+    signInLink: () => null,
     subscribe(listener) {
       listeners.add(listener)
       return () => void listeners.delete(listener)
@@ -119,9 +131,7 @@ export function createGoogleAuth({
       if (!clientId) {
         throw new Error('This build has no Google client ID, so it can’t connect to Drive.')
       }
-      const before = state
-      setState('signing-in')
-      try {
+      return attempts.run(async (isCurrent) => {
         gis ??= await loadGis()
         const client = gis
         const response = await new Promise<TokenResponse>((resolve, reject) => {
@@ -143,19 +153,18 @@ export function createGoogleAuth({
         if (!client.hasGrantedAllScopes(response, DRIVE_SCOPE)) {
           throw new Error('Google Drive access wasn’t allowed, so there is nowhere to sync to.')
         }
+        if (!isCurrent()) return // Connect was pressed again since
         token = {
           value: response.access_token,
           expiresAt: now() + Number(response.expires_in ?? 3600) * 1000,
         }
         remember(true)
         setState('signed-in')
-      } catch (error) {
-        setState(before === 'signing-in' ? 'signed-out' : before)
-        throw error
-      }
+      })
     },
 
     async signOut() {
+      attempts.abandon()
       // Revoking is a courtesy: an unrevoked token expires within the hour.
       if (token && gis) gis.revoke(token.value)
       token = null

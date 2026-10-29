@@ -9,3 +9,7 @@ interface ImportMetaEnv {
    * see docs/architecture/sync.md, section 3. */
   readonly VITE_GOOGLE_CLIENT_ID?: string
 }
+
+/** The desktop OAuth client's secret, set in vite.config.ts: empty except in
+ * a build made by Tauri. */
+declare const __DESKTOP_CLIENT_SECRET__: string

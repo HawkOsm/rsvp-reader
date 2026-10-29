@@ -1,4 +1,5 @@
 import { compareHlc, type Hlc } from './hlc'
+import type { NoteEdit } from './notes'
 
 // What sync carries, and how two versions of it are reconciled
 // (docs/architecture/sync.md, sections 5 and 7). Every synced thing is a
@@ -46,6 +47,12 @@ export type Change =
   /** `shelf` is the shelf's own random id. */
   | { kind: 'shelf'; shelf: string; value: SyncedShelf | null }
   | { kind: 'bookmark'; book: SyncId; wordIndex: number; value: SyncedBookmark | null }
+  /** The user removed a device from sync. It stays removed until it syncs
+   * again after the removal; `null` undoes it. */
+  | { kind: 'device'; device: string; value: { removed: true } | null }
+  /** One edit of a note (`core/sync/notes.ts`). Each edit is its own
+   * register, never replaced, so no version of a note is lost. */
+  | { kind: 'note'; note: string; edit: string; value: NoteEdit }
 
 /** One change as a device published it. `seq` counts up from 1 per device. */
 export interface SyncOp {
@@ -74,6 +81,10 @@ export function keyOf(change: Change): string {
       return `shelf:${change.shelf}`
     case 'bookmark':
       return `bookmark:${change.book}:${change.wordIndex}`
+    case 'device':
+      return `device:${change.device}`
+    case 'note':
+      return `note:${change.note}:${change.edit}`
   }
 }
 

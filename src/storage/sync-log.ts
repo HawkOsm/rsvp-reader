@@ -21,20 +21,24 @@ export const SYNCED_SETTINGS: ReadonlySet<string> = new Set([
 /** The tables `recordChange` writes, for a caller's transaction. */
 export const syncTables = (db: RsvpDatabase) => [db.syncState, db.syncRegisters]
 
-/** This device's sync state, made on first use. */
+/** This device's sync state, made on first use. Read and made in one
+ * transaction, so two callers at once (a sync run and the sync log, on a
+ * new device) can't both make one. */
 export async function localSyncState(db: RsvpDatabase): Promise<SyncStateRecord> {
-  const existing = await db.syncState.get('local')
-  if (existing) return existing
-  const fresh: SyncStateRecord = {
-    id: 'local',
-    device: crypto.randomUUID(),
-    clock: null,
-    nextSeq: 1,
-    cursors: {},
-    seeded: false,
-  }
-  await db.syncState.add(fresh)
-  return fresh
+  return db.transaction('rw', db.syncState, async () => {
+    const existing = await db.syncState.get('local')
+    if (existing) return existing
+    const fresh: SyncStateRecord = {
+      id: 'local',
+      device: crypto.randomUUID(),
+      clock: null,
+      nextSeq: 1,
+      cursors: {},
+      seeded: false,
+    }
+    await db.syncState.add(fresh)
+    return fresh
+  })
 }
 
 /** Record a local change. Call it inside a transaction that includes

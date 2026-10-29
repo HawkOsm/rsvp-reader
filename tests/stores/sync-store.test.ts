@@ -7,6 +7,10 @@ import { readSyncRuns } from '@/lib/sync-runs'
 import type { SyncAuth, SyncAuthState } from '@/platform'
 import { NeedsReconnectError } from '@/sync/drive'
 import { MemoryTransport } from '@/sync/transport'
+import { makeToken } from '@/core/types'
+import { addBook, saveTokens } from '@/storage/library'
+import { getDb } from '@/storage/schema'
+import { TEXT_BOOK } from '../storage/fixtures'
 
 const store = new MemoryTransport()
 let failWith: Error | null = null
@@ -17,6 +21,9 @@ vi.mock('@/stores/api/sync', async (original) => ({
     list: () => (failWith ? Promise.reject(failWith) : store.list()),
     read: (name: string) => store.read(name),
     write: (name: string, data: string) => store.write(name, data),
+    delete: (name: string) => store.delete(name),
+    readBlob: (name: string) => store.readBlob(name),
+    usage: () => store.usage(),
   }),
 }))
 
@@ -36,6 +43,8 @@ function fakeAuth(initial: SyncAuthState): SyncAuth & { set(state: SyncAuthState
     renewToken: async () => null,
     signIn: async () => set('signed-in'),
     signOut: async () => set('signed-out'),
+    signInError: () => null,
+    signInLink: () => null,
   }
 }
 
@@ -55,6 +64,7 @@ const runs = (count: number) => vi.waitFor(() => expect(readSyncRuns()).toHaveLe
 beforeEach(() => {
   localStorage.clear()
   store.files.clear()
+  store.blobs.clear()
   failWith = null
 })
 
@@ -123,6 +133,69 @@ describe('the sync store', () => {
     await act(() => useSyncStore.getState().disconnect())
     expect(useSyncStore.getState().auth).toBe('signed-out')
     expect(readSyncRuns()).toEqual([])
+  })
+})
+
+describe('a sign-in that fails late', () => {
+  it('shows why, in place of "hasn’t finished"', async () => {
+    auth = fakeAuth('signed-out')
+    let failure: string | null = null
+    auth.signInError = () => failure
+    stop = useSyncStore.getState().start()
+    await settle()
+    useSyncStore.setState({ connectError: 'Sign-in hasn’t finished.' })
+    failure = 'Google refused the code (invalid_grant).'
+    auth.set('signed-out') // the auth tells its subscribers
+    expect(useSyncStore.getState().connectError).toBe('Google refused the code (invalid_grant).')
+  })
+
+  it('passes on the sign-in link while a sign-in waits', async () => {
+    auth = fakeAuth('signed-out')
+    let link: string | null = null
+    auth.signInLink = () => link
+    stop = useSyncStore.getState().start()
+    await settle()
+    link = 'https://accounts.google.com/o/oauth2/v2/auth?x'
+    auth.set('signing-in')
+    expect(useSyncStore.getState().signInLink).toBe(link)
+    link = null
+    auth.set('signed-out')
+    expect(useSyncStore.getState().signInLink).toBeNull()
+  })
+})
+
+describe('book files', () => {
+  async function bookHere(syncId: string) {
+    const db = getDb()
+    const book = await addBook(db, {
+      title: `Book ${syncId}`,
+      source: 'local',
+      fingerprint: `f-${syncId}`,
+      syncId,
+      ...TEXT_BOOK,
+    })
+    await saveTokens(db, book.id as number, [makeToken('word')], `f-${syncId}`)
+  }
+
+  it('uploads this device’s books after a sync, and says how much Drive holds', async () => {
+    await bookHere(`up-${Math.random()}`)
+    auth = fakeAuth('signed-in')
+    stop = useSyncStore.getState().start()
+    await vi.waitFor(() => expect(useSyncStore.getState().usage).not.toBeNull())
+    expect([...store.blobs.keys()].some((n) => n.startsWith('book-up-'))).toBe(true)
+    expect(useSyncStore.getState().upload).toBeNull()
+    expect(useSyncStore.getState().usage!.used).toBeGreaterThan(0)
+  })
+
+  it('uploads nothing with book files switched off, and remembers that', async () => {
+    useSyncStore.getState().setBookFiles(false)
+    await bookHere(`off-${Math.random()}`)
+    auth = fakeAuth('signed-in')
+    stop = useSyncStore.getState().start()
+    await vi.waitFor(() => expect(useSyncStore.getState().usage).not.toBeNull())
+    expect([...store.blobs.keys()].some((n) => n.startsWith('book-off-'))).toBe(false)
+    expect(localStorage.getItem('rsvp-reader:sync-book-files')).toBe('off')
+    useSyncStore.getState().setBookFiles(true)
   })
 })
 

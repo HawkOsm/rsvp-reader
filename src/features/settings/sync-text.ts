@@ -1,3 +1,4 @@
+import { formatBytes } from '@/lib/format'
 import type { SyncPhase } from '@/stores/sync-store'
 
 // What Settings → Sync says, from where sync stands.
@@ -56,4 +57,21 @@ export function connectLabel(phase: SyncPhase): string | null {
     default:
       return 'Disconnect'
   }
+}
+
+/** The line under Settings → Sync → Book files. */
+export function bookFilesText(
+  on: boolean,
+  upload: { done: number; total: number } | null,
+  usage: { used: number; free: number | null } | null,
+  error: string | null,
+): string {
+  if (error) return `Couldn’t sync book files: ${error}`
+  if (upload) return `Uploading books: ${upload.done} of ${upload.total} done.`
+  const what = on
+    ? 'Your books are copied to Drive, so your other devices can download them.'
+    : 'Paused. Books added here stay on this device; you can still download others.'
+  if (!usage) return what
+  const free = usage.free === null ? '' : ` · ${formatBytes(usage.free)} free`
+  return `${what} On Drive: ${formatBytes(usage.used)}${free}.`
 }

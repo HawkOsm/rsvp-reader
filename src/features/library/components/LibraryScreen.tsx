@@ -38,6 +38,7 @@ import {
 import { BookCover } from './BookCover'
 import { BookListRow, BookTile, ProgressBar } from './BookTile'
 import { BookmarkList } from './BookmarkList'
+import { RemoteBooks } from './RemoteBooks'
 import { LibrarySidebar, type Place } from './LibrarySidebar'
 import { NewShelfDialog } from './NewShelfDialog'
 import { OcrDialog } from './OcrDialog'
@@ -456,6 +457,8 @@ export function LibraryScreen() {
               </div>
             </section>
           )}
+
+          {place.kind === 'section' && section === 'all' && <RemoteBooks />}
 
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="mr-2 text-[15px] font-semibold">{heading}</h2>

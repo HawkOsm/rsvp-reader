@@ -13,6 +13,7 @@ import { resolvePage } from '@/core/page-spec'
 import type { BookRecord } from '@/features/reader/api/book'
 import { PageOverlay } from './PageOverlay'
 import { PagePanel } from './PagePanel'
+import { NotesPanel } from './NotesPanel'
 import { PositionOffer } from './PositionOffer'
 import { ReaderHints } from './ReaderHints'
 import { RsvpCanvas } from './RsvpCanvas'
@@ -25,6 +26,7 @@ import { useReaderKeyboardShortcuts } from '@/features/reader/hooks/useReaderKey
 import { useTouchControls } from '@/features/reader/hooks/useTouchControls'
 import { useWakeLock } from '@/features/reader/hooks/useWakeLock'
 import { useAppStore } from '@/stores/app-store'
+import { useFlag } from '@/lib/flags'
 import { useMediaQuery, WIDE } from '@/lib/media'
 
 const MODES = [
@@ -99,6 +101,8 @@ function ReaderBody({ book }: { book: BookRecord }) {
   const contentsBeside = wide && mode === 'book'
   const [contentsOpen, setContentsOpen] = useState(contentsBeside)
   const hasContents = book.chapters.length > 0
+  const notesOn = useFlag('notes')
+  const [notesOpen, setNotesOpen] = useState(false)
   useEffect(() => setContentsOpen(contentsBeside), [contentsBeside])
 
   useReaderKeyboardShortcuts(layout)
@@ -165,6 +169,20 @@ function ReaderBody({ book }: { book: BookRecord }) {
         </Button>
       )}
       <BookmarkButton bookId={bookId} />
+      {notesOn && (
+        <button
+          type="button"
+          aria-label="Notes"
+          aria-expanded={notesOpen}
+          title="Notes on this book"
+          onClick={() => setNotesOpen(!notesOpen)}
+          className={`flex h-9 w-9 items-center justify-center rounded-lg hover:bg-bg-hover ${
+            notesOpen ? 'text-text' : 'text-text-dim hover:text-text'
+          }`}
+        >
+          <Icon name="note" size={17} />
+        </button>
+      )}
     </>
   )
 
@@ -222,6 +240,17 @@ function ReaderBody({ book }: { book: BookRecord }) {
             <div className="absolute inset-0">
               <PagePanel bookId={bookId} layout={layout} variant="book" />
             </div>
+          </div>
+        )}
+        {notesOn && notesOpen && (
+          <div className="absolute inset-y-0 right-0 z-20 shadow-xl">
+            <NotesPanel
+              bookId={bookId}
+              title={book.title}
+              author={book.author}
+              totalWords={book.totalWords}
+              onClose={() => setNotesOpen(false)}
+            />
           </div>
         )}
         {/* Over the reading area, never beside the word: see page-overlay.ts. */}

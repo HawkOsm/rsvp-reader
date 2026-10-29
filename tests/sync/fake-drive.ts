@@ -6,7 +6,7 @@
 interface DriveFile {
   id: string
   name: string
-  data: string
+  data: string | Blob
 }
 
 export class FakeDrive {
@@ -25,8 +25,12 @@ export class FakeDrive {
     for (let i = 0; i < count; i++) this.failures.push({ status, reason })
   }
 
+  /** Room left on the fake Drive, or `null` for no limit. */
+  free: number | null = null
+
   byName(name: string): string | undefined {
-    return this.files.find((f) => f.name === name)?.data
+    const data = this.files.find((f) => f.name === name)?.data
+    return typeof data === 'string' ? data : undefined
   }
 
   readonly fetch = async (input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> => {
@@ -50,7 +54,11 @@ export class FakeDrive {
       const page = this.files.slice(start, start + this.pageSize)
       const more = start + this.pageSize < this.files.length
       return json({
-        files: page.map(({ id, name }) => ({ id, name })),
+        files: page.map(({ id, name, data }) => ({
+          id,
+          name,
+          size: String(typeof data === 'string' ? new Blob([data]).size : data.size),
+        })),
         ...(more && { nextPageToken: String(start + this.pageSize) }),
       })
     }
@@ -61,10 +69,29 @@ export class FakeDrive {
       if (method === 'GET' && url.searchParams.get('alt') === 'media') {
         return new Response(file.data)
       }
+      if (method === 'DELETE' && !path.startsWith('/upload/')) {
+        this.files.splice(this.files.indexOf(file), 1)
+        return new Response(null, { status: 204 })
+      }
       if (method === 'PATCH' && url.searchParams.get('uploadType') === 'media') {
-        file.data = String(init.body)
+        file.data = init.body instanceof Blob ? init.body : String(init.body)
         return json({ id: file.id })
       }
+    }
+    if (method === 'GET' && path === '/drive/v3/about') {
+      const used = this.files.reduce(
+        (sum, f) => sum + (typeof f.data === 'string' ? f.data.length : f.data.size),
+        0,
+      )
+      const limit = this.free === null ? undefined : String(this.free + used)
+      return json({ storageQuota: { usage: String(used), ...(limit && { limit }) } })
+    }
+    if (method === 'POST' && path === '/drive/v3/files') {
+      const metadata = JSON.parse(String(init.body)) as { name: string; parents: string[] }
+      if (metadata.parents[0] !== 'appDataFolder') return json({}, 400)
+      const file = { id: `f${this.nextId++}`, name: metadata.name, data: '' }
+      this.files.push(file)
+      return json({ id: file.id })
     }
     if (method === 'POST' && path === '/upload/drive/v3/files') {
       const type = (init.headers as Record<string, string>)['Content-Type'] ?? ''

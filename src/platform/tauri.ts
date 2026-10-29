@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { createPkceAuth, type PkceNative } from './pkce-auth'
 import type { Platform } from './types'
 import { webPlatform } from './web'
 
@@ -20,12 +21,47 @@ async function takeLaunchFile(): Promise<File | null> {
   return new File([bytes], fileName)
 }
 
+/** The Google OAuth client (type "Desktop app") the desktop app signs in
+ * with. The ID is public and belongs here.
+ * The secret is never committed: vite.config.ts builds it in from
+ * `GOOGLE_DESKTOP_CLIENT_SECRET` (`.env.local`, or a GitHub Actions secret
+ * for release builds), and only when Tauri is building. A build without one
+ * can't sign in on the desktop. */
+const DESKTOP_CLIENT_ID = '78238404718-4o4p5d7rted07porvrio0d92d9t9imvj.apps.googleusercontent.com'
+const DESKTOP_CLIENT_SECRET = __DESKTOP_CLIENT_SECRET__
+
+/** Sign-in's native half: the commands in src-tauri/src/oauth.rs. */
+const desktopSignIn: PkceNative = {
+  async listen() {
+    const port = await invoke<number>('oauth_listen')
+    return { port, callback: () => invoke<string>('oauth_callback') }
+  },
+  openBrowser: (url) => invoke('oauth_open', { url }),
+  async post(endpoint, form) {
+    const [status, body] = await invoke<[number, string]>('oauth_post', { endpoint, form })
+    return { status, body }
+  },
+  secrets: {
+    get: (key) => invoke<string | null>('secret_get', { key }),
+    set: (key, value) => invoke('secret_set', { key, value }),
+    delete: (key) => invoke('secret_delete', { key }),
+  },
+}
+
 export const tauriPlatform: Platform = {
   ...webPlatform,
   kind: 'desktop',
   selfUpdates: false, // a new version is a new installer
-  // Google blocks sign-in in a webview: phase 5 signs in through the system browser.
-  syncAuth: null,
+  // A webview ignores download links; a save dialog would need the dialog plugin.
+  savesFiles: false,
+  saveTextFile: async () => {},
+  // Google blocks sign-in inside a webview, so this goes through the system
+  // browser (src/platform/pkce-auth.ts).
+  syncAuth: createPkceAuth({
+    clientId: DESKTOP_CLIENT_ID,
+    clientSecret: DESKTOP_CLIENT_SECRET,
+    native: desktopSignIn,
+  }),
   takeLaunchFile,
   setChromeColor: () => {}, // the window frame is the system's
 }
