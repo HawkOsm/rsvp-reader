@@ -41,5 +41,11 @@ off. Design and history: [docs/architecture/sync.md](architecture/sync.md) and
 
 ## Desktop
 
+- [ ] A book row with no `layout` appeared on a real library upgrading from v0.2 (schema v2 to
+      v11) and vanished; the cause is unknown. Rows are now normalized when read, so it can't
+      stop sync again.
+- [ ] WebKit: one "Could not open PDF" (`n.Document.openDocument`) on first launch, while covers
+      were being made. Maybe two `import('mupdf')` at once on WebKit; unconfirmed, since the e2e
+      tests only run Chromium. Both covers were made anyway. Worth sharing one import.
 - [ ] The desktop app sometimes quits at once when started under Wayland (it stays open under
       X11, `GDK_BACKEND=x11`). Not investigated yet.

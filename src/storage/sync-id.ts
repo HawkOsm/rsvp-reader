@@ -1,7 +1,7 @@
 import type { ContentLayout, Token } from '@/core/types'
 import { loadFile } from './files'
 import { getTokens } from './library'
-import type { BookRecord, RsvpDatabase } from './schema'
+import { normalizeBookRecord, type BookRecord, type RsvpDatabase } from './schema'
 import { seedChange, syncTables } from './sync-log'
 
 // A book's sync id: the same on every device that has the same book. A paged
@@ -38,7 +38,9 @@ async function sha256(data: ArrayBuffer | Uint8Array): Promise<string> {
  * has nothing to hash yet and gets its id when it is next imported. */
 export async function giveSyncId(db: RsvpDatabase, book: BookRecord): Promise<string | undefined> {
   const bookId = book.id as number
-  const syncId = await syncIdOf(book.layout, {
+  // Through `normalizeBookRecord`: a row with no layout has been seen on a
+  // real library, and must not stop every other book's sync.
+  const syncId = await syncIdOf(normalizeBookRecord(book).layout, {
     file: (await loadFile(db, bookId))?.blob,
     tokens: await getTokens(db, bookId),
   })

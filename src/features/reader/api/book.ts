@@ -29,7 +29,7 @@ export interface LoadedBookData {
 export async function loadBook(bookId: number): Promise<LoadedBookData> {
   const db = getDb()
   const [book, tokens, progress] = await Promise.all([
-    db.books.get(bookId),
+    library.getBook(db, bookId),
     library.getTokens(db, bookId),
     library.getProgress(db, bookId),
   ])

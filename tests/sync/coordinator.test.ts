@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { makeToken } from '@/core/types'
-import { addBook, getProgress, removeBook, saveProgress, saveTokens } from '@/storage/library'
+import {
+  addBook,
+  getBook,
+  getProgress,
+  listBooks,
+  removeBook,
+  saveProgress,
+  saveTokens,
+} from '@/storage/library'
 import { getDb, type RsvpDatabase } from '@/storage/schema'
 import { addBookmark, listBookmarks, removeBookmark } from '@/storage/bookmarks'
 import { getSetting, setSetting } from '@/storage/settings'
@@ -209,6 +217,36 @@ async function visible(db: RsvpDatabase) {
     settings,
   }
 }
+
+describe('a book row with no layout', () => {
+  // Seen on a real desktop library: one such row stopped every sync run.
+  it('doesn’t stop the sync run or the other books', async () => {
+    await importBook(a)
+    await a.books.add({
+      title: 'Odd',
+      source: 'local',
+      fingerprint: 'odd',
+      totalWords: 0,
+      addedAt: 1,
+      lastOpenedAt: null,
+    } as never)
+    await expect(syncOnce(a, store)).resolves.toMatchObject({ applied: 0 })
+    expect(await a.syncRegisters.where('key').startsWith('book:').count()).toBe(1)
+  })
+
+  it('reads as a whole book, so the screens can show it', async () => {
+    const id = await a.books.add({
+      title: 'Odd',
+      source: 'local',
+      fingerprint: 'odd',
+      totalWords: 0,
+      addedAt: 1,
+      lastOpenedAt: null,
+    } as never)
+    expect(await getBook(a, id)).toMatchObject({ layout: { kind: 'reflow' }, chapters: [] })
+    expect((await listBooks(a))[0]).toMatchObject({ layout: { kind: 'reflow' } })
+  })
+})
 
 describe('syncing shelves and bookmarks', () => {
   it('carries a shelf over, matching its books by sync id', async () => {

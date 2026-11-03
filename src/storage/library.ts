@@ -2,6 +2,7 @@ import { DEFAULT_WPM } from '@/core/pacing'
 import type { PageSpec } from '@/core/page-spec'
 import type { ContentLayout, FormatId, Token } from '@/core/types'
 import { fingerprintOf } from './fingerprint'
+import { normalizeBookRecord } from './schema'
 import type {
   BookChapter,
   BookRecord,
@@ -60,12 +61,13 @@ export async function addBook(db: RsvpDatabase, input: AddBookInput): Promise<Bo
  * was added, for a book that's never been opened) — the list screen reads
  * from here only. */
 export async function listBooks(db: RsvpDatabase): Promise<BookRecord[]> {
-  const books = await db.books.toArray()
+  const books = (await db.books.toArray()).map(normalizeBookRecord)
   return books.sort((a, b) => (b.lastOpenedAt ?? b.addedAt) - (a.lastOpenedAt ?? a.addedAt))
 }
 
 export async function getBook(db: RsvpDatabase, bookId: number): Promise<BookRecord | undefined> {
-  return db.books.get(bookId)
+  const book = await db.books.get(bookId)
+  return book && normalizeBookRecord(book)
 }
 
 /** Remove a book, and tell other devices to remove it too. */
