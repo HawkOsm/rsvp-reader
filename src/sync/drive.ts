@@ -1,13 +1,17 @@
 import type { StoreUsage, Transport } from './transport'
 
 // The shared store on Google Drive (docs/architecture/sync.md, section 6):
-// the files of `Transport` kept in the app's hidden `appDataFolder`, through
-// the Drive v3 REST API with plain `fetch`. Drive identifies files by id, not
-// name, so the ids are learned from `list` and kept.
+// the files of `Transport` kept in a folder of the user's Drive, through the
+// Drive v3 REST API with plain `fetch`. The app is only allowed files it made
+// itself (the `drive.file` scope), so it sees its own folder and nothing else
+// of the user's. Drive identifies files by id, not name, so the ids are
+// learned from `list` and kept.
 
 const API = 'https://www.googleapis.com/drive/v3'
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3'
-const FOLDER = 'appDataFolder'
+/** The folder's name in the user's Drive, where they can see it. */
+export const FOLDER_NAME = 'RSVP Reader'
+const FOLDER_TYPE = 'application/vnd.google-apps.folder'
 
 /** Where the transport gets its access token (`Platform.syncAuth`). */
 export interface TokenSource {
@@ -65,16 +69,22 @@ export interface DriveOptions {
   random?: () => number
   /** Tries per request, the first included. */
   attempts?: number
+  /** The folder's name, if not `FOLDER_NAME`: for trying sync against a
+   * real Drive without touching the real folder. */
+  folderName?: string
 }
 
 export class DriveTransport implements Transport {
   private ids: Map<string, string> | null = null
   private sizes = new Map<string, number>()
+  /** The folder's id, as of the last `list`. */
+  private folder = ''
   private readonly auth: TokenSource
   private readonly fetch: typeof fetch
   private readonly sleep: (ms: number) => Promise<void>
   private readonly random: () => number
   private readonly attempts: number
+  private readonly folderName: string
 
   constructor(options: DriveOptions) {
     this.auth = options.auth
@@ -83,15 +93,38 @@ export class DriveTransport implements Transport {
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)))
     this.random = options.random ?? Math.random
     this.attempts = options.attempts ?? 6
+    this.folderName = options.folderName ?? FOLDER_NAME
+  }
+
+  /** The id of the app's folder, made if there is none. Looked up on every
+   * `list`, not kept for good: the user can delete or rename it, and then
+   * the next run starts a new one. If two devices each made one at the same
+   * moment, both settle on the older. Only folders this app made can match:
+   * it can't see any other. */
+  private async findFolder(): Promise<string> {
+    const query = new URLSearchParams({
+      q: `name='${this.folderName}' and mimeType='${FOLDER_TYPE}' and trashed=false`,
+      fields: 'files(id)',
+      orderBy: 'createdTime',
+      pageSize: '1',
+    })
+    const found = await this.request('GET', `${API}/files?${query}`)
+    const { files } = (await found.json()) as { files: { id: string }[] }
+    if (files[0]) return files[0].id
+    const metadata = JSON.stringify({ name: this.folderName, mimeType: FOLDER_TYPE })
+    const made = await this.request('POST', `${API}/files?fields=id`, metadata, 'application/json')
+    return ((await made.json()) as { id: string }).id
   }
 
   async list(): Promise<string[]> {
+    const folder = await this.findFolder()
     const ids = new Map<string, string>()
     const sizes = new Map<string, number>()
     let pageToken = ''
     do {
       const query = new URLSearchParams({
-        spaces: FOLDER,
+        // Not ones the user put in the bin: to them, those are gone.
+        q: `'${folder}' in parents and trashed=false`,
         fields: 'nextPageToken,files(id,name,size)',
         pageSize: '1000',
         // If two devices ever create the same name at once (meta.json), all
@@ -111,6 +144,7 @@ export class DriveTransport implements Transport {
       }
       pageToken = page.nextPageToken ?? ''
     } while (pageToken)
+    this.folder = folder
     this.ids = ids
     this.sizes = sizes
     return [...ids.keys()]
@@ -149,7 +183,7 @@ export class DriveTransport implements Transport {
     }
     if (typeof data !== 'string') {
       // Bytes don't fit a text multipart body: make the file, then fill it.
-      const metadata = JSON.stringify({ name, parents: [FOLDER] })
+      const metadata = JSON.stringify({ name, parents: [this.folder] })
       const made = await this.request(
         'POST',
         `${API}/files?fields=id`,
@@ -162,7 +196,7 @@ export class DriveTransport implements Transport {
       return
     }
     const boundary = `rsvp-${Math.floor(this.random() * 1e12)}`
-    const metadata = JSON.stringify({ name, parents: [FOLDER] })
+    const metadata = JSON.stringify({ name, parents: [this.folder] })
     const body = [
       `--${boundary}`,
       'Content-Type: application/json; charset=UTF-8',

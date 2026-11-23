@@ -1266,3 +1266,27 @@ by hand for this one manifest line.
 
 **Rejected for now:** the native sign-in (kept as a later polish if the code screen proves
 annoying).
+
+## 2026-11-23: sync's store is a visible Drive folder (`drive.file`), not the hidden app folder
+
+The entry above chose Google's device flow for Android. Tried against the real endpoint, that
+flow refuses `drive.appdata` ("Invalid device flow scope"); it accepts `drive.file`. An earlier
+reading of Google's documentation had said the opposite, and nothing had been tested first.
+
+The owner chose to move the store rather than build native Android sign-in: every platform now
+asks for `drive.file`, and the files live in a folder named "RSVP Reader" in the user's Drive.
+Before any code changed, two real sign-ins proved the assumption this rests on: a file one of
+the project's clients makes is readable and writable by the others. Afterwards the app's own
+code (code sign-in, the Drive transport, `syncOnce`, book upload and download) was run against
+real Drive with three simulated devices, in a separate folder that was then removed.
+
+**Costs accepted:** users can see, move or delete the sync files (a deleted folder is remade
+and refilled by the next device that syncs); web and desktop users sign in again for the new
+scope; what v0.3 left in the hidden folder is not carried over by Google, only by each device
+sending what it holds to the new folder.
+
+**Lesson recorded:** a claim about what an outside service allows is tested against the
+service before anything is built on it.
+
+**Rejected:** native Android sign-in with a keystore fingerprint, which would have kept the
+hidden folder (see the entry above).

@@ -70,9 +70,10 @@ export function SyncSection() {
       )}
       {phase !== 'unavailable' && (
         <p className="px-[18px] py-3.5 text-[13px] leading-snug text-text-dim">
-          Your reading positions, settings, shelves, bookmarks and books are kept in a hidden folder
-          of your own Google Drive, so your other devices can pick them up. Google can read what is
-          stored there; nothing is sent anywhere else.
+          Your reading positions, settings, shelves, bookmarks and books are kept in a folder named
+          “RSVP Reader” in your own Google Drive, so your other devices can pick them up. The app
+          can’t see anything else in your Drive. Leave that folder’s files as they are: sync reads
+          and writes them. Google can read what is stored there; nothing is sent anywhere else.
         </p>
       )}
     </>

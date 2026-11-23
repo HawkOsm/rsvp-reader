@@ -57,6 +57,44 @@ describe('DriveTransport', () => {
     expect(drive.requests.every((r) => !r.includes('spaces=drive'))).toBe(true)
   })
 
+  it('keeps everything in one visible folder, made once and found again', async () => {
+    const store = transport()
+    await store.write('a.json', 'a')
+    expect(drive.folders.map((f) => f.name)).toEqual(['RSVP Reader'])
+    expect(drive.files.every((f) => f.parent === drive.folders[0]!.id)).toBe(true)
+
+    // Another device, and this one again later, use the same folder.
+    await transport().write('b.json', 'b')
+    await store.list()
+    expect(drive.folders).toHaveLength(1)
+    // The hidden app folder is never asked for.
+    expect(drive.requests.some((r) => r.includes('appDataFolder') || r.includes('spaces='))).toBe(
+      false,
+    )
+  })
+
+  it('settles on the older folder if two devices each made one', async () => {
+    drive.folders.push({ id: 'older', name: 'RSVP Reader' }, { id: 'newer', name: 'RSVP Reader' })
+    const store = transport()
+    await store.write('a.json', 'a')
+    expect(drive.files[0]!.parent).toBe('older')
+  })
+
+  it('treats a file in the bin as gone, and starts a new folder if the folder is binned', async () => {
+    const store = transport()
+    await store.write('a.json', 'a')
+    await store.write('b.json', 'b')
+    drive.files[0]!.trashed = true
+    expect(await transport().list()).toEqual(['b.json'])
+
+    drive.folders[0]!.trashed = true
+    const fresh = transport()
+    expect(await fresh.list()).toEqual([])
+    await fresh.write('c.json', 'c')
+    expect(drive.folders.filter((f) => !f.trashed)).toHaveLength(1)
+    expect(await transport().list()).toEqual(['c.json'])
+  })
+
   it('makes a file again if it was deleted on Drive since it was listed', async () => {
     const store = transport()
     await store.write('a.json', 'a')
