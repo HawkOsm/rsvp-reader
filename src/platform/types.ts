@@ -40,6 +40,9 @@ export interface SyncAuth {
    * browser (desktop), for the user to open somewhere else if their browser
    * gets in the way (a privacy extension). `null` otherwise. */
   signInLink(): string | null
+  /** The code to enter at `signInLink()`, where sign-in is by code (Android);
+   * `null` otherwise. */
+  signInCode(): string | null
 }
 
 export interface Platform {

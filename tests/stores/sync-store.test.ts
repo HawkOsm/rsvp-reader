@@ -45,6 +45,7 @@ function fakeAuth(initial: SyncAuthState): SyncAuth & { set(state: SyncAuthState
     signOut: async () => set('signed-out'),
     signInError: () => null,
     signInLink: () => null,
+    signInCode: () => null,
   }
 }
 
@@ -161,6 +162,15 @@ describe('a sign-in that fails late', () => {
     link = null
     auth.set('signed-out')
     expect(useSyncStore.getState().signInLink).toBeNull()
+  })
+
+  it('passes on the code to enter, where sign-in is by code', async () => {
+    auth = fakeAuth('signed-out')
+    auth.signInCode = () => 'ABCD-EFGH'
+    stop = useSyncStore.getState().start()
+    await settle()
+    auth.set('signing-in')
+    expect(useSyncStore.getState().signInCode).toBe('ABCD-EFGH')
   })
 })
 

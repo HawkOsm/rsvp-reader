@@ -173,6 +173,7 @@ export function createInstalledAuth({
     state: () => state,
     signInError: () => attempts.failure(),
     signInLink: () => prompt?.link ?? null,
+    signInCode: () => prompt?.code ?? null,
     subscribe(listener) {
       listeners.add(listener)
       void load()
