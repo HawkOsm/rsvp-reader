@@ -22,10 +22,10 @@ function onBackButton(handler: () => void): () => void {
 }
 
 /** The Google OAuth client (type "TVs and Limited Input devices") the
- * Android app signs in with, by code. The ID is public and belongs here (a
- * placeholder until filled in). The secret is never committed: vite.config.ts
+ * Android app signs in with, by code. The ID is public and belongs here. The
+ * secret is never committed: vite.config.ts
  * builds it in from `GOOGLE_DEVICE_CLIENT_SECRET`, in Android builds only. */
-const ANDROID_CLIENT_ID = ''
+const ANDROID_CLIENT_ID = '78238404718-msqmnkuel9icuf4opu2u06i1b9b6m37r.apps.googleusercontent.com'
 
 /** Where the saved sign-in is kept: the app's own storage, which other apps
  * can't read. Not Android's Keystore, which would need native code. */
