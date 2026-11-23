@@ -13,3 +13,7 @@ interface ImportMetaEnv {
 /** The desktop OAuth client's secret, set in vite.config.ts: empty except in
  * a build made by Tauri. */
 declare const __DESKTOP_CLIENT_SECRET__: string
+
+/** The Android app's OAuth client secret, set in vite.config.ts: empty
+ * except in a build made for Android. */
+declare const __DEVICE_CLIENT_SECRET__: string

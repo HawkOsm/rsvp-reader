@@ -106,8 +106,8 @@ Things that are true everywhere and must stay true. Breaking one is a bug even i
    internet unless the user has connected Google Drive in Settings → Sync
    ([sync.md](docs/architecture/sync.md)); then sync talks to Google's sign-in and Drive APIs, and
    nothing else. OCR language data is bundled (`public/ocr/`, copied by
-   `scripts/copy-ocr-assets.mjs`). The Android build is checked in CI for having no network
-   permission (it has no sync yet).
+   `scripts/copy-ocr-assets.mjs`). The Android build is checked in CI for declaring no
+   permission but `INTERNET`, which only that sync uses.
 2. **A book is parsed once.** Its tokens are stored and never re-derived. A schema change
    migrates stored rows (`storage/schema.ts`); it doesn't re-extract.
 3. **The format is decided at import and stored** (`BookRecord.formatId`). Nothing re-derives

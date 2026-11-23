@@ -410,6 +410,7 @@ Assumptions made while recording these (correct me if wrong):
    Google allows it for `drive.appdata`. It needs a "TVs and Limited Input devices" client,
    whose secret is handled like the desktop one, and the keychain would have to remember which
    client a refresh token belongs to. Deferred (2026-10-27): the copy-link fallback covers it.
+   Android has used this flow since 2026-11-23, so only wiring it to the desktop is left.
 
 ## 18. As built
 
@@ -606,9 +607,20 @@ Where the code differs from the design above, and why.
   Android builds never contain it. It still ends up inside the
   installed app, which Google accepts for desktop clients; see decisions.md. The client ID is
   `DESKTOP_CLIENT_ID` in `platform/tauri.ts`.
-- Android is not built yet: Google no longer allows custom-scheme redirects for new Android
-  clients, so it needs a native sign-in plugin and an Android OAuth client with the release
-  keystore's SHA-1.
+- **Android signs in with a code** (`platform/device-auth.ts`), not natively as the table in
+  section 3 planned. Google's device flow: the app asks for a code, Settings shows it with
+  google.com/device, and the app asks the token endpoint every few seconds (more slowly when
+  told `slow_down`) until the code is entered, refused or runs out. Nothing comes back through
+  the browser, so there is no redirect, no signing-key fingerprint and no native code; Google's
+  endpoints answer `fetch` from the app's webview directly. It needs a client of type "TVs and
+  Limited Input devices" (`ANDROID_CLIENT_ID` in `platform/capacitor.ts`), whose secret is built
+  in only by Android builds, from `GOOGLE_DEVICE_CLIENT_SECRET` (as the desktop one is; never
+  committed). Keeping and renewing tokens is shared with the desktop (`installed-auth.ts`).
+  The saved sign-in is kept in the app's own storage, not Android's Keystore, which would need
+  native code; other apps can't read it, and Android's backup may carry it to the user's next
+  phone. Not yet run on a phone.
+- **The Android app declares `INTERNET`** for this, and only this; CI's permission check allows
+  that one permission (decisions.md, 2026-11-23).
 
 ### Phase 7 (text notes; there are no drawings)
 
@@ -638,5 +650,5 @@ Where the code differs from the design above, and why.
   Markdown everywhere; Save as .md where the platform can save a file (`Platform.savesFiles`:
   the web only for now; desktop would need Tauri's dialog plugin).
 
-Not built: sign-in on Android. Book files have no per-book "don't sync
-this" switch, and no Wi-Fi-only option (Android, phase 5).
+Not built: book files have no per-book "don't sync this" switch, and no Wi-Fi-only option on
+Android.

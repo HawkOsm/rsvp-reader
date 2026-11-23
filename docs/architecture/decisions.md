@@ -1245,3 +1245,24 @@ without images. Text notes are built first and behind a `notes` flag.
 Each note edit is its own immutable record pointing at the version it was made from, not a
 "newest wins" value: two devices editing the same note both keep their text, and the reader is
 shown both (sync.md section 7). A delete that races an edit loses to the edit.
+
+## 2026-11-23: Android signs in with a code, and declares INTERNET
+
+Sync's design had Android sign in natively, with an OAuth client tied to the release
+keystore's SHA-1. That needs native code in `android/` (which is generated), and a stable
+signing key, which releases don't have yet: every APK so far was signed with a throwaway debug
+key. The owner chose the easier route: Google's device flow, where the app shows a code to enter
+at google.com/device. It is plain TypeScript, has no fingerprint to register, and is the same
+flow sync.md had noted as a fallback for the desktop.
+
+**Costs accepted:** typing a code instead of tapping an account; one more client secret built
+into an app (handled like the desktop one, never committed); and the saved sign-in living in
+the app's own storage rather than Android's Keystore.
+
+For any sync at all, the Android app has to declare the `INTERNET` permission, which it had
+dropped with the Gutendex search. The owner agreed. It is the only permission CI's check
+allows, and nothing but the opt-in sync uses the network (invariant 1). `android/` was edited
+by hand for this one manifest line.
+
+**Rejected for now:** the native sign-in (kept as a later polish if the code screen proves
+annoying).

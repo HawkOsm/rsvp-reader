@@ -7,11 +7,13 @@ off. Design and history: [docs/architecture/sync.md](architecture/sync.md) and
 
 ## Needs the owner (Google Cloud console, GitHub, keys)
 
-- [ ] **Android OAuth client.** Create it with the release keystore's SHA-1 (and the debug
-      key's), then send its client ID, so Android sign-in can be built.
-- [ ] **`GOOGLE_DESKTOP_CLIENT_SECRET` repository secret** (GitHub → Settings → Secrets and
-      variables → Actions), so released desktop builds can sign in. Local builds read it from
-      `.env.local`.
+- [ ] **Android's OAuth client.** Create a client of type "TVs and Limited Input devices",
+      put its ID in `ANDROID_CLIENT_ID` (`src/platform/capacitor.ts`) and its secret in the
+      `GOOGLE_DEVICE_CLIENT_SECRET` repository secret.
+- [ ] **Release keystore secrets** (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
+      `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`). Without them every release APK is signed
+      with a throwaway key, so it can't install over the last one.
+- [x] `GOOGLE_DESKTOP_CLIENT_SECRET` repository secret (set 2026-11-03).
 - [ ] **Publish the consent screen** ("In production") before anyone but test users signs in.
       Testing mode caps users at 100 and expires desktop sign-ins after about 7 days. Google
       will want a homepage and a privacy-policy link.
@@ -21,7 +23,9 @@ off. Design and history: [docs/architecture/sync.md](architecture/sync.md) and
 
 ## Sync
 
-- [ ] Android sign-in (phase 5): a native Google sign-in plugin, once the client exists.
+- [ ] Try Android sign-in (by code) on a real phone: it is built and unit-tested, but has not
+      run on a device. Check that the google.com/device link opens the phone's browser.
+- [ ] Maybe later: native one-tap sign-in on Android, if the code screen proves annoying.
 - [ ] Try book files (phase 4) and snapshots/purge (phase 6) against real Drive; so far they
       are tested against fakes only.
 - [ ] A two-device check of notes over real Drive.

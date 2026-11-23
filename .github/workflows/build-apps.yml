@@ -88,6 +88,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+        env:
+          # Sync sign-in on Android (by code). Unset (a pull request check),
+          # the app builds but can't sign in.
+          RSVP_ANDROID_BUILD: '1'
+          GOOGLE_DEVICE_CLIENT_SECRET: ${{ secrets.GOOGLE_DEVICE_CLIENT_SECRET }}
       # android/'s copy of the web app is gitignored — sync puts dist/ in it.
       - run: pnpm exec cap sync android
 
