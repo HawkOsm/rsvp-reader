@@ -76,7 +76,7 @@ export async function syncOnce(
   name?: string,
 ): Promise<SyncResult> {
   await ensureSyncIds(db)
-  await checkFormat(transport)
+  await adoptStore(db, await checkFormat(transport))
   const names = await transport.list()
   const state = await localSyncState(db)
 
@@ -156,16 +156,36 @@ async function removedDevices(db: RsvpDatabase): Promise<Map<string, number>> {
   return removed
 }
 
-async function checkFormat(transport: Transport): Promise<void> {
-  const meta = await transport.read(META)
-  const formatVersion =
-    meta === null ? 0 : (JSON.parse(meta) as { formatVersion: number }).formatVersion
+/** Check the store is one this version may write to, and return its id:
+ * random, given when its meta.json is first written. */
+async function checkFormat(transport: Transport): Promise<string> {
+  const raw = await transport.read(META)
+  const meta =
+    raw === null ? null : (JSON.parse(raw) as { formatVersion: number; storeId?: string })
+  const formatVersion = meta?.formatVersion ?? 0
   if (formatVersion > SYNC_FORMAT_VERSION) throw new SyncFormatError(formatVersion)
+  const storeId = meta?.storeId ?? crypto.randomUUID()
   // New, or written by an older version: raise it, so older versions stop
-  // before they miss anything this one purges.
-  if (formatVersion < SYNC_FORMAT_VERSION) {
-    await transport.write(META, JSON.stringify({ formatVersion: SYNC_FORMAT_VERSION }))
+  // before they miss anything this one purges. A store from before stores
+  // had ids is given one.
+  if (formatVersion < SYNC_FORMAT_VERSION || !meta?.storeId) {
+    await transport.write(META, JSON.stringify({ formatVersion: SYNC_FORMAT_VERSION, storeId }))
   }
+  return storeId
+}
+
+/** A store this device hasn't synced with before holds none of its data:
+ * the first one it connects to, the folder that replaced Drive's hidden app
+ * folder, or a new folder after the user deleted the old. So everything
+ * known here is queued to send again, and every other device's log is read
+ * from its start. Sending something twice changes nothing. */
+async function adoptStore(db: RsvpDatabase, store: string): Promise<void> {
+  await db.transaction('rw', syncTables(db), async () => {
+    const state = await localSyncState(db)
+    if (state.store === store) return
+    await db.syncRegisters.toCollection().modify({ pending: 1 })
+    await db.syncState.put({ ...state, cursors: {}, store })
+  })
 }
 
 /** Every op other devices published after `start`, their sequence numbers

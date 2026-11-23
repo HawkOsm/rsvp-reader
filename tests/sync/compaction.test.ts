@@ -175,7 +175,7 @@ describe('snapshots and purging', () => {
     await store.write('meta.json', JSON.stringify({ formatVersion: 1 }))
     await importBook(a)
     await sync(a)
-    expect(JSON.parse(store.files.get('meta.json')!)).toEqual({
+    expect(JSON.parse(store.files.get('meta.json')!)).toMatchObject({
       formatVersion: SYNC_FORMAT_VERSION,
     })
   })

@@ -180,6 +180,10 @@ export interface SyncStateRecord {
   cursors: Record<string, number>
   /** Whatever was here before sync existed has been queued to send. */
   seeded: boolean
+  /** The store last synced with (`storeId` in its meta.json). A different
+   * one is a store this device's data was never sent to. Missing before the
+   * first sync, and on devices that synced before stores had ids. */
+  store?: string
 }
 
 export interface FileRecord {

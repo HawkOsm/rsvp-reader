@@ -194,6 +194,42 @@ describe('syncOnce', () => {
     expect((await progressOffers(b))[0]).toMatchObject({ bookId: onB, progress: { wordIndex: 2 } })
   })
 
+  it('sends everything again to a store it has not synced with before', async () => {
+    const onA = await importBook(a)
+    const onB = await importBook(b)
+    await read(a, onA, 2)
+    await setSetting(a, 'theme', 'dark')
+    await syncOnce(a, store)
+    await read(b, onB, 3)
+    await syncOnce(b, store)
+    await syncOnce(a, store) // A now knows B's place too
+    expect(await a.syncRegisters.where('pending').equals(1).count()).toBe(0)
+
+    // The store is replaced: the move to a new folder, or the user deleted it.
+    const replaced = new MemoryTransport()
+    const result = await syncOnce(a, replaced)
+    expect(result.pushed).toBeGreaterThanOrEqual(3)
+    const { storeId } = JSON.parse(replaced.files.get('meta.json')!) as { storeId: string }
+    expect(storeId).toMatch(/^[0-9a-f-]{36}$/)
+    expect((await localSyncState(a)).store).toBe(storeId)
+
+    // A device that never saw the old store gets all of it from A alone,
+    // B's newer place included.
+    const c = getDb(`sync-c-${Math.random().toString(36).slice(2)}`)
+    const onC = await importBook(c)
+    await syncOnce(c, replaced)
+    expect(await getSetting(c, 'theme', 'system')).toBe('dark')
+    expect((await progressOffers(c))[0]).toMatchObject({ bookId: onC, progress: { wordIndex: 3 } })
+
+    // Syncing with the same store again sends nothing more.
+    expect((await syncOnce(a, replaced)).pushed).toBe(0)
+    // And B, arriving later with its old sequence numbers, is still read.
+    await read(b, onB, 1)
+    await syncOnce(b, replaced)
+    await syncOnce(a, replaced)
+    expect((await progressOffers(a))[0]).toMatchObject({ progress: { wordIndex: 1 } })
+  })
+
   it('refuses to write to a store a newer version made', async () => {
     await store.write('meta.json', JSON.stringify({ formatVersion: 99 }))
     await expect(syncOnce(a, store)).rejects.toBeInstanceOf(SyncFormatError)
