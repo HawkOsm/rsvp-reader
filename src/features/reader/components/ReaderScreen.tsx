@@ -1,8 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { createEngine } from '@/core/engine'
-import { BookControls } from './BookControls'
-import { BookStatus } from './BookStatus'
+import { BookNav } from './BookNav'
 import { BookmarkButton } from './BookmarkButton'
 import { ReaderMenu } from './ReaderMenu'
 import { Byline, ContentsPanel } from './ContentsPanel'
@@ -21,6 +27,7 @@ import { RsvpCanvas } from './RsvpCanvas'
 import { TransportBar } from './TransportBar'
 import { EngineProvider, useEngine, useEnginePlaying } from '@/features/reader/engine-context'
 import { useAutosaveProgress } from '@/features/reader/hooks/useAutosaveProgress'
+import { useJumps } from '@/features/reader/hooks/useJumps'
 import { useLoadedBook, type LoadedBook } from '@/features/reader/hooks/useLoadedBook'
 import { usePageOverlay } from '@/features/reader/hooks/usePageOverlay'
 import { useReaderKeyboardShortcuts } from '@/features/reader/hooks/useReaderKeyboardShortcuts'
@@ -29,6 +36,11 @@ import { useWakeLock } from '@/features/reader/hooks/useWakeLock'
 import { useAppStore } from '@/stores/app-store'
 import { useFlag } from '@/lib/flags'
 import { HAS_KEYBOARD, useMediaQuery, WIDE } from '@/lib/media'
+
+/** A mouse this near the top edge brings the header back (Readest's 44). */
+const REVEAL_PX = 44
+/** …and it goes this long after the mouse has left it. */
+const LEAVE_MS = 500
 
 const MODES = [
   { value: 'rsvp', label: 'RSVP', icon: 'bolt', title: 'Back to one word at a time  (B)' },
@@ -107,11 +119,13 @@ function ReaderBody({ book }: { book: BookRecord }) {
   useEffect(() => setContentsOpen(contentsBeside), [contentsBeside])
   const keyboard = useMediaQuery(HAS_KEYBOARD)
 
-  // Book mode read by touch gives the page the whole screen: the header and
-  // the controls start in their places ('docked'), go away at the first page
-  // turned with a finger, and after that a tap in the middle of the page
-  // lays them over it and takes them off again. Over, not beside, so the
-  // page keeps its size and isn't drawn again at each tap.
+  // Book mode gives the page the whole screen, however it is read. The
+  // header starts in its place ('docked') and goes away as soon as the
+  // reader moves through the book. After that it is laid over the page and
+  // taken off again by a tap in the middle of the page, by Enter, or by a
+  // mouse reaching the top edge and leaving. Over, not beside, so the page
+  // keeps its size and isn't drawn again each time. Under the page there is
+  // only BookNav's one line.
   const [bookControls, setBookControls] = useState<'docked' | 'hidden' | 'over'>('docked')
   useEffect(() => setBookControls('docked'), [mode])
   const onControls = useCallback(
@@ -119,10 +133,40 @@ function ReaderBody({ book }: { book: BookRecord }) {
       setBookControls((now) => (show === false || now !== 'hidden' ? 'hidden' : 'over')),
     [],
   )
+  useEffect(() => {
+    if (mode !== 'book') return
+    return engine.on('word', () => setBookControls('hidden'))
+  }, [mode, engine])
   const controlsAre = mode === 'book' ? bookControls : 'docked'
   const over = controlsAre === 'over'
 
-  useReaderKeyboardShortcuts(layout)
+  // A mouse at the top edge brings the header over the page; it goes again
+  // a moment after the mouse has left it (SumatraPDF's half second).
+  const headerRef = useRef<HTMLElement>(null)
+  const leaving = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(leaving.current), [])
+  function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (mode !== 'book' || event.pointerType !== 'mouse' || bookControls === 'docked') return
+    const fromTop = event.clientY - event.currentTarget.getBoundingClientRect().top
+    if (fromTop <= REVEAL_PX || headerRef.current?.contains(event.target as Node)) {
+      clearTimeout(leaving.current)
+      leaving.current = undefined
+      if (bookControls === 'hidden') setBookControls('over')
+    } else if (bookControls === 'over' && leaving.current === undefined) {
+      leaving.current = setTimeout(() => {
+        leaving.current = undefined
+        setBookControls((now) => (now === 'over' ? 'hidden' : now))
+      }, LEAVE_MS)
+    }
+  }
+
+  const jumps = useJumps()
+  const [jumpOpen, setJumpOpen] = useState(false)
+  useReaderKeyboardShortcuts(layout, {
+    jumps,
+    onToggleControls: () => onControls('toggle'),
+    onOpenJump: () => setJumpOpen(true),
+  })
   useAutosaveProgress(bookId, mode)
   // Reading a page is using the screen too, without touching it for minutes.
   useWakeLock(playing || mode === 'book')
@@ -207,8 +251,12 @@ function ReaderBody({ book }: { book: BookRecord }) {
   // The root is as tall as what can be seen: less a mobile browser's address
   // bar (dvh), and less the insets the body pads itself with (index.css).
   return (
-    <div className="relative flex h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))] flex-col bg-bg text-text">
+    <div
+      onPointerMove={onPointerMove}
+      className="relative flex h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))] flex-col bg-bg text-text"
+    >
       <header
+        ref={headerRef}
         hidden={controlsAre === 'hidden'}
         className={`grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-border px-2 py-2 text-sm [&:not([hidden])]:grid sm:gap-3 sm:px-4 ${
           over ? 'absolute inset-x-0 top-0 z-30 bg-bg' : ''
@@ -268,6 +316,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
           <div className={contentsBeside ? 'min-h-0' : 'absolute inset-y-0 left-0 z-40 shadow-xl'}>
             <ContentsPanel
               chapters={book.chapters}
+              go={jumps.to}
               onPicked={contentsBeside ? undefined : () => setContentsOpen(false)}
             />
           </div>
@@ -298,21 +347,21 @@ function ReaderBody({ book }: { book: BookRecord }) {
         )}
       </div>
 
-      {controlsAre !== 'docked' && <BookStatus layout={layout} />}
-      {controlsAre !== 'hidden' && (
-        <div
-          className={
-            over ? 'absolute inset-x-0 bottom-0 z-30 border-t border-border bg-bg pt-2' : 'contents'
-          }
-        >
-          {mode === 'book' && layout.kind === 'paged' ? (
-            <BookControls pageCount={layout.pages} />
-          ) : (
-            <TransportBar layout={layout} chapters={book.chapters} />
-          )}
-          {/* Keys are no use to a finger. */}
-          {showHints && keyboard && <ReaderHints mode={mode} layout={layout} />}
-        </div>
+      {mode === 'book' ? (
+        <BookNav
+          layout={layout}
+          chapters={book.chapters}
+          jumps={jumps}
+          open={jumpOpen}
+          onOpen={setJumpOpen}
+        />
+      ) : (
+        <TransportBar layout={layout} chapters={book.chapters} />
+      )}
+      {/* Keys are no use to a finger; and in book mode they are shown only
+          until the reading starts. */}
+      {showHints && keyboard && controlsAre === 'docked' && (
+        <ReaderHints mode={mode} layout={layout} />
       )}
     </div>
   )

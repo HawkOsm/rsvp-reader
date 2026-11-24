@@ -18,6 +18,9 @@ const BOOK_PAGED: Hint[] = [
   [['space', '→'], 'next'],
   [['←'], 'back'],
   [['pgup', 'pgdn'], 'turn the page'],
+  [['g'], 'go to…'],
+  [['alt', '← →'], 'back / forward a jump'],
+  [['enter'], 'show / hide the top bar'],
   [['+', '−'], 'page size'],
   [['d'], 'one or two pages'],
   [['f'], 'fit page / width'],
@@ -29,6 +32,9 @@ const BOOK_PAGED: Hint[] = [
 const BOOK_TEXT: Hint[] = [
   [['space'], 'next screen'],
   [['←', '→'], 'back / forward a word'],
+  [['g'], 'go to…'],
+  [['alt', '← →'], 'back / forward a jump'],
+  [['enter'], 'show / hide the top bar'],
   [['b'], 'back to RSVP'],
   [['esc'], 'library'],
 ]

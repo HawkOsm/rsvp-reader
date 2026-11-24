@@ -23,9 +23,10 @@ ReaderScreen
      │                               (copy as Markdown; save as .md where `savesFiles`)
      ├─ ContentsPanel            a book with chapters: jump to one, current marked; beside
      │                               the page in book mode on a wide screen, over it otherwise
-     ├─ TransportBar / BookControls   play, seek, WPM / page turn, scale, spread; chapter
-     │                               ticks on the bar and the time left in the chapter
-     ├─ BookStatus               book mode with the controls hidden: the page and the percent
+     ├─ TransportBar             RSVP: play, seek, WPM; chapter ticks on the bar and the time
+     │                               left in the chapter
+     ├─ BookNav                  book mode: one line under the page (where the reader is, an
+     │                               arrow each side) that opens the jump panel
  └─ ReaderHints              the shortcut strip, only where there is a keyboard to use
 ```
 
@@ -70,12 +71,23 @@ and are meant to match it word for word. Change them deliberately.
     fingers lift, no smaller than the whole page; a double tap in the middle switches between
     the two fits. A finger's tap never jumps to the word under it. Vertical scrolling stays the
     browser's (`touch-action`). Checked with synthetic pointer events, not yet on a phone.
-  - **The whole screen for the page.** The header and the controls start in their places, go
-    away at the first page turned with a finger, and from then on a tap in the middle lays
-    them over the page and takes them off again (`bookControls` in `ReaderScreen`). They are
-    laid over, not beside, so the page keeps its size and is not drawn again at each tap.
-    While they are away `BookStatus` shows one line: the page and how far through. Read with
-    a mouse and keys, nothing hides.
+  - **The whole screen for the page**, however it is read. The header starts in its place and
+    goes away as soon as the reader moves through the book (any `word` event). After that it
+    is laid over the page and taken off again by a tap in the middle, by Enter, or by a mouse
+    reaching the top edge (`REVEAL_PX`) and leaving it (`LEAVE_MS`): `bookControls` in
+    `ReaderScreen`. Over, not beside, so the page keeps its size and is not drawn again.
+  - **No bar under the page.** `BookNav` is one line: the page and how far through (for a book
+    without pages, how far and the chapter), with an arrow each side to turn a paged book.
+    Pressing it, or G, opens the jump panel over the page: a page number (or a percent) to
+    type, a drag along the whole book with the chapters marked, back and forward a chapter,
+    Back and Forward through the jumps made, and for a paged book one or two pages, the fit
+    and the size. The jumps are `jump-history.ts` (pure) kept by `useJumps`; the chapter list
+    and Alt+← / Alt+→ use them too.
+  - **Mouse wheel and trackpad** (`wheel-turn.ts` for the arithmetic, the listener in
+    `PdfPagePanel`): a page with more to scroll scrolls; one with nothing left that way turns,
+    once per flick however long the flick, and not at the end of a flick that was scrolling.
+    A sideways swipe turns it. With Ctrl, which is also how a trackpad pinch arrives, it
+    zooms: stretched at once, drawn again when the wheel rests.
   - **Pages with no words** (blank, or one whole picture) cannot be stopped on, because the
     page shown is the current word's: `turn` carries on past them, the way it was going.
 
@@ -93,7 +105,7 @@ the page scrolls itself to a word that was jumped to, the place does not follow 
 (`ownScroll`); it would slide back to the top of the screen. At the very bottom the place is the
 book's last word. Space
 and the paging keys scroll a screen. A finger's tap is for the controls and picks no word, and
-a finger's scroll hides them (see "The whole screen for the page").
+a finger's scroll hides the header (see "The whole screen for the page").
 
 Where the reader is among the chapters (`chapterAt`, the bar's ticks, words left in the chapter)
 is pure maths in `chapters.ts`. Chapters come from `book.chapters`, which is empty for a book

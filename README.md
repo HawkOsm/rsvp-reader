@@ -109,21 +109,32 @@ In book mode:
 | `Space` / `→` / `↓` | Onward a word/page       |
 | `←` / `↑`           | Back the same way        |
 | `PgUp` / `PgDn`     | Turn the page regardless |
+| `Home` / `End`      | First / last page        |
+| `G`                 | Go to a page, a chapter… |
+| `Alt`+`←` / `→`     | Back / forward a jump    |
+| `Enter`             | Show / hide the top bar  |
+| `+` / `-`, `F`, `D` | Size, fit, one/two pages |
 
 In a book without pages (an EPUB, a text file), book mode scrolls: `Space`
 and `PgDn` / `PgUp` move a screen, the arrows a word, and your place follows
 the scrolling.
-| `Home` / `End` | First / last page |
 
-The progress bar is clickable and draggable — scrub it to jump anywhere in
-the document. WPM is live-adjustable while playing; the new rate takes
-effect on the next word. Touch: tap the middle to play/pause, tap the left
-and right edges to step a word.
+Book mode gives the page the whole window: the top bar goes away once you
+start reading, and comes back when the mouse reaches the top edge (or with
+`Enter`). Under the page there is one line saying where you are; press it
+for the jump panel: go to a page, drag along the book, step by chapter, go
+back to where you jumped from. The mouse wheel turns a page that is all in
+view; `Ctrl`+wheel (or a trackpad pinch) zooms.
+
+In RSVP the progress bar is clickable and draggable — scrub it to jump
+anywhere in the document. WPM is live-adjustable while playing; the new rate
+takes effect on the next word. Touch: tap the middle to play/pause, tap the
+left and right edges to step a word.
 
 Touch in book mode: tap the right or left edge of the page, or swipe, to
-turn it; tap the middle to show or hide the controls; pinch to zoom;
+turn it; tap the middle to show or hide the top bar; pinch to zoom;
 double-tap the middle to switch between the whole page and its full width.
-Turning a page hides the controls, so the page has the whole screen.
+Turning a page hides the top bar, so the page has the whole screen.
 
 ## Resuming
 

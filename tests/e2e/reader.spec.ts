@@ -93,8 +93,9 @@ test('book mode fits the page, and refits after the window changes', async ({ pa
     expect(width, `${label}: page drawn`).toBeGreaterThan(0)
   }
 
-  const fit = page.getByRole('button', { name: /Fit/ })
-  // Fit toggles page/width; press until it fits the page whole.
+  // F toggles the fit between page and width; press until it fits the page
+  // whole.
+  const fit = { click: () => page.keyboard.press('f') }
   await fit.click()
   try {
     await expectFitsWhole('spread, first fit')
@@ -114,7 +115,7 @@ test('book mode fits the page, and refits after the window changes', async ({ pa
   }
 
   // Single page and back: still drawn, nothing blank.
-  await page.getByRole('button', { name: /Single page|Two pages|Spread/ }).click()
+  await page.keyboard.press('d')
   await expect
     .poll(() => pages.first().evaluate((c) => (c as { width: number }).width))
     .toBeGreaterThan(0)
@@ -160,4 +161,74 @@ test('the page comes back after the PDF engine crashes', async ({ page }) => {
 
   // The crash itself, and the error log noting it, are expected.
   expect(errors.filter((e: string) => !/simulated engine crash|\[pdf engine\]/.test(e))).toEqual([])
+})
+
+// Book mode with a mouse and keys: the page has the whole window, the header
+// comes back at the top edge, and the wheel turns a page that is all in view.
+test('book mode on a desktop hides the header, shows it at the top edge, and turns with the wheel', async ({
+  page,
+}) => {
+  desktopOnly()
+  const errors = collectErrors(page)
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/')
+  await addBook(page, PDF)
+  await page.keyboard.press('b')
+  const scroller = page.locator('#book-scroll')
+  await expect(scroller.locator('canvas').first()).toBeVisible({ timeout: 20_000 })
+  const label = page.getByTestId('book-page-label')
+  const header = page.getByRole('banner')
+  await expect(header).toBeVisible()
+  await page.keyboard.press('d') // one page at a time, so every turn is one page
+  await expect(label).toHaveText(/^page 1 \//)
+
+  // Reading on hides the header.
+  await page.keyboard.press('PageDown')
+  await expect(label).toHaveText(/^page 2 \//)
+  await expect(header).toBeHidden()
+
+  // The mouse at the top edge brings it back, over the page; it goes again
+  // once the mouse has left it.
+  await page.mouse.move(600, 400)
+  await page.mouse.move(600, 10)
+  await expect(header).toBeVisible()
+  await page.mouse.move(600, 420)
+  await page.mouse.move(600, 430)
+  await expect(header).toBeHidden()
+
+  // Enter does the same from the keyboard.
+  await page.keyboard.press('Enter')
+  await expect(header).toBeVisible()
+  await page.keyboard.press('Enter')
+  await expect(header).toBeHidden()
+
+  // The whole page is in view (F fits it), so the wheel turns it: one page
+  // for one spin, however many notches the spin had.
+  await page.keyboard.press('f')
+  await expect
+    .poll(async () => {
+      const fits = await scroller.evaluate((el) => el.scrollHeight - el.clientHeight)
+      if (fits > 1) await page.keyboard.press('f')
+      return fits
+    })
+    .toBeLessThanOrEqual(1)
+  await page.mouse.move(600, 400)
+  await page.mouse.wheel(0, -100)
+  await page.mouse.wheel(0, -100)
+  await expect(label).toHaveText(/^page 1 \//)
+  await page.waitForTimeout(300) // the wheel rests
+  await page.mouse.wheel(0, 100)
+  await expect(label).toHaveText(/^page 2 \//)
+
+  // G opens the jump panel; Alt+Left undoes the jump made from it.
+  await page.keyboard.press('g')
+  const panel = page.getByRole('dialog', { name: 'Go to' })
+  await panel.getByRole('textbox', { name: 'Page number' }).fill('3')
+  await page.keyboard.press('Enter')
+  await expect(label).toHaveText(/^page 3 \//)
+  await expect(panel).toBeHidden()
+  await page.keyboard.press('Alt+ArrowLeft')
+  await expect(label).toHaveText(/^page 2 \//)
+
+  expect(errors).toEqual([])
 })

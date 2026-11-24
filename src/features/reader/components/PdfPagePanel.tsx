@@ -9,7 +9,9 @@ import {
   type FitScales,
 } from '@/lib/book-layout'
 import { useBookGestures, type BookGestures } from '@/features/reader/hooks/useBookGestures'
+import { pinchRatio } from '@/features/reader/book-gestures'
 import { BOOK_SCROLL_ID, scrollOrTurn } from '@/features/reader/book-scroll'
+import { WHEEL_AT_REST, WHEEL_REST_MS, wheelPixels, wheelTurn } from '@/features/reader/wheel-turn'
 import { useEngine, useEngineIndex } from '@/features/reader/engine-context'
 import { useAppStore } from '@/stores/app-store'
 import { useElementSize, usePdfDocument } from '@/features/reader/hooks/usePdfDocument'
@@ -145,6 +147,77 @@ export function PdfPagePanel({
     }
   }, [onZoom, onFitToggle, onControls, canSwipe, scale, fits, engine, count, layout])
   useBookGestures(scrollRef, pagesRef, gestures)
+
+  // Mouse wheel and trackpad, in the reading view. A page with more to
+  // scroll scrolls; one with nothing left that way turns, once per flick,
+  // and not at the end of a flick that was scrolling. A sideways trackpad
+  // swipe turns it too. With Ctrl (which is also how a trackpad pinch
+  // arrives) it zooms: stretched at once, drawn again when the wheel rests.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el || !gestures) return
+    const { canSwipe, scale, minScale, maxScale, onZoom } = gestures
+    let run = WHEEL_AT_REST
+    let scrolledAt = -Infinity
+    let zoom = 1
+    let zoomRest: ReturnType<typeof setTimeout> | undefined
+    const stretch = (ratio: number | null) => {
+      const sheet = pagesRef.current
+      if (!sheet) return
+      sheet.style.transform = ratio === null ? '' : `scale(${ratio})`
+      sheet.style.transformOrigin = ratio === null ? '' : 'center top'
+    }
+    const commitZoom = () => {
+      zoomRest = undefined
+      const ratio = zoom
+      zoom = 1
+      stretch(null)
+      if (scale !== null && Math.abs(ratio - 1) > 0.02) onZoom(scale * ratio)
+    }
+
+    function onWheel(e: WheelEvent) {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+        if (scale === null) return
+        const px = wheelPixels(e.deltaY, e.deltaMode, el!.clientHeight)
+        // A wheel's notch is a step (pdf.js's 1.1); a pinch is smooth.
+        const factor = Math.abs(px) >= 50 ? (px < 0 ? 1.1 : 1 / 1.1) : Math.exp(-px / 100)
+        zoom = pinchRatio(1, zoom * factor, scale, minScale, maxScale)
+        stretch(zoom)
+        clearTimeout(zoomRest)
+        zoomRest = setTimeout(commitZoom, WHEEL_REST_MS)
+        return
+      }
+      const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY)
+      if (sideways && !canSwipe) return // a wide page scrolls sideways
+      const px = wheelPixels(sideways ? e.deltaX : e.deltaY, e.deltaMode, el!.clientHeight)
+      if (!sideways) {
+        const max = el!.scrollHeight - el!.clientHeight
+        const room = px > 0 ? el!.scrollTop < max - 1 : el!.scrollTop > 0
+        if (max > 1 && room) {
+          scrolledAt = e.timeStamp
+          return
+        }
+      }
+      e.preventDefault()
+      if (e.timeStamp - scrolledAt < WHEEL_REST_MS) {
+        scrolledAt = e.timeStamp
+        return
+      }
+      const step = wheelTurn(run, px, e.timeStamp)
+      run = step.run
+      if (!step.turn) return
+      if (sideways) turn(engine, count, layout, step.turn)
+      else scrollOrTurn(engine, count, layout, step.turn)
+    }
+
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      clearTimeout(zoomRest)
+      stretch(null)
+    }
+  }, [gestures, engine, count, layout])
 
   // With no scale given (the side panel), pages fill the panel's width.
   const per = pages.length || 1

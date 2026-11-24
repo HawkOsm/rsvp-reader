@@ -46,6 +46,9 @@ off. Design and history: [docs/architecture/sync.md](architecture/sync.md) and
 
 ## Book mode
 
+- [ ] Real full screen (F11) for book mode: needs a `Platform` method for the desktop app.
+- [ ] A grid of small page pictures to pick from (KOReader's page browser, Readest's
+      thumbnails) was considered for the jump panel and left out: drawing every page costs.
 - [ ] Try the touch gestures on a real phone: tap zones, swipe, pinch (above all a pinch with
       one finger above the other, where the browser may take the touch for a scroll), and the
       controls coming and going. So far only with made-up touches in a browser.
@@ -57,8 +60,7 @@ off. Design and history: [docs/architecture/sync.md](architecture/sync.md) and
       million pixels. Drawing only the part in view would fix it.
 - [ ] From a review on 2026-11-24, read but not acted on: going back to a taller page can land
       short of its bottom; Escape and Android's Back leave the book while the chapter list or
-      notes are open, instead of closing them; a book without pages still shows RSVP's Play in
-      book mode; dragging the progress bar while playing fights the playback; the PDF worker
+      notes are open, instead of closing them; dragging the progress bar while playing fights the playback; the PDF worker
       is not restarted after an error inside MuPDF itself (unconfirmed).
 - [ ] A page with no words (a full-page picture) is skipped, since the page shown is the
       current word's. Showing it needs a page position of its own.

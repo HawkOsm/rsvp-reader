@@ -18,9 +18,21 @@ test('on a phone, book mode shows one fitted page, and a swipe turns it', async 
   await expect(pages.first()).toBeVisible({ timeout: 20_000 })
   await expect(page.getByTestId('book-page-label')).toHaveText(/^page 1 \/ \d+$/)
   await expect(pages).toHaveCount(1)
-  // No two-page layout or size slider to fiddle with on a small screen.
-  await expect(page.getByRole('button', { name: /Single page|Two pages/ })).toHaveCount(0)
-  await expect(page.getByRole('slider', { name: 'Page size' })).toHaveCount(0)
+  // Under the page there is one line and no bar; pressing it opens the jump
+  // panel, which on a small screen offers no two-page layout.
+  await page.getByTestId('book-status').click()
+  const panel = page.getByRole('dialog', { name: 'Go to' })
+  await expect(panel).toBeVisible()
+  await expect(panel.getByRole('button', { name: /Single page|Two pages/ })).toHaveCount(0)
+  await panel.getByRole('textbox', { name: 'Page number' }).fill('3')
+  await panel.getByRole('button', { name: 'Go', exact: true }).click()
+  await expect(page.getByTestId('book-page-label')).toHaveText(/^page 3 \/ \d+$/)
+  await page.getByTestId('book-status').click()
+  await panel.getByRole('button', { name: /Back to page 1/ }).click()
+  await expect(page.getByTestId('book-page-label')).toHaveText(/^page 1 \/ \d+$/)
+  await page.keyboard.press('Escape')
+  await expect(panel).toBeHidden()
+  await expect(pages.first()).toBeVisible()
 
   // The page fills the width, with nothing to scroll sideways, and sits in
   // the middle of the space, not against its top.
@@ -63,18 +75,17 @@ test('on a phone, book mode shows one fitted page, and a swipe turns it', async 
       at('pointermove', ${(from + to) / 2})
       at('pointerup', ${to})
     })()`)
-  // Turning a page by touch gives the page the whole screen: the header and
-  // the controls go, and one quiet line says where the reader is.
+  // Moving through the book gives the page the whole screen: the header
+  // goes, and the one line says where the reader is.
   const status = page.getByTestId('book-status')
   await swipe(300, 80)
   await expect(status).toHaveText(/^page 2 \/ \d+ · \d+%$/)
-  await expect(page.getByRole('button', { name: 'Next ›' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Reader menu' })).toBeHidden()
   await swipe(80, 300)
   await expect(status).toHaveText(/^page 1 \/ \d+ · \d+%$/)
 
   // A tap at the right edge turns the page, at
-  // the left edge goes back, and in the middle brings the controls over the
+  // the left edge goes back, and in the middle brings the header over the
   // page without moving or resizing it.
   const tap = (x: number) => swipe(x, x)
   await tap(340)
@@ -93,11 +104,10 @@ test('on a phone, book mode shows one fitted page, and a swipe turns it', async 
     })
     .toBe(true)
   await tap(187)
-  await expect(page.getByRole('button', { name: 'Next ›' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Reader menu' })).toBeVisible()
   expect(await box()).toEqual(before)
   await tap(187)
-  await expect(page.getByRole('button', { name: 'Next ›' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Reader menu' })).toBeHidden()
 
   expect(errors).toEqual([])
 })
