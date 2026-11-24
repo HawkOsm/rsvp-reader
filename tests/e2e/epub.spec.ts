@@ -22,6 +22,19 @@ test('an EPUB imports in the worker and reads', async ({ page }) => {
   await expect.poll(() => wordNumber(page)).toBeGreaterThan(2)
   await page.keyboard.press('Space')
 
+  // On a phone the chapter list lies over the page; a tap beside it closes
+  // it, and does nothing else (it once played or stepped the word under it).
+  if (test.info().project.name === 'phone') {
+    const at = await wordNumber(page)
+    await page.getByRole('button', { name: 'Reader menu' }).click()
+    await page.getByRole('button', { name: 'Contents' }).click()
+    const contents = page.getByRole('navigation', { name: 'Contents' })
+    await expect(contents).toBeVisible()
+    await page.getByTestId('contents-backdrop').click({ position: { x: 360, y: 300 } })
+    await expect(contents).toBeHidden()
+    expect(await wordNumber(page)).toBe(at)
+  }
+
   expect(errors).toEqual([])
 })
 

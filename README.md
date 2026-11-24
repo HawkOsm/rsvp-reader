@@ -128,7 +128,8 @@ Turning a page hides the controls, so the page has the whole screen.
 ## Resuming
 
 Your position is written every 20 words, and again whenever you pause, go
-back to the library, hide the tab, or close the app. Re-opening a book
+back to the library, hide the tab, or close the app. Hiding the app also
+pauses playback, so no words go by unseen. Re-opening a book
 you're partway through asks whether to **Resume**, **Start over**, or
 **Cancel**.
 

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { logError } from '@/lib/error-log'
-import { DEFAULT_WPM } from '@/core/pacing'
 import type { Token } from '@/core/types'
 import { loadBook, touchOpened, type BookRecord } from '@/features/reader/api/book'
 import { startIndexFor } from '@/features/reader/bookmark'
@@ -59,7 +58,8 @@ export function useLoadedBook(
             book,
             tokens,
             startIndex: startIndexFor(atRef.current, progress?.wordIndex, tokens.length),
-            startWpm: progress?.wpm ?? DEFAULT_WPM,
+            // A book never read starts at the speed chosen in Settings.
+            startWpm: progress?.wpm ?? useAppStore.getState().defaultWpm,
           },
         })
       } catch (err) {

@@ -254,6 +254,16 @@ function ReaderBody({ book }: { book: BookRecord }) {
         )}
         {/* The panels lie over the reading area, and over the controls when
             those are laid over the page (z-30). */}
+        {/* Over the page, a tap beside the list closes it, and is no tap on
+            the page. */}
+        {hasContents && contentsOpen && !contentsBeside && (
+          <div
+            aria-hidden
+            data-testid="contents-backdrop"
+            className="absolute inset-0 z-40"
+            onClick={() => setContentsOpen(false)}
+          />
+        )}
         {hasContents && contentsOpen && (
           <div className={contentsBeside ? 'min-h-0' : 'absolute inset-y-0 left-0 z-40 shadow-xl'}>
             <ContentsPanel

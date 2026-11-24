@@ -55,6 +55,11 @@ off. Design and history: [docs/architecture/sync.md](architecture/sync.md) and
       middle and the page flickers back to its old size before the new one is drawn.
 - [ ] Pages go soft when zoomed far in on a dense screen: a page is drawn whole, capped at 16
       million pixels. Drawing only the part in view would fix it.
+- [ ] From a review on 2026-11-24, read but not acted on: going back to a taller page can land
+      short of its bottom; Escape and Android's Back leave the book while the chapter list or
+      notes are open, instead of closing them; a book without pages still shows RSVP's Play in
+      book mode; dragging the progress bar while playing fights the playback; the PDF worker
+      is not restarted after an error inside MuPDF itself (unconfirmed).
 - [ ] A page with no words (a full-page picture) is skipped, since the page shown is the
       current word's. Showing it needs a page position of its own.
 
