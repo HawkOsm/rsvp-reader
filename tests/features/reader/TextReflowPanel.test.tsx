@@ -96,4 +96,34 @@ describe('TextReflowPanel', () => {
     act(() => e.seek(10))
     expect(queryByText('w10')).not.toBeNull()
   })
+
+  it('in the reading view, a finger tap is for the controls and a scroll hides them; a mouse picks the word', () => {
+    const e = engine()
+    const onControls = vi.fn()
+    const { getByText } = render(
+      <EngineProvider value={e}>
+        <TextReflowPanel book onControls={onControls} />
+      </EngineProvider>,
+    )
+    const word = getByText('three')
+    // jsdom's own PointerEvent doesn't carry the pointer's type.
+    const press = (pointerType: string) =>
+      act(() => {
+        word.dispatchEvent(
+          Object.assign(new Event('pointerdown', { bubbles: true }), { pointerType }),
+        )
+      })
+    press('touch')
+    fireEvent.click(word)
+    expect(onControls).toHaveBeenLastCalledWith('toggle')
+    expect(e.index).toBe(0)
+    fireEvent.scroll(document.getElementById('book-scroll')!)
+    expect(onControls).toHaveBeenLastCalledWith(false)
+
+    onControls.mockClear()
+    press('mouse')
+    fireEvent.click(word)
+    expect(e.index).toBe(2)
+    expect(onControls).not.toHaveBeenCalled()
+  })
 })

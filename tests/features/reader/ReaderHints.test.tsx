@@ -14,9 +14,10 @@ describe('ReaderHints', () => {
     expect(screen.getByText('fit page / width')).toBeInTheDocument()
   })
 
-  it('offers word-stepping keys in book mode over reflowed text', () => {
+  it('offers scrolling and word-stepping keys in book mode over reflowed text', () => {
     render(<ReaderHints mode="book" layout={{ kind: 'reflow' }} />)
-    expect(screen.getByText('next word')).toBeInTheDocument()
+    expect(screen.getByText('next screen')).toBeInTheDocument()
+    expect(screen.getByText('back / forward a word')).toBeInTheDocument()
     expect(screen.queryByText('turn the page')).not.toBeInTheDocument()
   })
 })

@@ -109,6 +109,10 @@ In book mode:
 | `Space` / `→` / `↓` | Onward a word/page       |
 | `←` / `↑`           | Back the same way        |
 | `PgUp` / `PgDn`     | Turn the page regardless |
+
+In a book without pages (an EPUB, a text file), book mode scrolls: `Space`
+and `PgDn` / `PgUp` move a screen, the arrows a word, and your place follows
+the scrolling.
 | `Home` / `End`      | First / last page        |
 
 The progress bar is clickable and draggable — scrub it to jump anywhere in

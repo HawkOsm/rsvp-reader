@@ -32,7 +32,13 @@ export const PagePanel = memo(function PagePanel({
   // A small screen starts each book fitted to its width.
   useSmallScreenFit(canSpread, variant === 'book' && layout.kind === 'paged')
 
-  if (layout.kind === 'reflow') return <TextReflowPanel book={variant === 'book'} />
+  if (layout.kind === 'reflow') {
+    return variant === 'book' ? (
+      <TextReflowPanel book onControls={onControls} />
+    ) : (
+      <TextReflowPanel />
+    )
+  }
   const legacyBoxes = layout.boxSpace !== 'displayed'
   if (variant === 'book') {
     return (

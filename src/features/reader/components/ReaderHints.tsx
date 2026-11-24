@@ -27,8 +27,8 @@ const BOOK_PAGED: Hint[] = [
 
 // Book mode over reflowed text has no pages to turn, size or fit.
 const BOOK_TEXT: Hint[] = [
-  [['space', '→'], 'next word'],
-  [['←'], 'back a word'],
+  [['space'], 'next screen'],
+  [['←', '→'], 'back / forward a word'],
   [['b'], 'back to RSVP'],
   [['esc'], 'library'],
 ]

@@ -41,3 +41,10 @@ export function scrollOrTurn(
   useAppStore.getState().setArriveAtBottom(delta < 0 && engine.index !== before)
   return false
 }
+
+/** Scroll the reading view a screen on or back: reflowed text has no pages
+ * to turn, and the reader's place follows the scrolling. */
+export function scrollScreen(delta: number): void {
+  const el = document.getElementById(BOOK_SCROLL_ID)
+  el?.scrollBy({ top: Math.sign(delta) * Math.floor(el.clientHeight * SCROLL_STEP) })
+}

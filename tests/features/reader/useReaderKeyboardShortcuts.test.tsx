@@ -1,7 +1,7 @@
 import { fireEvent, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createEngine } from '@/core/engine'
 import { makeToken, type ContentLayout } from '@/core/types'
 import { EngineProvider } from '@/features/reader/engine-context'
@@ -51,12 +51,28 @@ describe('book-mode keys over a paged book', () => {
 describe('book-mode keys over reflowed text', () => {
   const reflow: ContentLayout = { kind: 'reflow' }
 
-  it('PageDown and PageUp step one word, even if the tokens carry pages', () => {
+  it('the arrows step one word, even if the tokens carry pages', () => {
     const engine = setup(reflow)
-    press('PageDown')
+    press('ArrowRight')
     expect(engine.index).toBe(1)
-    press('PageUp')
+    press('ArrowLeft')
     expect(engine.index).toBe(0)
+  })
+
+  it('Space and the paging keys scroll a screen, moving no word themselves', () => {
+    const engine = setup(reflow)
+    const scroller = document.createElement('div')
+    scroller.id = 'book-scroll'
+    Object.defineProperty(scroller, 'clientHeight', { value: 1000 })
+    const scrollBy = vi.fn()
+    scroller.scrollBy = scrollBy
+    document.body.append(scroller)
+    press(' ')
+    press('PageDown')
+    press('PageUp')
+    expect(scrollBy.mock.calls).toEqual([[{ top: 850 }], [{ top: 850 }], [{ top: -850 }]])
+    expect(engine.index).toBe(0)
+    scroller.remove()
   })
 
   it('Home and End go to the first and last word', () => {

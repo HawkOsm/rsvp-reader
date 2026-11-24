@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/react/shallow'
 import type { ContentLayout } from '@/core/types'
 import { goToPage, turn } from '@/features/reader/book-nav'
 import { SCALE_STEP } from '@/lib/book-layout'
-import { scrollOrTurn } from '@/features/reader/book-scroll'
+import { scrollOrTurn, scrollScreen } from '@/features/reader/book-scroll'
 import { useEngine } from '@/features/reader/engine-context'
 import { isTypingTarget } from '@/lib/keyboard'
 import { useBookSpread } from '@/features/reader/hooks/useBookSpread'
@@ -76,10 +76,13 @@ export function useReaderKeyboardShortcuts(layout: ContentLayout): void {
         f: fitBook,
       }
     } else {
-      // Book mode over reflowed text has no pages, so keys step words.
+      // Book mode over reflowed text has no pages: the arrows step words,
+      // and the paging keys scroll a screen (the place follows the scroll).
       modeKeys = {
-        ...bind([' ', 'ArrowRight', 'ArrowDown', 'PageDown'], onward),
-        ...bind(['ArrowLeft', 'ArrowUp', 'PageUp'], back),
+        ...bind(['ArrowRight', 'ArrowDown'], onward),
+        ...bind(['ArrowLeft', 'ArrowUp'], back),
+        ...bind([' ', 'PageDown'], () => scrollScreen(1)),
+        PageUp: () => scrollScreen(-1),
         Home: () => engine.seek(0),
         End: () => engine.seek(last),
       }
