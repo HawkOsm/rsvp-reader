@@ -24,6 +24,8 @@ export const PagePanel = memo(function PagePanel({
   const { layout: bookLayout, canSpread } = useBookSpread()
   const scale = useAppStore((s) => s.bookScale)
   const setBookFits = useAppStore((s) => s.setBookFits)
+  const setBookScale = useAppStore((s) => s.setBookScale)
+  const fitBook = useAppStore((s) => s.fitBook)
   // A small screen starts each book fitted to its width.
   useSmallScreenFit(canSpread, variant === 'book' && layout.kind === 'paged')
 
@@ -36,6 +38,8 @@ export const PagePanel = memo(function PagePanel({
         layout={bookLayout}
         scale={scale}
         onFits={setBookFits}
+        onZoom={setBookScale}
+        onFitToggle={fitBook}
         legacyBoxes={legacyBoxes}
       />
     )

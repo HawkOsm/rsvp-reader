@@ -5,8 +5,17 @@ import {
   pageOfToken,
   perSpread,
   spreadStart,
+  turn,
 } from '@/features/reader/book-nav'
-import { GUTTER, MARGIN, fitScales, type PageSpread, type FitScales } from '@/lib/book-layout'
+import {
+  GUTTER,
+  MARGIN,
+  MAX_SCALE,
+  fitScales,
+  type PageSpread,
+  type FitScales,
+} from '@/lib/book-layout'
+import { useBookGestures, type BookGestures } from '@/features/reader/hooks/useBookGestures'
 import { BOOK_SCROLL_ID } from '@/features/reader/book-scroll'
 import { useEngine, useEngineIndex } from '@/features/reader/engine-context'
 import { useAppStore } from '@/stores/app-store'
@@ -23,6 +32,10 @@ export interface PdfPagePanelProps {
   scale?: number | null
   /** Told what scale would fit the page / the width, for the size controls. */
   onFits?: (fits: FitScales) => void
+  /** A pinch asked for this scale. With `onFitToggle` (a double tap), turns
+   * on touch gestures: swipe to turn the page, pinch, double-tap. */
+  onZoom?: (scale: number) => void
+  onFitToggle?: () => void
   /** The small follow-along panel beside the RSVP word: a previous/next
    * header, click a word to jump there, and it scrolls to keep the current
    * word in view. The full-width book view has its own controls instead. */
@@ -42,6 +55,8 @@ export function PdfPagePanel({
   layout = 'single',
   scale,
   onFits,
+  onZoom,
+  onFitToggle,
   peek = false,
   legacyBoxes = false,
 }: PdfPagePanelProps) {
@@ -50,6 +65,8 @@ export function PdfPagePanel({
   const doc = usePdfDocument(bookId)
   const [ready, setReady] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const pagesRef = useRef<HTMLDivElement>(null)
+  const [fits, setFits] = useState<FitScales | null>(null)
   // The scroller's size decides the page scale, and it settles a layout
   // pass after mount, so watch it rather than read it once.
   const box = useElementSize(scrollRef)
@@ -72,7 +89,10 @@ export function PdfPagePanel({
     let cancelled = false
     Promise.all(pages.map((p) => doc.pageSize(p)))
       .then((sizes) => {
-        if (!cancelled) onFits(fitScales(sizes, box))
+        if (cancelled) return
+        const fitted = fitScales(sizes, box)
+        setFits(fitted)
+        onFits(fitted)
       })
       .catch(() => {
         // The book was closed or the engine restarted; the reopened one reports again.
@@ -96,6 +116,24 @@ export function PdfPagePanel({
       pendingBottom.current = false
     }
   }, [ready, pages.length])
+
+  // Touch: a swipe turns the page while it is no wider than its area (a
+  // wider one scrolls sideways instead), a pinch zooms no further out than
+  // the whole page, a double tap switches between the two fits.
+  const canSwipe = !fits || scale == null || scale <= fits.width + 0.001
+  const gestures = useMemo<BookGestures | null>(() => {
+    if (!onZoom || !onFitToggle) return null
+    return {
+      canSwipe,
+      scale: scale ?? null,
+      minScale: fits ? Math.min(fits.page, fits.width) : 0,
+      maxScale: MAX_SCALE,
+      onTurn: (direction) => turn(engine, count, layout, direction),
+      onZoom,
+      onDoubleTap: onFitToggle,
+    }
+  }, [onZoom, onFitToggle, canSwipe, scale, fits, engine, count, layout])
+  useBookGestures(scrollRef, pagesRef, gestures)
 
   // With no scale given (the side panel), pages fill the panel's width.
   const per = pages.length || 1
@@ -137,11 +175,15 @@ export function PdfPagePanel({
         ref={scrollRef}
         id={BOOK_SCROLL_ID}
         className={`flex min-h-0 flex-1 overflow-auto ${peek ? '' : 'p-2 [scrollbar-gutter:stable]'}`}
+        // The browser scrolls; sideways swipes and pinches are left to the
+        // gestures above, unless the page is wide enough to scroll sideways.
+        style={gestures ? { touchAction: canSwipe ? 'pan-y' : 'pan-x pan-y' } : undefined}
       >
         {/* Auto margins centre pages smaller than the area, both ways, and
             give way when they are bigger, so every part can be scrolled to.
             The side panel's page keeps to the top. */}
         <div
+          ref={pagesRef}
           className={`flex w-fit items-start ${peek ? 'mx-auto' : 'm-auto'}`}
           style={{ gap: GUTTER }}
         >

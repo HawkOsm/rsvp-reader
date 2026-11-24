@@ -60,6 +60,12 @@ and are meant to match it word for word. Change them deliberately.
   - **Small screens** (`ROOM_FOR_SPREAD` in `lib/media.ts` is false: a phone, either way up) get
     one page at a time whatever layout was chosen (`useBookSpread`), fitted to the width each
     time a book is opened there (`useSmallScreenFit`), and no size slider or two-page button.
+  - **Touch** (`book-gestures.ts` for the arithmetic, `useBookGestures` for the listening;
+    fingers only, a mouse selects text as before): a sideways swipe turns the page, while the
+    page is no wider than its area (a wider one scrolls sideways instead); a pinch stretches the
+    page with a CSS transform and redraws it at the new scale when the fingers lift, no smaller
+    than the whole page; a double tap switches between the two fits. Vertical scrolling stays
+    the browser's (`touch-action`). Checked with synthetic pointer events, not yet on a phone.
 
 The reflowed view (`TextReflowPanel`) renders a window of words, not the whole book:
 `reflow-window.ts` places it around the current word, keeps it while the word stays well inside,
