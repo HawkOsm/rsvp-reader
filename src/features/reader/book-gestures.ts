@@ -51,8 +51,8 @@ export function isDoubleTap(
 }
 
 /** How much two fingers have spread or closed since they came down: the
- * ratio of the distances between them, kept so `scale × ratio` stays between
- * `min` and `max`. */
+ * ratio of the distances between them, kept so `scale × ratio` goes no
+ * further than `min` and `max`. */
 export function pinchRatio(
   startDistance: number,
   distance: number,
@@ -62,5 +62,7 @@ export function pinchRatio(
 ): number {
   if (startDistance <= 0 || scale <= 0) return 1
   const ratio = distance / startDistance
-  return Math.max(min / scale, Math.min(max / scale, ratio))
+  // A page already smaller than `min` (set so with the slider) or bigger
+  // than `max` stays as it is; it is not snapped to the limit.
+  return Math.max(Math.min(1, min / scale), Math.min(Math.max(1, max / scale), ratio))
 }

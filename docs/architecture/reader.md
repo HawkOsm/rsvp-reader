@@ -76,11 +76,21 @@ and are meant to match it word for word. Change them deliberately.
     laid over, not beside, so the page keeps its size and is not drawn again at each tap.
     While they are away `BookStatus` shows one line: the page and how far through. Read with
     a mouse and keys, nothing hides.
+  - **Pages with no words** (blank, or one whole picture) cannot be stopped on, because the
+    page shown is the current word's: `turn` carries on past them, the way it was going.
 
 The reflowed view (`TextReflowPanel`) renders a window of words, not the whole book:
 `reflow-window.ts` places it around the current word, keeps it while the word stays well inside,
 and grows it (trimming the far side) as the reader scrolls toward an edge. It follows the word
 only when the word changes, so scrolling away to read on is never undone.
+
+In book mode the reflowed view is read by scrolling, so the place follows the scroll: once a
+scroll has rested (`SETTLE_MS`), the first word in view becomes the engine's index, which is
+what gets saved and where RSVP goes on. A place set that way is not marked on the page and
+moves nothing: the window is not placed again around it and the page is not scrolled to it.
+A word picked with a mouse is marked, and the page scrolls only if it is out of sight. Space
+and the paging keys scroll a screen. A finger's tap is for the controls and picks no word, and
+a finger's scroll hides them (see "The whole screen for the page").
 
 Where the reader is among the chapters (`chapterAt`, the bar's ticks, words left in the chapter)
 is pure maths in `chapters.ts`. Chapters come from `book.chapters`, which is empty for a book

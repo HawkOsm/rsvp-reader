@@ -95,7 +95,11 @@ export function PdfPagePanel({
       .then((sizes) => {
         if (cancelled) return
         const fitted = fitScales(sizes, box)
-        setFits(fitted)
+        // The same fits are the same object, so a page turn or a resize that
+        // changes nothing doesn't restart the gestures under a finger.
+        setFits((old) =>
+          old && old.page === fitted.page && old.width === fitted.width ? old : fitted,
+        )
         onFits(fitted)
       })
       .catch(() => {

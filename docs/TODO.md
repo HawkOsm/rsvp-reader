@@ -44,6 +44,20 @@ off. Design and history: [docs/architecture/sync.md](architecture/sync.md) and
 - [ ] Web: Reconnect is needed after every reload (no refresh token in the browser); see
       sync.md, still open 2.
 
+## Book mode
+
+- [ ] Try the touch gestures on a real phone: tap zones, swipe, pinch (above all a pinch with
+      one finger above the other, where the browser may take the touch for a scroll), and the
+      controls coming and going. So far only with made-up touches in a browser.
+- [ ] Check on Android that the reader's bottom edge is on screen (the root's height now
+      leaves out the safe-area insets; unseen on a device).
+- [ ] A pinch should keep the spot between the fingers in place; it zooms about the top
+      middle and the page flickers back to its old size before the new one is drawn.
+- [ ] Pages go soft when zoomed far in on a dense screen: a page is drawn whole, capped at 16
+      million pixels. Drawing only the part in view would fix it.
+- [ ] A page with no words (a full-page picture) is skipped, since the page shown is the
+      current word's. Showing it needs a page position of its own.
+
 ## Notes
 
 - [ ] Save as .md on the desktop (needs Tauri's dialog plugin); it has Copy only.

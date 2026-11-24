@@ -113,7 +113,7 @@ In book mode:
 In a book without pages (an EPUB, a text file), book mode scrolls: `Space`
 and `PgDn` / `PgUp` move a screen, the arrows a word, and your place follows
 the scrolling.
-| `Home` / `End`      | First / last page        |
+| `Home` / `End` | First / last page |
 
 The progress bar is clickable and draggable — scrub it to jump anywhere in
 the document. WPM is live-adjustable while playing; the new rate takes

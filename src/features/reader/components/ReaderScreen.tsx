@@ -124,7 +124,8 @@ function ReaderBody({ book }: { book: BookRecord }) {
 
   useReaderKeyboardShortcuts(layout)
   useAutosaveProgress(bookId, mode)
-  useWakeLock(playing)
+  // Reading a page is using the screen too, without touching it for minutes.
+  useWakeLock(playing || mode === 'book')
 
   // Flashing words while reading a page would be absurd.
   useEffect(() => {
@@ -203,8 +204,10 @@ function ReaderBody({ book }: { book: BookRecord }) {
     </>
   )
 
+  // The root is as tall as what can be seen: less a mobile browser's address
+  // bar (dvh), and less the insets the body pads itself with (index.css).
   return (
-    <div className="relative flex h-screen flex-col bg-bg text-text">
+    <div className="relative flex h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))] flex-col bg-bg text-text">
       <header
         hidden={controlsAre === 'hidden'}
         className={`grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-border px-2 py-2 text-sm [&:not([hidden])]:grid sm:gap-3 sm:px-4 ${
