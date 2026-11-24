@@ -1,6 +1,6 @@
 # To do
 
-What is left, as of v0.3 (2026-10-28). Sync and notes are built but behind experimental flags
+What is left, as of v0.4 (2026-11-24). Sync and notes are built but behind experimental flags
 (Settings → Advanced → Experimental); nothing here changes the app for someone who leaves them
 off. Design and history: [docs/architecture/sync.md](architecture/sync.md) and
 [decisions.md](architecture/decisions.md).
