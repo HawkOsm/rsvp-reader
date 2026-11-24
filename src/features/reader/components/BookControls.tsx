@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { pageLabel, pageOfToken, perSpread, spreadStart, turn } from '@/features/reader/book-nav'
 import { MAX_SCALE, MIN_SCALE } from '@/lib/book-layout'
 import { useEngine, useEngineIndex } from '@/features/reader/engine-context'
+import { useBookSpread } from '@/features/reader/hooks/useBookSpread'
 import { useAppStore } from '@/stores/app-store'
 import { Button } from '@/components/Button'
 import { ScrubBar } from './ScrubBar'
@@ -16,7 +17,7 @@ export interface BookControlsProps {
 export const BookControls = memo(function BookControls({ pageCount }: BookControlsProps) {
   const engine = useEngine()
   const index = useEngineIndex()
-  const layout = useAppStore((s) => s.bookLayout)
+  const { layout, canSpread } = useBookSpread()
   const setBookLayout = useAppStore((s) => s.setBookLayout)
   const scale = useAppStore((s) => s.bookScale)
   const fits = useAppStore((s) => s.bookFits)
@@ -39,41 +40,52 @@ export const BookControls = memo(function BookControls({ pageCount }: BookContro
         <span className="text-sm text-text-dim" data-testid="book-page-label">
           {pageLabel(page, pageCount, layout)}
         </span>
-        <label className="flex items-center gap-2 text-sm text-text-dim">
-          Size
-          <input
-            type="range"
-            min={MIN_SCALE * 100}
-            max={MAX_SCALE * 100}
-            step={5}
-            value={percent}
-            onChange={(e) => setBookScale(Number(e.target.value) / 100)}
-            aria-label="Page size"
-            className="w-32 accent-accent"
-          />
-          <span className="w-10 text-right tabular-nums" data-testid="book-scale">
-            {percent}%
-          </span>
-        </label>
+        {/* A small screen has one page fitted to it, zoomed by pinching: a
+            size slider and a two-page layout have nothing to offer there. */}
+        {canSpread && (
+          <label className="flex items-center gap-2 text-sm text-text-dim">
+            Size
+            <input
+              type="range"
+              min={MIN_SCALE * 100}
+              max={MAX_SCALE * 100}
+              step={5}
+              value={percent}
+              onChange={(e) => setBookScale(Number(e.target.value) / 100)}
+              aria-label="Page size"
+              className="w-32 accent-accent"
+            />
+            <span className="w-10 text-right tabular-nums" data-testid="book-scale">
+              {percent}%
+            </span>
+          </label>
+        )}
         <div className="flex items-center gap-2">
-          <Button
-            title={
-              spread
-                ? 'Show one page instead of a spread  (D)'
-                : 'Show two pages, like an open book  (D)'
-            }
-            onClick={() => setBookLayout(spread ? 'single' : 'spread')}
-          >
-            {spread ? 'Single page' : 'Two pages'}
-          </Button>
-          <Button
-            title={
-              atPage ? 'Fill the width and scroll down  (F)' : 'Show the whole spread at once  (F)'
-            }
-            onClick={fitBook}
-          >
-            {atPage ? 'Fit width' : 'Fit page'}
-          </Button>
+          {canSpread && (
+            <Button
+              title={
+                spread
+                  ? 'Show one page instead of a spread  (D)'
+                  : 'Show two pages, like an open book  (D)'
+              }
+              onClick={() => setBookLayout(spread ? 'single' : 'spread')}
+            >
+              {spread ? 'Single page' : 'Two pages'}
+            </Button>
+          )}
+          {/* Nothing to switch between when the two fits are the same size. */}
+          {(!fits || fits.page !== fits.width) && (
+            <Button
+              title={
+                atPage
+                  ? 'Fill the width and scroll down  (F)'
+                  : 'Show the whole spread at once  (F)'
+              }
+              onClick={fitBook}
+            >
+              {atPage ? 'Fit width' : 'Fit page'}
+            </Button>
+          )}
           <Button
             disabled={page + perSpread(layout) > pageCount - 1}
             onClick={() => turn(engine, pageCount, layout, 1)}

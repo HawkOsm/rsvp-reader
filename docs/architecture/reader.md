@@ -52,6 +52,14 @@ and are meant to match it word for word. Change them deliberately.
 - **Book**: pages. `book-nav.ts` is the pure paging maths (page ↔ token index, spreads, which
   word is at a point). `book-scroll.ts` does the DOM scrolling. Entering book mode pauses
   playback.
+  - **Page size** is one stored number, the PDF scale. Each time the pages or their area
+    change, the panel reports the scales that fit the whole page and the width, and a page that
+    was at one of those fits follows the new one (a window resized, a tablet turned, a page of
+    another size); a size the reader set by hand stays. Pages smaller than their area sit in its
+    middle.
+  - **Small screens** (`ROOM_FOR_SPREAD` in `lib/media.ts` is false: a phone, either way up) get
+    one page at a time whatever layout was chosen (`useBookSpread`), fitted to the width each
+    time a book is opened there (`useSmallScreenFit`), and no size slider or two-page button.
 
 The reflowed view (`TextReflowPanel`) renders a window of words, not the whole book:
 `reflow-window.ts` places it around the current word, keeps it while the word stays well inside,

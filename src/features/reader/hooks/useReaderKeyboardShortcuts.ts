@@ -7,6 +7,7 @@ import { SCALE_STEP } from '@/lib/book-layout'
 import { scrollOrTurn } from '@/features/reader/book-scroll'
 import { useEngine } from '@/features/reader/engine-context'
 import { isTypingTarget } from '@/lib/keyboard'
+import { useBookSpread } from '@/features/reader/hooks/useBookSpread'
 import { useAppStore } from '@/stores/app-store'
 
 type Keys = Record<string, (event: KeyboardEvent) => void>
@@ -22,27 +23,21 @@ function bind(names: string[], handler: Keys[string]): Keys {
 export function useReaderKeyboardShortcuts(layout: ContentLayout): void {
   const engine = useEngine()
   const navigate = useNavigate()
-  const {
-    mode,
-    setMode,
-    panelOpen,
-    setPanelOpen,
-    bookLayout,
-    setBookLayout,
-    stepBookScale,
-    fitBook,
-  } = useAppStore(
-    useShallow((s) => ({
-      mode: s.mode,
-      setMode: s.setMode,
-      panelOpen: s.panelOpen,
-      setPanelOpen: s.setPanelOpen,
-      bookLayout: s.bookLayout,
-      setBookLayout: s.setBookLayout,
-      stepBookScale: s.stepBookScale,
-      fitBook: s.fitBook,
-    })),
-  )
+  const { mode, setMode, panelOpen, setPanelOpen, setBookLayout, stepBookScale, fitBook } =
+    useAppStore(
+      useShallow((s) => ({
+        mode: s.mode,
+        setMode: s.setMode,
+        panelOpen: s.panelOpen,
+        setPanelOpen: s.setPanelOpen,
+        setBookLayout: s.setBookLayout,
+        stepBookScale: s.stepBookScale,
+        fitBook: s.fitBook,
+      })),
+    )
+
+  // One page at a time on a small screen, whatever layout was chosen.
+  const { layout: bookLayout, canSpread } = useBookSpread()
 
   useEffect(() => {
     const last = engine.count - 1
@@ -75,7 +70,9 @@ export function useReaderKeyboardShortcuts(layout: ContentLayout): void {
         PageUp: () => turn(engine, pageCount, bookLayout, -1),
         Home: () => goToPage(engine, pageCount, bookLayout, 0),
         End: () => goToPage(engine, pageCount, bookLayout, pageCount - 1),
-        d: () => setBookLayout(bookLayout === 'spread' ? 'single' : 'spread'),
+        d: () => {
+          if (canSpread) setBookLayout(bookLayout === 'spread' ? 'single' : 'spread')
+        },
         f: fitBook,
       }
     } else {
@@ -114,6 +111,7 @@ export function useReaderKeyboardShortcuts(layout: ContentLayout): void {
     setPanelOpen,
     layout,
     bookLayout,
+    canSpread,
     setBookLayout,
     stepBookScale,
     fitBook,

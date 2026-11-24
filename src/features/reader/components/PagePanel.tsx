@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import type { ContentLayout } from '@/core/types'
+import { useBookSpread, useSmallScreenFit } from '@/features/reader/hooks/useBookSpread'
 import { useAppStore } from '@/stores/app-store'
 import { PdfPagePanel } from './PdfPagePanel'
 import { TextReflowPanel } from './TextReflowPanel'
@@ -20,9 +21,11 @@ export const PagePanel = memo(function PagePanel({
   layout,
   variant = 'side',
 }: PagePanelProps) {
-  const bookLayout = useAppStore((s) => s.bookLayout)
+  const { layout: bookLayout, canSpread } = useBookSpread()
   const scale = useAppStore((s) => s.bookScale)
   const setBookFits = useAppStore((s) => s.setBookFits)
+  // A small screen starts each book fitted to its width.
+  useSmallScreenFit(canSpread, variant === 'book' && layout.kind === 'paged')
 
   if (layout.kind === 'reflow') return <TextReflowPanel book={variant === 'book'} />
   const legacyBoxes = layout.boxSpace !== 'displayed'

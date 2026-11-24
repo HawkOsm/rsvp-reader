@@ -66,6 +66,8 @@ interface AppState extends Settings {
   setBookScale: (scale: number) => void
   stepBookScale: (delta: number) => void
   setBookFits: (fits: FitScales) => void
+  /** Fit the page this way now, and again when its new sizes are known. */
+  requestFit: (fit: keyof FitScales) => void
   fitBook: () => void
   setMode: (mode: ReadingMode) => void
   setArriveAtBottom: (value: boolean) => void
@@ -131,9 +133,23 @@ export const useAppStore = create<AppState>((set, get) => {
     },
 
     setBookFits: (bookFits) => {
-      const { pendingFit, setBookScale } = get()
+      const { pendingFit, bookFits: before, bookScale, setBookScale } = get()
       set({ bookFits })
-      if (pendingFit) setBookScale(bookFits[pendingFit])
+      if (pendingFit) return setBookScale(bookFits[pendingFit])
+      // A page that was fitted stays fitted when the window changes, the
+      // screen turns or the next page is another size; one the reader sized
+      // by hand is left alone.
+      if (!before || bookScale === null) return
+      const fitted = (['width', 'page'] as const).find(
+        (fit) => Math.abs(bookScale - before[fit]) < 0.001,
+      )
+      if (fitted && bookFits[fitted] !== bookScale) setBookScale(bookFits[fitted])
+    },
+    requestFit: (pendingFit) => {
+      const { bookFits, setBookScale } = get()
+      if (bookFits) setBookScale(bookFits[pendingFit])
+      // The sizes known now may be the last layout's; the next ones settle it.
+      set({ pendingFit })
     },
     /** Fit the whole page; pressed again, fit the width. Just sets the scale. */
     fitBook: () => {

@@ -136,9 +136,15 @@ export function PdfPagePanel({
       <div
         ref={scrollRef}
         id={BOOK_SCROLL_ID}
-        className={`min-h-0 flex-1 overflow-auto ${peek ? '' : 'p-2 [scrollbar-gutter:stable]'}`}
+        className={`flex min-h-0 flex-1 overflow-auto ${peek ? '' : 'p-2 [scrollbar-gutter:stable]'}`}
       >
-        <div className="mx-auto flex w-fit items-start" style={{ gap: GUTTER }}>
+        {/* Auto margins centre pages smaller than the area, both ways, and
+            give way when they are bigger, so every part can be scrolled to.
+            The side panel's page keeps to the top. */}
+        <div
+          className={`flex w-fit items-start ${peek ? 'mx-auto' : 'm-auto'}`}
+          style={{ gap: GUTTER }}
+        >
           {doc &&
             box &&
             scale !== null &&
