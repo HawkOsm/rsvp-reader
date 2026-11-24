@@ -1,4 +1,5 @@
-import { useEffect, type RefObject } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
+import { wasDismissal } from '@/features/reader/dismissal'
 import {
   isDoubleTap,
   pinchRatio,
@@ -26,6 +27,15 @@ export interface BookGestures {
   onDoubleTap: () => void
 }
 
+interface Touching {
+  fingers: Map<number, { x: number; y: number }>
+  start: { x: number; y: number; at: number } | null
+  lastTap: { x: number; y: number; at: number } | null
+  pinch: { distance: number; ratio: number } | null
+  /** More than one finger touched since all were up: not a tap or swipe. */
+  many: boolean
+}
+
 /** Touch gestures on book mode's page: tap an edge or swipe sideways to turn
  * it, tap the middle for the controls, pinch to zoom, double-tap the middle
  * to switch between fitting the page and its width. Fingers only: a mouse
@@ -37,17 +47,23 @@ export function useBookGestures(
   content: RefObject<HTMLElement | null>,
   gestures: BookGestures | null,
 ): void {
+  // What the fingers are doing outlives a change of `gestures` (a tap that
+  // hides the controls resizes the page's area, which changes the fits): a
+  // second tap must still find the first, and a finger still down its place.
+  const touch = useRef<Touching>({
+    fingers: new Map(),
+    start: null,
+    lastTap: null,
+    pinch: null,
+    many: false,
+  })
+
   useEffect(() => {
     const el = area.current
     if (!el || !gestures) return
     const { canSwipe, scale, minScale, maxScale, onTurn, onZoom, onTap, onDoubleTap } = gestures
-
-    const fingers = new Map<number, { x: number; y: number }>()
-    let start: { x: number; y: number; at: number } | null = null
-    let lastTap: { x: number; y: number; at: number } | null = null
-    let pinch: { distance: number; ratio: number } | null = null
-    /** More than one finger touched since all were up: not a tap or swipe. */
-    let many = false
+    const t = touch.current
+    const { fingers } = t
 
     const distance = () => {
       const [a, b] = [...fingers.values()]
@@ -70,62 +86,64 @@ export function useBookGestures(
     }
 
     function down(e: PointerEvent) {
-      if (e.pointerType !== 'touch') return
+      if (e.pointerType !== 'touch' || wasDismissal(e)) return
       fingers.set(e.pointerId, { x: e.clientX, y: e.clientY })
       if (fingers.size === 1) {
-        start = { x: e.clientX, y: e.clientY, at: e.timeStamp }
-        many = false
+        t.start = { x: e.clientX, y: e.clientY, at: e.timeStamp }
+        t.many = false
       } else {
-        many = true
-        start = null
-        if (fingers.size === 2 && scale !== null) pinch = { distance: distance(), ratio: 1 }
+        t.many = true
+        t.start = null
+        if (fingers.size === 2 && scale !== null) t.pinch = { distance: distance(), ratio: 1 }
       }
     }
 
     function move(e: PointerEvent) {
       if (!fingers.has(e.pointerId)) return
       fingers.set(e.pointerId, { x: e.clientX, y: e.clientY })
-      if (pinch && fingers.size === 2 && scale !== null) {
-        pinch.ratio = pinchRatio(pinch.distance, distance(), scale, minScale, maxScale)
-        stretch(pinch.ratio)
+      if (t.pinch && fingers.size === 2 && scale !== null) {
+        t.pinch.ratio = pinchRatio(t.pinch.distance, distance(), scale, minScale, maxScale)
+        stretch(t.pinch.ratio)
       }
     }
 
     function up(e: PointerEvent) {
       if (!fingers.delete(e.pointerId)) return
-      if (pinch) {
+      if (t.pinch) {
         if (fingers.size < 2) {
-          const { ratio } = pinch
-          pinch = null
+          const { ratio } = t.pinch
+          t.pinch = null
           stretch(null)
-          if (scale !== null && Math.abs(ratio - 1) > 0.02) onZoom(scale * ratio)
+          // A touch the browser took back (to scroll, say) zooms nothing.
+          const cancelled = e.type === 'pointercancel'
+          if (!cancelled && scale !== null && Math.abs(ratio - 1) > 0.02) onZoom(scale * ratio)
         }
         return
       }
-      if (many || !start || e.type === 'pointercancel') return
-      const dx = e.clientX - start.x
-      const dy = e.clientY - start.y
+      if (t.many || !t.start || e.type === 'pointercancel') return
+      const dx = e.clientX - t.start.x
+      const dy = e.clientY - t.start.y
       const moved = Math.hypot(dx, dy)
       if (moved <= TAP_SLOP_PX) {
         // Held long, it selected text: not a tap.
-        if (e.timeStamp - start.at <= TAP_MAX_MS) {
+        if (e.timeStamp - t.start.at <= TAP_MAX_MS) {
           const tap = { x: e.clientX, y: e.clientY, at: e.timeStamp }
           const zone = zoneAt(e.clientX)
           swallowClick()
           onTap(zone)
-          if (zone === 'middle' && isDoubleTap(lastTap, tap)) {
-            lastTap = null
+          if (zone === 'middle' && isDoubleTap(t.lastTap, tap)) {
+            t.lastTap = null
             onDoubleTap()
-          } else lastTap = zone === 'middle' ? tap : null
+          } else t.lastTap = zone === 'middle' ? tap : null
         }
       } else if (canSwipe) {
-        const turn = swipeTurn(dx, dy, e.timeStamp - start.at)
+        const turn = swipeTurn(dx, dy, e.timeStamp - t.start.at)
         if (turn) {
           swallowClick()
           onTurn(turn)
         }
       }
-      start = null
+      t.start = null
     }
 
     el.addEventListener('pointerdown', down)

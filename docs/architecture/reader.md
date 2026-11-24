@@ -88,7 +88,10 @@ In book mode the reflowed view is read by scrolling, so the place follows the sc
 scroll has rested (`SETTLE_MS`), the first word in view becomes the engine's index, which is
 what gets saved and where RSVP goes on. A place set that way is not marked on the page and
 moves nothing: the window is not placed again around it and the page is not scrolled to it.
-A word picked with a mouse is marked, and the page scrolls only if it is out of sight. Space
+A word picked with a mouse is marked, and the page scrolls only if it is out of sight. When
+the page scrolls itself to a word that was jumped to, the place does not follow that scroll
+(`ownScroll`); it would slide back to the top of the screen. At the very bottom the place is the
+book's last word. Space
 and the paging keys scroll a screen. A finger's tap is for the controls and picks no word, and
 a finger's scroll hides them (see "The whole screen for the page").
 

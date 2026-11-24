@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Icon } from '@/components/Icon'
+import { noteDismissal } from '@/features/reader/dismissal'
 
 /** The phone reader's "⋯" button, and the controls it holds that the
  * header has no room for. Choosing one closes it, as do Escape and a tap
@@ -11,15 +12,18 @@ export function ReaderMenu({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!open) return
     function onPointerDown(e: PointerEvent) {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
+      if (rootRef.current?.contains(e.target as Node)) return
+      noteDismissal(e)
+      setOpen(false)
     }
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') setOpen(false)
     }
-    document.addEventListener('pointerdown', onPointerDown)
+    // Capturing, so the page under the tap hears of it first.
+    document.addEventListener('pointerdown', onPointerDown, true)
     window.addEventListener('keydown', onKeyDown)
     return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('pointerdown', onPointerDown, true)
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [open])

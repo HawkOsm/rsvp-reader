@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { wasDismissal } from '@/features/reader/dismissal'
 import { BOOK_SCROLL_ID } from '@/features/reader/book-scroll'
 import { useEngine, useEngineIndex } from '@/features/reader/engine-context'
 import { followIndex, grow, windowAround } from '@/features/reader/reflow-window'
@@ -6,6 +7,19 @@ import { followIndex, grow, windowAround } from '@/features/reader/reflow-window
 /** How close (in pixels) to the end of what is rendered a scroll must come
  * before more words are added there. */
 const GROW_WITHIN_PX = 1200
+
+/** The first of `items`, which are in order, that `test` passes, found by
+ * halving: the words on a page are thousands, and each test measures one. */
+function firstFrom<T>(items: T[], test: (item: T) => boolean): T | undefined {
+  let low = 0
+  let high = items.length
+  while (low < high) {
+    const mid = (low + high) >> 1
+    if (test(items[mid] as T)) high = mid
+    else low = mid + 1
+  }
+  return items[low]
+}
 
 /** How long a scroll must rest before the reader's place follows it. */
 const SETTLE_MS = 200
@@ -45,11 +59,19 @@ export function TextReflowPanel({
     // the window again around it would move the text under the reader.
     const inPlace = index === scrolledTo && index >= win.start && index < win.end
     if (!inPlace) win = followIndex(stored.win, index, count)
+    // Moved on some other way (keys, the bar, playing): a place like any
+    // other again, marked when the reader comes back to it.
+    if (scrolledTo !== null && index !== scrolledTo) setScrolledTo(null)
     setStored({ win, index })
   }
 
   const scrollerRef = useRef<HTMLDivElement>(null)
   const currentRef = useRef<HTMLSpanElement>(null)
+  /** The page is being scrolled to the current word, not by the reader: the
+   * place must not follow that scroll (it would slide back to the top of
+   * the screen, half a screen before the word just jumped to), nor may it
+   * hide the controls a finger is using to jump. */
+  const ownScroll = useRef(false)
   // Only a new word scrolls the page: growing the window as the reader
   // scrolls must never pull them back. Beside the RSVP word it is kept in
   // the middle; in the reading view the page moves only for a word that is
@@ -63,7 +85,9 @@ export function TextReflowPanel({
       const a = area.getBoundingClientRect()
       if (w.top >= a.top && w.bottom <= a.bottom) return
     }
+    const before = area.scrollTop
     word.scrollIntoView({ block: 'center' })
+    if (area.scrollTop !== before) ownScroll.current = true
   }, [index, book])
 
   const settle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -73,12 +97,15 @@ export function TextReflowPanel({
     const area = scrollerRef.current
     if (!area) return
     const top = area.getBoundingClientRect().top
-    const paragraph = [...area.querySelectorAll('p')].find(
-      (p) => p.getBoundingClientRect().bottom > top,
-    )
-    const word = [...(paragraph?.querySelectorAll<HTMLElement>('[data-word]') ?? [])].find(
-      (span) => span.getBoundingClientRect().top >= top,
-    )
+    const words = [...area.querySelectorAll<HTMLElement>('[data-word]')]
+    // At the very bottom of the book the place is its last word: the book
+    // has been read, though that word is never first on the screen.
+    const atBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 2
+    const last = words[words.length - 1]
+    const word =
+      atBottom && Number(last?.dataset.word) === count - 1
+        ? last
+        : firstFrom(words, (span) => span.getBoundingClientRect().top >= top)
     const at = Number(word?.dataset.word)
     if (!word || at === engine.index) return
     setScrolledTo(at)
@@ -87,14 +114,21 @@ export function TextReflowPanel({
 
   /** Whether the last thing to touch the page was a finger. */
   const byFinger = useRef(false)
+  /** The press under way closed a popover: it is no tap on the page. */
+  const dismissing = useRef(false)
 
   function onScroll() {
     const el = scrollerRef.current
     if (!el) return
-    if (byFinger.current) onControls?.(false)
-    if (book) {
+    if (ownScroll.current) {
+      ownScroll.current = false
       clearTimeout(settle.current)
-      settle.current = setTimeout(followScroll, SETTLE_MS)
+    } else {
+      if (byFinger.current) onControls?.(false)
+      if (book) {
+        clearTimeout(settle.current)
+        settle.current = setTimeout(followScroll, SETTLE_MS)
+      }
     }
     if (el.scrollHeight - el.scrollTop - el.clientHeight < GROW_WITHIN_PX) {
       setStored((s) => ({ ...s, win: grow(s.win, 'end', count) }))
@@ -125,9 +159,12 @@ export function TextReflowPanel({
       ref={scrollerRef}
       id={book ? BOOK_SCROLL_ID : undefined}
       onScroll={onScroll}
-      onPointerDown={(e) => (byFinger.current = e.pointerType === 'touch')}
+      onPointerDown={(e) => {
+        byFinger.current = e.pointerType === 'touch'
+        dismissing.current = wasDismissal(e.nativeEvent)
+      }}
       onClick={() => {
-        if (byFinger.current) onControls?.('toggle')
+        if (byFinger.current && !dismissing.current) onControls?.('toggle')
       }}
       className="h-full overflow-y-auto text-text"
     >
@@ -149,7 +186,7 @@ export function TextReflowPanel({
                 data-word={word.index}
                 // Not when the click ends a text selection.
                 onClick={() => {
-                  if (!window.getSelection()?.isCollapsed) return
+                  if (dismissing.current || !window.getSelection()?.isCollapsed) return
                   if (byFinger.current && onControls) return
                   setScrolledTo(null)
                   engine.seek(word.index)

@@ -1,12 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  goToPage,
-  pageLabel,
-  pageOfToken,
-  perSpread,
-  spreadStart,
-  turn,
-} from '@/features/reader/book-nav'
+import { pageLabel, pageOfToken, perSpread, spreadStart, turn } from '@/features/reader/book-nav'
 import {
   GUTTER,
   MARGIN,
@@ -169,7 +162,7 @@ export function PdfPagePanel({
           <Button
             aria-label="Previous page"
             disabled={start <= 0}
-            onClick={() => goToPage(engine, count, layout, start - perSpread(layout))}
+            onClick={() => turn(engine, count, layout, -1)}
             variant="link"
             className="px-[0.6em]"
             style={{ fontSize: 'inherit' }}
@@ -180,7 +173,7 @@ export function PdfPagePanel({
           <Button
             aria-label="Next page"
             disabled={start + perSpread(layout) >= count}
-            onClick={() => goToPage(engine, count, layout, start + perSpread(layout))}
+            onClick={() => turn(engine, count, layout, 1)}
             variant="link"
             className="px-[0.6em]"
             style={{ fontSize: 'inherit' }}

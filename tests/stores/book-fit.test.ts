@@ -4,7 +4,7 @@ import { useAppStore } from '@/stores/app-store'
 const fits = (page: number, width: number) => ({ page, width })
 
 beforeEach(() => {
-  useAppStore.setState({ bookFits: null, bookScale: null, pendingFit: null })
+  useAppStore.setState({ bookFits: null, bookScale: null, pendingFit: null, bookFit: null })
 })
 
 describe('fitting the page in book mode', () => {
@@ -44,5 +44,22 @@ describe('fitting the page in book mode', () => {
     setBookScale(0.9) // pinched
     setBookFits(fits(0.4, 1.2))
     expect(useAppStore.getState().bookScale).toBe(0.9)
+  })
+
+  it('remembers which fit was asked for when the two are the same size', () => {
+    // A spread fitted to the page in a tall window, where the width is what
+    // limits it: both fits are 0.77. Made shorter, the whole page must still
+    // fit (it once kept to the width, and ran off the bottom).
+    const { requestFit, setBookFits, fitBook } = useAppStore.getState()
+    setBookFits(fits(0.77, 0.77))
+    requestFit('page')
+    setBookFits(fits(0.61, 0.77))
+    expect(useAppStore.getState().bookScale).toBe(0.61)
+
+    // Fit, with nothing to switch between, puts a zoomed page back.
+    setBookFits(fits(0.58, 0.58))
+    useAppStore.getState().setBookScale(1.5)
+    fitBook()
+    expect(useAppStore.getState().bookScale).toBe(0.58)
   })
 })

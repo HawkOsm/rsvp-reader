@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createEngine } from '@/core/engine'
 import { makeToken } from '@/core/types'
@@ -62,5 +62,18 @@ describe('BookControls', () => {
     renderControls()
     expect(screen.queryByRole('button', { name: /Fit/ })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Next/ })).toBeInTheDocument()
+  })
+
+  it('keeps the fit button while a page whose two fits are the same is zoomed', () => {
+    screenWithRoom(false)
+    useAppStore.setState({ bookScale: 0.58, bookFits: { page: 0.58, width: 0.58 } })
+    renderControls()
+    expect(screen.queryByRole('button', { name: /^Fit/ })).not.toBeInTheDocument()
+    cleanup()
+
+    // Pinched in: the only control that puts it back.
+    useAppStore.setState({ bookScale: 1.5 })
+    renderControls()
+    expect(screen.getByRole('button', { name: 'Fit page' })).toBeInTheDocument()
   })
 })

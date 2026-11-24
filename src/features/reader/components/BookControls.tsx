@@ -73,8 +73,9 @@ export const BookControls = memo(function BookControls({ pageCount }: BookContro
               {spread ? 'Single page' : 'Two pages'}
             </Button>
           )}
-          {/* Nothing to switch between when the two fits are the same size. */}
-          {(!fits || fits.page !== fits.width) && (
+          {/* Nothing to switch between when the two fits are the same size
+              and the page is at it. */}
+          {(!fits || fits.page !== fits.width || !atPage) && (
             <Button
               title={
                 atPage

@@ -252,8 +252,10 @@ function ReaderBody({ book }: { book: BookRecord }) {
             <RsvpCanvas />
           </div>
         )}
+        {/* The panels lie over the reading area, and over the controls when
+            those are laid over the page (z-30). */}
         {hasContents && contentsOpen && (
-          <div className={contentsBeside ? 'min-h-0' : 'absolute inset-y-0 left-0 z-20 shadow-xl'}>
+          <div className={contentsBeside ? 'min-h-0' : 'absolute inset-y-0 left-0 z-40 shadow-xl'}>
             <ContentsPanel
               chapters={book.chapters}
               onPicked={contentsBeside ? undefined : () => setContentsOpen(false)}
@@ -268,7 +270,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
           </div>
         )}
         {notesOn && notesOpen && (
-          <div className="absolute inset-y-0 right-0 z-20 shadow-xl">
+          <div className="absolute inset-y-0 right-0 z-40 shadow-xl">
             <NotesPanel
               bookId={bookId}
               title={book.title}

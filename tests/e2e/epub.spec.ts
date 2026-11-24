@@ -60,5 +60,15 @@ test('in book mode over an EPUB, the place follows the scrolling', async ({ page
   await page.keyboard.press('b')
   await expect.poll(() => wordNumber(page)).toBeGreaterThan(300)
 
+  // A jump (here End, to the last word) scrolls the page itself. The place
+  // must not then follow that scroll back to the top of the screen.
+  await page.keyboard.press('b')
+  await page.keyboard.press('End')
+  await page.waitForTimeout(600) // longer than a scroll takes to settle
+  await page.keyboard.press('b')
+  const counter = (await page.getByTestId('word-counter').textContent())!
+  const [, at, of] = /word ([\d,]+) \/ ([\d,]+)/.exec(counter)!
+  expect(at).toBe(of)
+
   expect(errors).toEqual([])
 })

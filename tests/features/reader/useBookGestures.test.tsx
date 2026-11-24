@@ -1,6 +1,7 @@
 import { cleanup, render } from '@testing-library/react'
 import { useRef } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { noteDismissal } from '@/features/reader/dismissal'
 import { useBookGestures, type BookGestures } from '@/features/reader/hooks/useBookGestures'
 
 const handlers = { onTurn: vi.fn(), onZoom: vi.fn(), onTap: vi.fn(), onDoubleTap: vi.fn() }
@@ -38,11 +39,11 @@ function touch(
 }
 
 function setup(gestures: BookGestures | null = base) {
-  const { getByTestId } = render(<Page gestures={gestures} />)
+  const { getByTestId, rerender } = render(<Page gestures={gestures} />)
   const area = getByTestId('area')
   // jsdom lays nothing out: the area is 400 wide, from the left edge.
   area.getBoundingClientRect = () => ({ left: 0, width: 400 }) as DOMRect
-  return { area, content: getByTestId('content') }
+  return { area, content: getByTestId('content'), rerender }
 }
 
 beforeEach(() => vi.clearAllMocks())
@@ -144,5 +145,35 @@ describe('useBookGestures', () => {
     touch(area, 'pointerdown', 1, 300, 400, 0)
     touch(area, 'pointercancel', 1, 150, 400, 150) // the browser took over, to scroll
     expect(handlers.onTurn).not.toHaveBeenCalled()
+  })
+
+  it('still sees a double tap when the first tap changed the page (hiding the controls resizes it)', () => {
+    const { area, rerender } = setup()
+    touch(area, 'pointerdown', 1, 200, 300, 0)
+    touch(area, 'pointerup', 1, 200, 300, 50)
+    rerender(<Page gestures={{ ...base, scale: 1.2 }} />)
+    touch(area, 'pointerdown', 1, 203, 300, 180)
+    touch(area, 'pointerup', 1, 203, 300, 230)
+    expect(handlers.onDoubleTap).toHaveBeenCalledOnce()
+  })
+
+  it('zooms nothing when the browser takes a pinch back', () => {
+    const { area, content } = setup()
+    touch(area, 'pointerdown', 1, 100, 300, 0)
+    touch(area, 'pointerdown', 2, 200, 300, 10)
+    touch(area, 'pointermove', 2, 300, 300, 50)
+    touch(area, 'pointercancel', 2, 300, 300, 60)
+    expect(handlers.onZoom).not.toHaveBeenCalled()
+    expect(content.style.transform).toBe('')
+  })
+
+  it('leaves alone the tap that closed a popover', () => {
+    const { area } = setup()
+    const press = new Event('pointerdown', { bubbles: true })
+    Object.assign(press, { pointerId: 1, pointerType: 'touch', clientX: 380, clientY: 300 })
+    noteDismissal(press)
+    area.dispatchEvent(press)
+    touch(area, 'pointerup', 1, 380, 300, 50)
+    expect(handlers.onTap).not.toHaveBeenCalled()
   })
 })
