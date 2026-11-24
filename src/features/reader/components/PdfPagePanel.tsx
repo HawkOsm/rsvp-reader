@@ -16,7 +16,7 @@ import {
   type FitScales,
 } from '@/lib/book-layout'
 import { useBookGestures, type BookGestures } from '@/features/reader/hooks/useBookGestures'
-import { BOOK_SCROLL_ID } from '@/features/reader/book-scroll'
+import { BOOK_SCROLL_ID, scrollOrTurn } from '@/features/reader/book-scroll'
 import { useEngine, useEngineIndex } from '@/features/reader/engine-context'
 import { useAppStore } from '@/stores/app-store'
 import { useElementSize, usePdfDocument } from '@/features/reader/hooks/usePdfDocument'
@@ -33,9 +33,12 @@ export interface PdfPagePanelProps {
   /** Told what scale would fit the page / the width, for the size controls. */
   onFits?: (fits: FitScales) => void
   /** A pinch asked for this scale. With `onFitToggle` (a double tap), turns
-   * on touch gestures: swipe to turn the page, pinch, double-tap. */
+   * on touch gestures: tap or swipe to turn the page, pinch, double-tap. */
   onZoom?: (scale: number) => void
   onFitToggle?: () => void
+  /** A finger asked for the reader's controls to be shown or hidden (a tap
+   * in the middle), or turned a page, which hides them. */
+  onControls?: (show: 'toggle' | false) => void
   /** The small follow-along panel beside the RSVP word: a previous/next
    * header, click a word to jump there, and it scrolls to keep the current
    * word in view. The full-width book view has its own controls instead. */
@@ -57,6 +60,7 @@ export function PdfPagePanel({
   onFits,
   onZoom,
   onFitToggle,
+  onControls,
   peek = false,
   legacyBoxes = false,
 }: PdfPagePanelProps) {
@@ -118,8 +122,10 @@ export function PdfPagePanel({
   }, [ready, pages.length])
 
   // Touch: a swipe turns the page while it is no wider than its area (a
-  // wider one scrolls sideways instead), a pinch zooms no further out than
-  // the whole page, a double tap switches between the two fits.
+  // wider one scrolls sideways instead); a tap at an edge turns it too,
+  // scrolling a tall page first, as the arrow keys do; a tap in the middle
+  // is for the controls; a pinch zooms no further out than the whole page;
+  // a double tap switches between the two fits.
   const canSwipe = !fits || scale == null || scale <= fits.width + 0.001
   const gestures = useMemo<BookGestures | null>(() => {
     if (!onZoom || !onFitToggle) return null
@@ -128,11 +134,19 @@ export function PdfPagePanel({
       scale: scale ?? null,
       minScale: fits ? Math.min(fits.page, fits.width) : 0,
       maxScale: MAX_SCALE,
-      onTurn: (direction) => turn(engine, count, layout, direction),
+      onTurn: (direction) => {
+        turn(engine, count, layout, direction)
+        onControls?.(false)
+      },
       onZoom,
+      onTap: (zone) => {
+        if (zone === 'middle') return onControls?.('toggle')
+        scrollOrTurn(engine, count, layout, zone === 'forward' ? 1 : -1)
+        onControls?.(false)
+      },
       onDoubleTap: onFitToggle,
     }
-  }, [onZoom, onFitToggle, canSwipe, scale, fits, engine, count, layout])
+  }, [onZoom, onFitToggle, onControls, canSwipe, scale, fits, engine, count, layout])
   useBookGestures(scrollRef, pagesRef, gestures)
 
   // With no scale given (the side panel), pages fill the panel's width.

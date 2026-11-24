@@ -1,5 +1,13 @@
 import { useEffect, type RefObject } from 'react'
-import { isDoubleTap, pinchRatio, swipeTurn, TAP_SLOP_PX } from '@/features/reader/book-gestures'
+import {
+  isDoubleTap,
+  pinchRatio,
+  swipeTurn,
+  tapZone,
+  TAP_MAX_MS,
+  TAP_SLOP_PX,
+  type TapZone,
+} from '@/features/reader/book-gestures'
 
 export interface BookGestures {
   /** Whether the page is no wider than its area: then a sideways swipe
@@ -11,12 +19,17 @@ export interface BookGestures {
   maxScale: number
   onTurn: (direction: 1 | -1) => void
   onZoom: (scale: number) => void
+  /** A tap, by where in the area it landed. */
+  onTap: (zone: TapZone) => void
+  /** A second tap in the middle, soon after the first (which was also
+   * given to `onTap`, as this one is). */
   onDoubleTap: () => void
 }
 
-/** Touch gestures on book mode's page: swipe sideways to turn it, pinch to
- * zoom, double-tap to switch between fitting the page and its width. Fingers
- * only: a mouse selects text and clicks words as before. `area` is the
+/** Touch gestures on book mode's page: tap an edge or swipe sideways to turn
+ * it, tap the middle for the controls, pinch to zoom, double-tap the middle
+ * to switch between fitting the page and its width. Fingers only: a mouse
+ * selects text and clicks words as before. `area` is the
  * scrolling element; `content` is what a pinch stretches while it lasts, the
  * real zoom being drawn once the fingers lift. */
 export function useBookGestures(
@@ -27,7 +40,7 @@ export function useBookGestures(
   useEffect(() => {
     const el = area.current
     if (!el || !gestures) return
-    const { canSwipe, scale, minScale, maxScale, onTurn, onZoom, onDoubleTap } = gestures
+    const { canSwipe, scale, minScale, maxScale, onTurn, onZoom, onTap, onDoubleTap } = gestures
 
     const fingers = new Map<number, { x: number; y: number }>()
     let start: { x: number; y: number; at: number } | null = null
@@ -45,7 +58,11 @@ export function useBookGestures(
       content.current.style.transform = ratio === null ? '' : `scale(${ratio})`
       content.current.style.transformOrigin = ratio === null ? '' : 'center top'
     }
-    /** The tap that ends a swipe or double tap must not also click a word. */
+    const zoneAt = (x: number) => {
+      const box = el.getBoundingClientRect()
+      return tapZone(x - box.left, box.width)
+    }
+    /** A finger's tap or swipe must not also click a word. */
     const swallowClick = () => {
       const stop = (e: Event) => e.stopPropagation()
       el.addEventListener('click', stop, { capture: true, once: true })
@@ -90,12 +107,17 @@ export function useBookGestures(
       const dy = e.clientY - start.y
       const moved = Math.hypot(dx, dy)
       if (moved <= TAP_SLOP_PX) {
-        const tap = { x: e.clientX, y: e.clientY, at: e.timeStamp }
-        if (isDoubleTap(lastTap, tap)) {
-          lastTap = null
+        // Held long, it selected text: not a tap.
+        if (e.timeStamp - start.at <= TAP_MAX_MS) {
+          const tap = { x: e.clientX, y: e.clientY, at: e.timeStamp }
+          const zone = zoneAt(e.clientX)
           swallowClick()
-          onDoubleTap()
-        } else lastTap = tap
+          onTap(zone)
+          if (zone === 'middle' && isDoubleTap(lastTap, tap)) {
+            lastTap = null
+            onDoubleTap()
+          } else lastTap = zone === 'middle' ? tap : null
+        }
       } else if (canSwipe) {
         const turn = swipeTurn(dx, dy, e.timeStamp - start.at)
         if (turn) {

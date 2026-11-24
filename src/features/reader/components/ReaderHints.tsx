@@ -38,8 +38,8 @@ export interface ReaderHintsProps {
   layout: ContentLayout
 }
 
-/** The keyboard cheat-sheet under the controls. Hidden on touch screens,
- * where none of these keys exist. */
+/** The keyboard cheat-sheet under the controls, on a screen with room for
+ * it. The reader shows it only where there is a keyboard. */
 export function ReaderHints({ mode, layout }: ReaderHintsProps) {
   const hints = mode === 'rsvp' ? RSVP : layout.kind === 'paged' ? BOOK_PAGED : BOOK_TEXT
   return (

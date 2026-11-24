@@ -9,8 +9,25 @@ export const SWIPE_MAX_MS = 600
 /** Two taps this close together, in time and place, are a double tap. */
 export const DOUBLE_TAP_MS = 300
 export const DOUBLE_TAP_PX = 30
-/** A finger that moved less than this only tapped. */
+/** A finger that moved less than this only tapped… */
 export const TAP_SLOP_PX = 10
+/** …if it lifted this soon: held longer, it is a long press, which selects
+ * text. */
+export const TAP_MAX_MS = 500
+/** The share of the width, at each side, where a tap turns the page. */
+export const TAP_EDGE = 0.3
+
+export type TapZone = 'back' | 'middle' | 'forward'
+
+/** What a tap `x` pixels into an area `width` wide is for: the left edge
+ * goes back a page, the right edge onward, and the middle shows or hides
+ * the controls (the zones of KOReader and Foliate, in thirds). */
+export function tapZone(x: number, width: number): TapZone {
+  if (width <= 0) return 'middle'
+  const at = x / width
+  if (at < TAP_EDGE) return 'back'
+  return at > 1 - TAP_EDGE ? 'forward' : 'middle'
+}
 
 /** Which way a finger's movement turns the page: 1 for the next page (a
  * swipe to the left, as turning a paper page), -1 for the previous, `null`

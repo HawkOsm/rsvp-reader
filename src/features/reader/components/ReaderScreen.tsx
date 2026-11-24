@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { createEngine } from '@/core/engine'
 import { BookControls } from './BookControls'
+import { BookStatus } from './BookStatus'
 import { BookmarkButton } from './BookmarkButton'
 import { ReaderMenu } from './ReaderMenu'
 import { Byline, ContentsPanel } from './ContentsPanel'
@@ -27,7 +28,7 @@ import { useTouchControls } from '@/features/reader/hooks/useTouchControls'
 import { useWakeLock } from '@/features/reader/hooks/useWakeLock'
 import { useAppStore } from '@/stores/app-store'
 import { useFlag } from '@/lib/flags'
-import { useMediaQuery, WIDE } from '@/lib/media'
+import { HAS_KEYBOARD, useMediaQuery, WIDE } from '@/lib/media'
 
 const MODES = [
   { value: 'rsvp', label: 'RSVP', icon: 'bolt', title: 'Back to one word at a time  (B)' },
@@ -104,6 +105,22 @@ function ReaderBody({ book }: { book: BookRecord }) {
   const notesOn = useFlag('notes')
   const [notesOpen, setNotesOpen] = useState(false)
   useEffect(() => setContentsOpen(contentsBeside), [contentsBeside])
+  const keyboard = useMediaQuery(HAS_KEYBOARD)
+
+  // Book mode read by touch gives the page the whole screen: the header and
+  // the controls start in their places ('docked'), go away at the first page
+  // turned with a finger, and after that a tap in the middle of the page
+  // lays them over it and takes them off again. Over, not beside, so the
+  // page keeps its size and isn't drawn again at each tap.
+  const [bookControls, setBookControls] = useState<'docked' | 'hidden' | 'over'>('docked')
+  useEffect(() => setBookControls('docked'), [mode])
+  const onControls = useCallback(
+    (show: 'toggle' | false) =>
+      setBookControls((now) => (show === false || now !== 'hidden' ? 'hidden' : 'over')),
+    [],
+  )
+  const controlsAre = mode === 'book' ? bookControls : 'docked'
+  const over = controlsAre === 'over'
 
   useReaderKeyboardShortcuts(layout)
   useAutosaveProgress(bookId, mode)
@@ -187,8 +204,13 @@ function ReaderBody({ book }: { book: BookRecord }) {
   )
 
   return (
-    <div className="flex h-screen flex-col bg-bg text-text">
-      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-border px-2 py-2 text-sm sm:gap-3 sm:px-4">
+    <div className="relative flex h-screen flex-col bg-bg text-text">
+      <header
+        hidden={controlsAre === 'hidden'}
+        className={`grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-border px-2 py-2 text-sm [&:not([hidden])]:grid sm:gap-3 sm:px-4 ${
+          over ? 'absolute inset-x-0 top-0 z-30 bg-bg' : ''
+        }`}
+      >
         <div>
           <Button
             variant="link"
@@ -238,7 +260,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
         {mode === 'book' && (
           <div className="relative min-h-0 flex-1">
             <div className="absolute inset-0">
-              <PagePanel bookId={bookId} layout={layout} variant="book" />
+              <PagePanel bookId={bookId} layout={layout} variant="book" onControls={onControls} />
             </div>
           </div>
         )}
@@ -261,12 +283,22 @@ function ReaderBody({ book }: { book: BookRecord }) {
         )}
       </div>
 
-      {mode === 'book' && layout.kind === 'paged' ? (
-        <BookControls pageCount={layout.pages} />
-      ) : (
-        <TransportBar layout={layout} chapters={book.chapters} />
+      {controlsAre !== 'docked' && <BookStatus layout={layout} />}
+      {controlsAre !== 'hidden' && (
+        <div
+          className={
+            over ? 'absolute inset-x-0 bottom-0 z-30 border-t border-border bg-bg pt-2' : 'contents'
+          }
+        >
+          {mode === 'book' && layout.kind === 'paged' ? (
+            <BookControls pageCount={layout.pages} />
+          ) : (
+            <TransportBar layout={layout} chapters={book.chapters} />
+          )}
+          {/* Keys are no use to a finger. */}
+          {showHints && keyboard && <ReaderHints mode={mode} layout={layout} />}
+        </div>
       )}
-      {showHints && <ReaderHints mode={mode} layout={layout} />}
     </div>
   )
 }

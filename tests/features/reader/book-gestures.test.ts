@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isDoubleTap, pinchRatio, swipeTurn } from '@/features/reader/book-gestures'
+import { isDoubleTap, pinchRatio, swipeTurn, tapZone } from '@/features/reader/book-gestures'
 
 describe('book mode touch gestures', () => {
   it('turns forward on a swipe to the left, back on one to the right', () => {
@@ -28,5 +28,14 @@ describe('book mode touch gestures', () => {
     expect(pinchRatio(100, 1000, 1, 0.5, 5)).toBe(5) // no further than the largest
     expect(pinchRatio(100, 10, 1, 0.5, 5)).toBe(0.5) // nor smaller than the whole page
     expect(pinchRatio(0, 100, 1, 0.5, 5)).toBe(1)
+  })
+
+  it('reads a tap at an edge as a page turn, in the middle as a call for the controls', () => {
+    expect(tapZone(10, 400)).toBe('back')
+    expect(tapZone(119, 400)).toBe('back')
+    expect(tapZone(121, 400)).toBe('middle')
+    expect(tapZone(279, 400)).toBe('middle')
+    expect(tapZone(281, 400)).toBe('forward')
+    expect(tapZone(50, 0)).toBe('middle') // nothing laid out yet
   })
 })

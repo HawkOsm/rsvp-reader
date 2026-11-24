@@ -3,7 +3,7 @@ import { useRef } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useBookGestures, type BookGestures } from '@/features/reader/hooks/useBookGestures'
 
-const handlers = { onTurn: vi.fn(), onZoom: vi.fn(), onDoubleTap: vi.fn() }
+const handlers = { onTurn: vi.fn(), onZoom: vi.fn(), onTap: vi.fn(), onDoubleTap: vi.fn() }
 const onWord = vi.fn()
 const base: BookGestures = { canSwipe: true, scale: 1, minScale: 0.5, maxScale: 5, ...handlers }
 
@@ -39,7 +39,10 @@ function touch(
 
 function setup(gestures: BookGestures | null = base) {
   const { getByTestId } = render(<Page gestures={gestures} />)
-  return { area: getByTestId('area'), content: getByTestId('content') }
+  const area = getByTestId('area')
+  // jsdom lays nothing out: the area is 400 wide, from the left edge.
+  area.getBoundingClientRect = () => ({ left: 0, width: 400 }) as DOMRect
+  return { area, content: getByTestId('content') }
 }
 
 beforeEach(() => vi.clearAllMocks())
@@ -86,18 +89,48 @@ describe('useBookGestures', () => {
     expect(handlers.onDoubleTap).not.toHaveBeenCalled()
   })
 
-  it('switches the fit on a double tap, without also clicking the word under it', () => {
+  it('takes a tap by where it lands, and never as a click on the word under it', () => {
     const { area } = setup()
     const word = area.querySelector('button')!
-    touch(word, 'pointerdown', 1, 100, 300, 0)
-    touch(word, 'pointerup', 1, 100, 300, 60)
-    word.click() // the first tap is an ordinary tap on a word
-    expect(onWord).toHaveBeenCalledTimes(1)
-    touch(word, 'pointerdown', 1, 104, 302, 200)
-    touch(word, 'pointerup', 1, 104, 302, 250)
-    word.click()
+    const tap = (x: number, at: number) => {
+      touch(word, 'pointerdown', 1, x, 300, at)
+      touch(word, 'pointerup', 1, x, 300, at + 60)
+      word.click()
+    }
+    tap(40, 0)
+    expect(handlers.onTap).toHaveBeenLastCalledWith('back')
+    tap(360, 1000)
+    expect(handlers.onTap).toHaveBeenLastCalledWith('forward')
+    tap(200, 2000)
+    expect(handlers.onTap).toHaveBeenLastCalledWith('middle')
+    expect(onWord).not.toHaveBeenCalled()
+    expect(handlers.onDoubleTap).not.toHaveBeenCalled()
+  })
+
+  it('switches the fit on a double tap in the middle, not at an edge', () => {
+    const { area } = setup()
+    const tap = (x: number, at: number) => {
+      touch(area, 'pointerdown', 1, x, 300, at)
+      touch(area, 'pointerup', 1, x, 300, at + 50)
+    }
+    tap(200, 0)
+    tap(204, 200)
     expect(handlers.onDoubleTap).toHaveBeenCalledOnce()
-    expect(onWord).toHaveBeenCalledTimes(1)
+    // Both taps were taps too: the controls come and go again.
+    expect(handlers.onTap).toHaveBeenCalledTimes(2)
+
+    // Two quick taps at an edge turn two pages.
+    tap(380, 1000)
+    tap(380, 1200)
+    expect(handlers.onDoubleTap).toHaveBeenCalledOnce()
+    expect(handlers.onTap).toHaveBeenCalledTimes(4)
+  })
+
+  it('leaves a long press alone: it selects text', () => {
+    const { area } = setup()
+    touch(area, 'pointerdown', 1, 40, 300, 0)
+    touch(area, 'pointerup', 1, 40, 300, 800)
+    expect(handlers.onTap).not.toHaveBeenCalled()
   })
 
   it('does nothing when the gestures are off, or the touch is cancelled', () => {

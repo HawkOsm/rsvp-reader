@@ -116,6 +116,11 @@ the document. WPM is live-adjustable while playing; the new rate takes
 effect on the next word. Touch: tap the middle to play/pause, tap the left
 and right edges to step a word.
 
+Touch in book mode: tap the right or left edge of the page, or swipe, to
+turn it; tap the middle to show or hide the controls; pinch to zoom;
+double-tap the middle to switch between the whole page and its full width.
+Turning a page hides the controls, so the page has the whole screen.
+
 ## Resuming
 
 Your position is written every 20 words, and again whenever you pause, go

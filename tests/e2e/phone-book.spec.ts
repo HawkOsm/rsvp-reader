@@ -63,10 +63,41 @@ test('on a phone, book mode shows one fitted page, and a swipe turns it', async 
       at('pointermove', ${(from + to) / 2})
       at('pointerup', ${to})
     })()`)
+  // Turning a page by touch gives the page the whole screen: the header and
+  // the controls go, and one quiet line says where the reader is.
+  const status = page.getByTestId('book-status')
   await swipe(300, 80)
-  await expect(page.getByTestId('book-page-label')).toHaveText(/^page 2 \/ \d+$/)
+  await expect(status).toHaveText(/^page 2 \/ \d+ · \d+%$/)
+  await expect(page.getByRole('button', { name: 'Next ›' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Reader menu' })).toBeHidden()
   await swipe(80, 300)
-  await expect(page.getByTestId('book-page-label')).toHaveText(/^page 1 \/ \d+$/)
+  await expect(status).toHaveText(/^page 1 \/ \d+ · \d+%$/)
+
+  // A tap at the right edge turns the page, at
+  // the left edge goes back, and in the middle brings the controls over the
+  // page without moving or resizing it.
+  const tap = (x: number) => swipe(x, x)
+  await tap(340)
+  await expect(status).toHaveText(/^page 2 \//)
+  await tap(30)
+  await expect(status).toHaveText(/^page 1 \//)
+  // (Once the page turned to has been drawn, no longer an empty canvas, and
+  // has stopped moving.)
+  const box = () => pages.first().boundingBox()
+  let before = await box()
+  await expect
+    .poll(async () => {
+      const last = before
+      before = await box()
+      return before!.width > 301 && JSON.stringify(before) === JSON.stringify(last)
+    })
+    .toBe(true)
+  await tap(187)
+  await expect(page.getByRole('button', { name: 'Next ›' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Reader menu' })).toBeVisible()
+  expect(await box()).toEqual(before)
+  await tap(187)
+  await expect(page.getByRole('button', { name: 'Next ›' })).toHaveCount(0)
 
   expect(errors).toEqual([])
 })

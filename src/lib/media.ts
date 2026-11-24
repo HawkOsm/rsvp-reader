@@ -7,6 +7,10 @@ export const WIDE = '(min-width: 40rem)'
  * a desktop window, not a phone either way up. */
 export const ROOM_FOR_SPREAD = '(min-width: 48rem) and (min-height: 30rem)'
 
+/** A device worked with a mouse and keys, not a finger: the only kind worth
+ * showing keyboard shortcuts to. */
+export const HAS_KEYBOARD = '(hover: hover) and (pointer: fine)'
+
 /** Whether a media query matches, kept up to date. Where there is no
  * `matchMedia` (tests in jsdom) it says `fallback`. */
 export function useMediaQuery(query: string, fallback = true): boolean {

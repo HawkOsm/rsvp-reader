@@ -25,7 +25,8 @@ ReaderScreen
      │                               the page in book mode on a wide screen, over it otherwise
      ├─ TransportBar / BookControls   play, seek, WPM / page turn, scale, spread; chapter
      │                               ticks on the bar and the time left in the chapter
-     └─ ReaderHints              the shortcut strip
+     ├─ BookStatus               book mode with the controls hidden: the page and the percent
+ └─ ReaderHints              the shortcut strip, only where there is a keyboard to use
 ```
 
 ## The engine (`core/engine.ts`)
@@ -61,11 +62,20 @@ and are meant to match it word for word. Change them deliberately.
     one page at a time whatever layout was chosen (`useBookSpread`), fitted to the width each
     time a book is opened there (`useSmallScreenFit`), and no size slider or two-page button.
   - **Touch** (`book-gestures.ts` for the arithmetic, `useBookGestures` for the listening;
-    fingers only, a mouse selects text as before): a sideways swipe turns the page, while the
-    page is no wider than its area (a wider one scrolls sideways instead); a pinch stretches the
-    page with a CSS transform and redraws it at the new scale when the fingers lift, no smaller
-    than the whole page; a double tap switches between the two fits. Vertical scrolling stays
-    the browser's (`touch-action`). Checked with synthetic pointer events, not yet on a phone.
+    fingers only, a mouse selects text and clicks words as before). A tap at the left or right
+    edge (30% of the width each, as in KOReader and Foliate) turns the page, scrolling a tall
+    one first as the arrow keys do; a tap in the middle is for the controls; a sideways swipe
+    turns the page while it is no wider than its area (a wider one scrolls sideways instead);
+    a pinch stretches the page with a CSS transform and redraws it at the new scale when the
+    fingers lift, no smaller than the whole page; a double tap in the middle switches between
+    the two fits. A finger's tap never jumps to the word under it. Vertical scrolling stays the
+    browser's (`touch-action`). Checked with synthetic pointer events, not yet on a phone.
+  - **The whole screen for the page.** The header and the controls start in their places, go
+    away at the first page turned with a finger, and from then on a tap in the middle lays
+    them over the page and takes them off again (`bookControls` in `ReaderScreen`). They are
+    laid over, not beside, so the page keeps its size and is not drawn again at each tap.
+    While they are away `BookStatus` shows one line: the page and how far through. Read with
+    a mouse and keys, nothing hides.
 
 The reflowed view (`TextReflowPanel`) renders a window of words, not the whole book:
 `reflow-window.ts` places it around the current word, keeps it while the word stays well inside,
