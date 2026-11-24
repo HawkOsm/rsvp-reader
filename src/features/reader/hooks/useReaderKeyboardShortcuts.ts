@@ -1,15 +1,27 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import type { ContentLayout } from '@/core/types'
 import { goToPage, turn } from '@/features/reader/book-nav'
 import { SCALE_STEP } from '@/lib/book-layout'
-import { scrollOrTurn } from '@/features/reader/book-scroll'
+import { scrollOrTurn, scrollScreen } from '@/features/reader/book-scroll'
 import { useEngine } from '@/features/reader/engine-context'
 import { isTypingTarget } from '@/lib/keyboard'
+import { useBookSpread } from '@/features/reader/hooks/useBookSpread'
+import type { Jumps } from '@/features/reader/hooks/useJumps'
 import { useAppStore } from '@/stores/app-store'
 
 type Keys = Record<string, (event: KeyboardEvent) => void>
+
+/** What the reader's screen lends the keys. */
+export interface ReaderKeys {
+  /** Alt+← and Alt+→: back and forward through the jumps made. */
+  jumps?: Pick<Jumps, 'back' | 'forward'>
+  /** Enter, in book mode: show or hide the header. */
+  onToggleControls?: () => void
+  /** G, in book mode: open the jump panel. */
+  onOpenJump?: () => void
+}
 
 /** One handler under several key names. */
 function bind(names: string[], handler: Keys[string]): Keys {
@@ -19,30 +31,29 @@ function bind(names: string[], handler: Keys[string]): Keys {
 /** Reader-only shortcuts, from the README's tables: one key map per reading
  * mode, plus P (panel), B (mode) and Esc (library), which need the
  * reading-mode state that only exists here. */
-export function useReaderKeyboardShortcuts(layout: ContentLayout): void {
+export function useReaderKeyboardShortcuts(layout: ContentLayout, extra: ReaderKeys = {}): void {
+  // Read when a key is pressed, so the caller needn't keep them stable.
+  const extraRef = useRef(extra)
+  useEffect(() => {
+    extraRef.current = extra
+  })
   const engine = useEngine()
   const navigate = useNavigate()
-  const {
-    mode,
-    setMode,
-    panelOpen,
-    setPanelOpen,
-    bookLayout,
-    setBookLayout,
-    stepBookScale,
-    fitBook,
-  } = useAppStore(
-    useShallow((s) => ({
-      mode: s.mode,
-      setMode: s.setMode,
-      panelOpen: s.panelOpen,
-      setPanelOpen: s.setPanelOpen,
-      bookLayout: s.bookLayout,
-      setBookLayout: s.setBookLayout,
-      stepBookScale: s.stepBookScale,
-      fitBook: s.fitBook,
-    })),
-  )
+  const { mode, setMode, panelOpen, setPanelOpen, setBookLayout, stepBookScale, fitBook } =
+    useAppStore(
+      useShallow((s) => ({
+        mode: s.mode,
+        setMode: s.setMode,
+        panelOpen: s.panelOpen,
+        setPanelOpen: s.setPanelOpen,
+        setBookLayout: s.setBookLayout,
+        stepBookScale: s.stepBookScale,
+        fitBook: s.fitBook,
+      })),
+    )
+
+  // One page at a time on a small screen, whatever layout was chosen.
+  const { layout: bookLayout, canSpread } = useBookSpread()
 
   useEffect(() => {
     const last = engine.count - 1
@@ -71,20 +82,40 @@ export function useReaderKeyboardShortcuts(layout: ContentLayout): void {
           scrollOrTurn(engine, pageCount, bookLayout, 1),
         ),
         ...bind(['ArrowLeft', 'ArrowUp'], () => scrollOrTurn(engine, pageCount, bookLayout, -1)),
-        PageDown: () => turn(engine, pageCount, bookLayout, 1),
-        PageUp: () => turn(engine, pageCount, bookLayout, -1),
+        ...bind(['PageDown', 'n'], () => turn(engine, pageCount, bookLayout, 1)),
+        ...bind(['PageUp', 'p'], () => turn(engine, pageCount, bookLayout, -1)),
+        j: () => scrollOrTurn(engine, pageCount, bookLayout, 1),
+        k: () => scrollOrTurn(engine, pageCount, bookLayout, -1),
         Home: () => goToPage(engine, pageCount, bookLayout, 0),
         End: () => goToPage(engine, pageCount, bookLayout, pageCount - 1),
-        d: () => setBookLayout(bookLayout === 'spread' ? 'single' : 'spread'),
+        d: () => {
+          if (canSpread) setBookLayout(bookLayout === 'spread' ? 'single' : 'spread')
+        },
         f: fitBook,
       }
     } else {
-      // Book mode over reflowed text has no pages, so keys step words.
+      // Book mode over reflowed text has no pages: the arrows step words,
+      // and the paging keys scroll a screen (the place follows the scroll).
       modeKeys = {
-        ...bind([' ', 'ArrowRight', 'ArrowDown', 'PageDown'], onward),
-        ...bind(['ArrowLeft', 'ArrowUp', 'PageUp'], back),
+        ...bind(['ArrowRight', 'ArrowDown'], onward),
+        ...bind(['ArrowLeft', 'ArrowUp'], back),
+        ...bind([' ', 'PageDown'], () => scrollScreen(1)),
+        PageUp: () => scrollScreen(-1),
         Home: () => engine.seek(0),
         End: () => engine.seek(last),
+      }
+    }
+
+    if (mode === 'book') {
+      modeKeys = {
+        ...modeKeys,
+        g: () => extraRef.current.onOpenJump?.(),
+        Enter: (e) => {
+          // On a button, Enter presses the button.
+          if (!(e.target instanceof HTMLElement && e.target.closest('button, a'))) {
+            extraRef.current.onToggleControls?.()
+          }
+        },
       }
     }
 
@@ -97,6 +128,16 @@ export function useReaderKeyboardShortcuts(layout: ContentLayout): void {
     function onKeyDown(event: KeyboardEvent) {
       if (isTypingTarget(event.target)) return
       if (event.ctrlKey || event.metaKey) return // handled globally, or not ours
+      if (event.altKey) {
+        // Back and forward through the jumps, as in a browser.
+        const step =
+          event.key === 'ArrowLeft' ? 'back' : event.key === 'ArrowRight' ? 'forward' : null
+        if (step && extraRef.current.jumps) {
+          event.preventDefault()
+          extraRef.current.jumps[step]()
+        }
+        return
+      }
       const handler = keys[event.key.length === 1 ? event.key.toLowerCase() : event.key]
       if (!handler) return
       event.preventDefault()
@@ -114,6 +155,7 @@ export function useReaderKeyboardShortcuts(layout: ContentLayout): void {
     setPanelOpen,
     layout,
     bookLayout,
+    canSpread,
     setBookLayout,
     stepBookScale,
     fitBook,

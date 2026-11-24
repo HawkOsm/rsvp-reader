@@ -52,6 +52,15 @@ describe('useLoadedBook', () => {
     expect(useAppStore.getState().mode).toBe('rsvp')
   })
 
+  it('starts a book never read at the speed chosen in Settings', async () => {
+    useAppStore.setState({ defaultWpm: 450 })
+    const id = await seedBook('fresh-fast')
+    const { result } = renderHook(() => useLoadedBook(String(id)))
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    expect(result.current).toMatchObject({ loaded: { startWpm: 450 } })
+    useAppStore.setState({ defaultWpm: 300 })
+  })
+
   it('resumes where the reader left off, in the mode they left it', async () => {
     const id = await seedBook('resume')
     await saveProgress(db, id, { wordIndex: 2, wpm: 450, mode: 'book' })

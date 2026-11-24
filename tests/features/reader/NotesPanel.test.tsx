@@ -67,6 +67,16 @@ describe('NotesPanel', () => {
     expect(engine.index).toBe(3)
   })
 
+  it('keeps what was typed when the note could not be saved', async () => {
+    renderPanel()
+    const user = userEvent.setup()
+    await user.type(screen.getByRole('textbox', { name: 'New note' }), 'Worth keeping')
+    await db.books.clear() // the book is gone: the note has nowhere to go
+    await user.click(screen.getByRole('button', { name: 'Add note' }))
+    await screen.findByText('That book is gone.')
+    expect(screen.getByRole('textbox', { name: 'New note' })).toHaveValue('Worth keeping')
+  })
+
   it('edits a note, and deletes one only once confirmed', async () => {
     const noteId = await addNote(db, bookId, { wordIndex: 0, quote: 'It was' }, 'first')
     renderPanel()

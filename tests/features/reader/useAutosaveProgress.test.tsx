@@ -61,4 +61,15 @@ describe('useAutosaveProgress', () => {
     unmount()
     expect(lastSaved()).toMatchObject({ mode: 'book', wordIndex: 3 })
   })
+
+  it('pauses and saves when the app is hidden: nobody is reading', () => {
+    const { engine } = setup('rsvp')
+    engine.seek(7)
+    engine.play()
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
+    expect(engine.isPlaying).toBe(false)
+    expect(lastSaved()).toMatchObject({ wordIndex: 7 })
+  })
 })

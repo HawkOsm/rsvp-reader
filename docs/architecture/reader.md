@@ -23,9 +23,11 @@ ReaderScreen
      │                               (copy as Markdown; save as .md where `savesFiles`)
      ├─ ContentsPanel            a book with chapters: jump to one, current marked; beside
      │                               the page in book mode on a wide screen, over it otherwise
-     ├─ TransportBar / BookControls   play, seek, WPM / page turn, scale, spread; chapter
-     │                               ticks on the bar and the time left in the chapter
-     └─ ReaderHints              the shortcut strip
+     ├─ TransportBar             RSVP: play, seek, WPM; chapter ticks on the bar and the time
+     │                               left in the chapter
+     ├─ BookNav                  book mode: one line under the page (where the reader is, an
+     │                               arrow each side) that opens the jump panel
+ └─ ReaderHints              the shortcut strip, only where there is a keyboard to use
 ```
 
 ## The engine (`core/engine.ts`)
@@ -52,11 +54,58 @@ and are meant to match it word for word. Change them deliberately.
 - **Book**: pages. `book-nav.ts` is the pure paging maths (page ↔ token index, spreads, which
   word is at a point). `book-scroll.ts` does the DOM scrolling. Entering book mode pauses
   playback.
+  - **Page size** is one stored number, the PDF scale. Each time the pages or their area
+    change, the panel reports the scales that fit the whole page and the width, and a page that
+    was at one of those fits follows the new one (a window resized, a tablet turned, a page of
+    another size); a size the reader set by hand stays. Pages smaller than their area sit in its
+    middle.
+  - **Small screens** (`ROOM_FOR_SPREAD` in `lib/media.ts` is false: a phone, either way up) get
+    one page at a time whatever layout was chosen (`useBookSpread`), fitted to the width each
+    time a book is opened there (`useSmallScreenFit`), and no size slider or two-page button.
+  - **Touch** (`book-gestures.ts` for the arithmetic, `useBookGestures` for the listening;
+    fingers only, a mouse selects text and clicks words as before). A tap at the left or right
+    edge (30% of the width each, as in KOReader and Foliate) turns the page, scrolling a tall
+    one first as the arrow keys do; a tap in the middle is for the controls; a sideways swipe
+    turns the page while it is no wider than its area (a wider one scrolls sideways instead);
+    a pinch stretches the page with a CSS transform and redraws it at the new scale when the
+    fingers lift, no smaller than the whole page; a double tap in the middle switches between
+    the two fits. A finger's tap never jumps to the word under it. Vertical scrolling stays the
+    browser's (`touch-action`). Checked with synthetic pointer events, not yet on a phone.
+  - **The whole screen for the page**, however it is read. The header starts in its place and
+    goes away as soon as the reader moves through the book (any `word` event). After that it
+    is laid over the page and taken off again by a tap in the middle, by Enter, or by a mouse
+    reaching the top edge (`REVEAL_PX`) and leaving it (`LEAVE_MS`): `bookControls` in
+    `ReaderScreen`. Over, not beside, so the page keeps its size and is not drawn again.
+  - **No bar under the page.** `BookNav` is one line: the page and how far through (for a book
+    without pages, how far and the chapter), with an arrow each side to turn a paged book.
+    Pressing it, or G, opens the jump panel over the page: a page number (or a percent) to
+    type, a drag along the whole book with the chapters marked, back and forward a chapter,
+    Back and Forward through the jumps made, and for a paged book one or two pages, the fit
+    and the size. The jumps are `jump-history.ts` (pure) kept by `useJumps`; the chapter list
+    and Alt+← / Alt+→ use them too.
+  - **Mouse wheel and trackpad** (`wheel-turn.ts` for the arithmetic, the listener in
+    `PdfPagePanel`): a page with more to scroll scrolls; one with nothing left that way turns,
+    once per flick however long the flick, and not at the end of a flick that was scrolling.
+    A sideways swipe turns it. With Ctrl, which is also how a trackpad pinch arrives, it
+    zooms: stretched at once, drawn again when the wheel rests.
+  - **Pages with no words** (blank, or one whole picture) cannot be stopped on, because the
+    page shown is the current word's: `turn` carries on past them, the way it was going.
 
 The reflowed view (`TextReflowPanel`) renders a window of words, not the whole book:
 `reflow-window.ts` places it around the current word, keeps it while the word stays well inside,
 and grows it (trimming the far side) as the reader scrolls toward an edge. It follows the word
 only when the word changes, so scrolling away to read on is never undone.
+
+In book mode the reflowed view is read by scrolling, so the place follows the scroll: once a
+scroll has rested (`SETTLE_MS`), the first word in view becomes the engine's index, which is
+what gets saved and where RSVP goes on. A place set that way is not marked on the page and
+moves nothing: the window is not placed again around it and the page is not scrolled to it.
+A word picked with a mouse is marked, and the page scrolls only if it is out of sight. When
+the page scrolls itself to a word that was jumped to, the place does not follow that scroll
+(`ownScroll`); it would slide back to the top of the screen. At the very bottom the place is the
+book's last word. Space
+and the paging keys scroll a screen. A finger's tap is for the controls and picks no word, and
+a finger's scroll hides the header (see "The whole screen for the page").
 
 Where the reader is among the chapters (`chapterAt`, the bar's ticks, words left in the chapter)
 is pure maths in `chapters.ts`. Chapters come from `book.chapters`, which is empty for a book

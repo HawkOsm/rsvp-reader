@@ -9,7 +9,8 @@ const SAVE_EVERY_WORDS = 20
 /** Writes progress to IndexedDB every ~20 words, on pause, on tab hide, and
  * on leaving the reader (unmount) or closing the tab (beforeunload) —
  * matches the README's "written to disk every 20 words, and again
- * whenever you pause, go back to the library, or close the app". A pause
+ * whenever you pause, go back to the library, or close the app". Hiding
+ * the app also pauses playback. A pause
  * or leaving the reader also asks sync to run, once reading has stayed
  * paused for a few seconds. */
 export function useAutosaveProgress(bookId: number | null, mode: ReadingMode): void {
@@ -36,7 +37,11 @@ export function useAutosaveProgress(bookId: number | null, mode: ReadingMode): v
       useSyncStore.getState().syncSoon()
     })
     function onVisibilityChange() {
-      if (document.visibilityState === 'hidden') save()
+      if (document.visibilityState !== 'hidden') return
+      // Nobody is reading a hidden app: words played on would be skipped,
+      // and saved as read. (Pausing saves, but only if it was playing.)
+      engine.pause()
+      save()
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
     window.addEventListener('beforeunload', save)

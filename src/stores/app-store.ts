@@ -47,6 +47,9 @@ interface AppState extends Settings {
   bookFits: FitScales | null
   /** A fit to apply as soon as the page sizes are known. */
   pendingFit: keyof FitScales | null
+  /** The fit the page was last put at, while it is still at it: `null`
+   * once the reader sizes the page by hand. */
+  bookFit: keyof FitScales | null
   /** Set when a backwards page turn should land at the bottom of the
    * previous spread. The page view reads it once, with
    * `consumeArriveAtBottom`, when the spread changes, and applies it after
@@ -66,6 +69,8 @@ interface AppState extends Settings {
   setBookScale: (scale: number) => void
   stepBookScale: (delta: number) => void
   setBookFits: (fits: FitScales) => void
+  /** Fit the page this way now, and again when its new sizes are known. */
+  requestFit: (fit: keyof FitScales) => void
   fitBook: () => void
   setMode: (mode: ReadingMode) => void
   setArriveAtBottom: (value: boolean) => void
@@ -84,12 +89,19 @@ export const useAppStore = create<AppState>((set, get) => {
       set({ [key]: value } as Pick<Settings, K>)
     }
 
+  /** Put the page at one of the fits, and remember which. */
+  const applyFit = (fits: FitScales, fit: keyof FitScales) => {
+    setter('bookScale')(clampScale(fits[fit]))
+    set({ pendingFit: null, bookFit: fit })
+  }
+
   return {
     ...DEFAULT_SETTINGS,
     settingsLoaded: false,
     mode: 'rsvp',
     bookFits: null,
     pendingFit: fitFor(DEFAULT_SETTINGS.bookLayout),
+    bookFit: null,
     arriveAtBottom: false,
 
     loadSettings: async () => {
@@ -123,7 +135,7 @@ export const useAppStore = create<AppState>((set, get) => {
 
     setBookScale: (scale) => {
       setter('bookScale')(clampScale(scale))
-      set({ pendingFit: null })
+      set({ pendingFit: null, bookFit: null })
     },
     stepBookScale: (delta) => {
       const { bookScale, bookFits, setBookScale } = get()
@@ -131,16 +143,32 @@ export const useAppStore = create<AppState>((set, get) => {
     },
 
     setBookFits: (bookFits) => {
-      const { pendingFit, setBookScale } = get()
+      const { pendingFit, bookFits: before, bookScale } = get()
       set({ bookFits })
-      if (pendingFit) setBookScale(bookFits[pendingFit])
+      if (pendingFit) return applyFit(bookFits, pendingFit)
+      // A page that was fitted stays fitted when the window changes, the
+      // screen turns or the next page is another size; one the reader sized
+      // by hand is left alone. Which fit it was is remembered (`bookFit`),
+      // since the two can be the same size; a scale kept from last time is
+      // matched against them.
+      if (!before || bookScale === null) return
+      const fitted =
+        get().bookFit ??
+        (['width', 'page'] as const).find((fit) => Math.abs(bookScale - before[fit]) < 0.001)
+      if (fitted && bookFits[fitted] !== bookScale) applyFit(bookFits, fitted)
+    },
+    requestFit: (pendingFit) => {
+      const { bookFits } = get()
+      if (bookFits) applyFit(bookFits, pendingFit)
+      // The sizes known now may be the last layout's; the next ones settle it.
+      set({ pendingFit })
     },
     /** Fit the whole page; pressed again, fit the width. Just sets the scale. */
     fitBook: () => {
-      const { bookFits, bookScale, setBookScale } = get()
+      const { bookFits, bookScale } = get()
       if (!bookFits) return
       const atPage = bookScale !== null && Math.abs(bookScale - bookFits.page) < 0.001
-      setBookScale(atPage ? bookFits.width : bookFits.page)
+      applyFit(bookFits, atPage && bookFits.width !== bookFits.page ? 'width' : 'page')
     },
 
     setMode: (mode) => set({ mode }),

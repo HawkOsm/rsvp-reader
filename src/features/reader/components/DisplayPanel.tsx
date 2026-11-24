@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { FONT_CHOICES, MAX_FONT_SIZE, MIN_FONT_SIZE } from '@/lib/fonts'
 import { resolvePalette, type ThemeMode } from '@/lib/theme'
+import { noteDismissal } from '@/features/reader/dismissal'
 import { useAppStore } from '@/stores/app-store'
 
 const THEMES: { value: ThemeMode; label: string }[] = [
@@ -32,10 +33,13 @@ export function DisplayPanel() {
   useEffect(() => {
     if (!open) return
     function onPointerDown(e: PointerEvent) {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
+      if (rootRef.current?.contains(e.target as Node)) return
+      noteDismissal(e)
+      setOpen(false)
     }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
+    // Capturing, so the page under the tap hears of it first.
+    document.addEventListener('pointerdown', onPointerDown, true)
+    return () => document.removeEventListener('pointerdown', onPointerDown, true)
   }, [open])
 
   const resize = (size: number) =>

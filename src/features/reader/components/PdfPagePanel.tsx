@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { pageLabel, pageOfToken, perSpread, spreadStart, turn } from '@/features/reader/book-nav'
 import {
-  goToPage,
-  pageLabel,
-  pageOfToken,
-  perSpread,
-  spreadStart,
-} from '@/features/reader/book-nav'
-import { GUTTER, MARGIN, fitScales, type PageSpread, type FitScales } from '@/lib/book-layout'
-import { BOOK_SCROLL_ID } from '@/features/reader/book-scroll'
+  GUTTER,
+  MARGIN,
+  MAX_SCALE,
+  fitScales,
+  type PageSpread,
+  type FitScales,
+} from '@/lib/book-layout'
+import { useBookGestures, type BookGestures } from '@/features/reader/hooks/useBookGestures'
+import { pinchRatio } from '@/features/reader/book-gestures'
+import { BOOK_SCROLL_ID, scrollOrTurn } from '@/features/reader/book-scroll'
+import { WHEEL_AT_REST, WHEEL_REST_MS, wheelPixels, wheelTurn } from '@/features/reader/wheel-turn'
 import { useEngine, useEngineIndex } from '@/features/reader/engine-context'
 import { useAppStore } from '@/stores/app-store'
 import { useElementSize, usePdfDocument } from '@/features/reader/hooks/usePdfDocument'
@@ -23,6 +27,13 @@ export interface PdfPagePanelProps {
   scale?: number | null
   /** Told what scale would fit the page / the width, for the size controls. */
   onFits?: (fits: FitScales) => void
+  /** A pinch asked for this scale. With `onFitToggle` (a double tap), turns
+   * on touch gestures: tap or swipe to turn the page, pinch, double-tap. */
+  onZoom?: (scale: number) => void
+  onFitToggle?: () => void
+  /** A finger asked for the reader's controls to be shown or hidden (a tap
+   * in the middle), or turned a page, which hides them. */
+  onControls?: (show: 'toggle' | false) => void
   /** The small follow-along panel beside the RSVP word: a previous/next
    * header, click a word to jump there, and it scrolls to keep the current
    * word in view. The full-width book view has its own controls instead. */
@@ -42,6 +53,9 @@ export function PdfPagePanel({
   layout = 'single',
   scale,
   onFits,
+  onZoom,
+  onFitToggle,
+  onControls,
   peek = false,
   legacyBoxes = false,
 }: PdfPagePanelProps) {
@@ -50,6 +64,8 @@ export function PdfPagePanel({
   const doc = usePdfDocument(bookId)
   const [ready, setReady] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const pagesRef = useRef<HTMLDivElement>(null)
+  const [fits, setFits] = useState<FitScales | null>(null)
   // The scroller's size decides the page scale, and it settles a layout
   // pass after mount, so watch it rather than read it once.
   const box = useElementSize(scrollRef)
@@ -72,7 +88,14 @@ export function PdfPagePanel({
     let cancelled = false
     Promise.all(pages.map((p) => doc.pageSize(p)))
       .then((sizes) => {
-        if (!cancelled) onFits(fitScales(sizes, box))
+        if (cancelled) return
+        const fitted = fitScales(sizes, box)
+        // The same fits are the same object, so a page turn or a resize that
+        // changes nothing doesn't restart the gestures under a finger.
+        setFits((old) =>
+          old && old.page === fitted.page && old.width === fitted.width ? old : fitted,
+        )
+        onFits(fitted)
       })
       .catch(() => {
         // The book was closed or the engine restarted; the reopened one reports again.
@@ -97,6 +120,105 @@ export function PdfPagePanel({
     }
   }, [ready, pages.length])
 
+  // Touch: a swipe turns the page while it is no wider than its area (a
+  // wider one scrolls sideways instead); a tap at an edge turns it too,
+  // scrolling a tall page first, as the arrow keys do; a tap in the middle
+  // is for the controls; a pinch zooms no further out than the whole page;
+  // a double tap switches between the two fits.
+  const canSwipe = !fits || scale == null || scale <= fits.width + 0.001
+  const gestures = useMemo<BookGestures | null>(() => {
+    if (!onZoom || !onFitToggle) return null
+    return {
+      canSwipe,
+      scale: scale ?? null,
+      minScale: fits ? Math.min(fits.page, fits.width) : 0,
+      maxScale: MAX_SCALE,
+      onTurn: (direction) => {
+        turn(engine, count, layout, direction)
+        onControls?.(false)
+      },
+      onZoom,
+      onTap: (zone) => {
+        if (zone === 'middle') return onControls?.('toggle')
+        scrollOrTurn(engine, count, layout, zone === 'forward' ? 1 : -1)
+        onControls?.(false)
+      },
+      onDoubleTap: onFitToggle,
+    }
+  }, [onZoom, onFitToggle, onControls, canSwipe, scale, fits, engine, count, layout])
+  useBookGestures(scrollRef, pagesRef, gestures)
+
+  // Mouse wheel and trackpad, in the reading view. A page with more to
+  // scroll scrolls; one with nothing left that way turns, once per flick,
+  // and not at the end of a flick that was scrolling. A sideways trackpad
+  // swipe turns it too. With Ctrl (which is also how a trackpad pinch
+  // arrives) it zooms: stretched at once, drawn again when the wheel rests.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el || !gestures) return
+    const { canSwipe, scale, minScale, maxScale, onZoom } = gestures
+    let run = WHEEL_AT_REST
+    let scrolledAt = -Infinity
+    let zoom = 1
+    let zoomRest: ReturnType<typeof setTimeout> | undefined
+    const stretch = (ratio: number | null) => {
+      const sheet = pagesRef.current
+      if (!sheet) return
+      sheet.style.transform = ratio === null ? '' : `scale(${ratio})`
+      sheet.style.transformOrigin = ratio === null ? '' : 'center top'
+    }
+    const commitZoom = () => {
+      zoomRest = undefined
+      const ratio = zoom
+      zoom = 1
+      stretch(null)
+      if (scale !== null && Math.abs(ratio - 1) > 0.02) onZoom(scale * ratio)
+    }
+
+    function onWheel(e: WheelEvent) {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+        if (scale === null) return
+        const px = wheelPixels(e.deltaY, e.deltaMode, el!.clientHeight)
+        // A wheel's notch is a step (pdf.js's 1.1); a pinch is smooth.
+        const factor = Math.abs(px) >= 50 ? (px < 0 ? 1.1 : 1 / 1.1) : Math.exp(-px / 100)
+        zoom = pinchRatio(1, zoom * factor, scale, minScale, maxScale)
+        stretch(zoom)
+        clearTimeout(zoomRest)
+        zoomRest = setTimeout(commitZoom, WHEEL_REST_MS)
+        return
+      }
+      const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY)
+      if (sideways && !canSwipe) return // a wide page scrolls sideways
+      const px = wheelPixels(sideways ? e.deltaX : e.deltaY, e.deltaMode, el!.clientHeight)
+      if (!sideways) {
+        const max = el!.scrollHeight - el!.clientHeight
+        const room = px > 0 ? el!.scrollTop < max - 1 : el!.scrollTop > 0
+        if (max > 1 && room) {
+          scrolledAt = e.timeStamp
+          return
+        }
+      }
+      e.preventDefault()
+      if (e.timeStamp - scrolledAt < WHEEL_REST_MS) {
+        scrolledAt = e.timeStamp
+        return
+      }
+      const step = wheelTurn(run, px, e.timeStamp)
+      run = step.run
+      if (!step.turn) return
+      if (sideways) turn(engine, count, layout, step.turn)
+      else scrollOrTurn(engine, count, layout, step.turn)
+    }
+
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      clearTimeout(zoomRest)
+      stretch(null)
+    }
+  }, [gestures, engine, count, layout])
+
   // With no scale given (the side panel), pages fill the panel's width.
   const per = pages.length || 1
   const boxWidth = box
@@ -113,7 +235,7 @@ export function PdfPagePanel({
           <Button
             aria-label="Previous page"
             disabled={start <= 0}
-            onClick={() => goToPage(engine, count, layout, start - perSpread(layout))}
+            onClick={() => turn(engine, count, layout, -1)}
             variant="link"
             className="px-[0.6em]"
             style={{ fontSize: 'inherit' }}
@@ -124,7 +246,7 @@ export function PdfPagePanel({
           <Button
             aria-label="Next page"
             disabled={start + perSpread(layout) >= count}
-            onClick={() => goToPage(engine, count, layout, start + perSpread(layout))}
+            onClick={() => turn(engine, count, layout, 1)}
             variant="link"
             className="px-[0.6em]"
             style={{ fontSize: 'inherit' }}
@@ -136,9 +258,19 @@ export function PdfPagePanel({
       <div
         ref={scrollRef}
         id={BOOK_SCROLL_ID}
-        className={`min-h-0 flex-1 overflow-auto ${peek ? '' : 'p-2 [scrollbar-gutter:stable]'}`}
+        className={`flex min-h-0 flex-1 overflow-auto ${peek ? '' : 'p-2 [scrollbar-gutter:stable]'}`}
+        // The browser scrolls; sideways swipes and pinches are left to the
+        // gestures above, unless the page is wide enough to scroll sideways.
+        style={gestures ? { touchAction: canSwipe ? 'pan-y' : 'pan-x pan-y' } : undefined}
       >
-        <div className="mx-auto flex w-fit items-start" style={{ gap: GUTTER }}>
+        {/* Auto margins centre pages smaller than the area, both ways, and
+            give way when they are bigger, so every part can be scrolled to.
+            The side panel's page keeps to the top. */}
+        <div
+          ref={pagesRef}
+          className={`flex w-fit items-start ${peek ? 'mx-auto' : 'm-auto'}`}
+          style={{ gap: GUTTER }}
+        >
           {doc &&
             box &&
             scale !== null &&

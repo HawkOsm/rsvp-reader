@@ -18,6 +18,9 @@ const BOOK_PAGED: Hint[] = [
   [['space', '→'], 'next'],
   [['←'], 'back'],
   [['pgup', 'pgdn'], 'turn the page'],
+  [['g'], 'go to…'],
+  [['alt', '← →'], 'back / forward a jump'],
+  [['enter'], 'show / hide the top bar'],
   [['+', '−'], 'page size'],
   [['d'], 'one or two pages'],
   [['f'], 'fit page / width'],
@@ -27,8 +30,11 @@ const BOOK_PAGED: Hint[] = [
 
 // Book mode over reflowed text has no pages to turn, size or fit.
 const BOOK_TEXT: Hint[] = [
-  [['space', '→'], 'next word'],
-  [['←'], 'back a word'],
+  [['space'], 'next screen'],
+  [['←', '→'], 'back / forward a word'],
+  [['g'], 'go to…'],
+  [['alt', '← →'], 'back / forward a jump'],
+  [['enter'], 'show / hide the top bar'],
   [['b'], 'back to RSVP'],
   [['esc'], 'library'],
 ]
@@ -38,8 +44,8 @@ export interface ReaderHintsProps {
   layout: ContentLayout
 }
 
-/** The keyboard cheat-sheet under the controls. Hidden on touch screens,
- * where none of these keys exist. */
+/** The keyboard cheat-sheet under the controls, on a screen with room for
+ * it. The reader shows it only where there is a keyboard. */
 export function ReaderHints({ mode, layout }: ReaderHintsProps) {
   const hints = mode === 'rsvp' ? RSVP : layout.kind === 'paged' ? BOOK_PAGED : BOOK_TEXT
   return (

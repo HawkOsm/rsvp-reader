@@ -103,10 +103,29 @@ export function goToPage(
   engine.seek(firstIndexAt(engine.tokens, target, spread))
 }
 
-/** Flip to the next or previous spread. */
+/** Whether any page of the spread starting at `page` has words. */
+function spreadHasText(tokens: Token[], page: number, spread: PageSpread): boolean {
+  const { first } = pageIndexOf(tokens)
+  for (let p = page; p < page + perSpread(spread); p++) if (first.has(p)) return true
+  return false
+}
+
+/** Flip to the next or previous spread. The page shown is the current
+ * word's, so a spread with no words (a blank page, a full-page picture)
+ * can't be stopped on: the turn carries on, the same way, to the next spread
+ * that has some. (It once went to the nearest page with words, which from
+ * the page before a blank one was that same page: Next did nothing.) */
 export function turn(engine: Engine, pageCount: number, spread: PageSpread, delta: number): void {
+  if (delta === 0) return
+  const per = perSpread(spread)
   const current = spreadStart(pageOfToken(engine.tokens[engine.index]), spread)
-  goToPage(engine, pageCount, spread, current + delta * perSpread(spread))
+  let target = current + delta * per
+  while (target >= 0 && target < pageCount && !spreadHasText(engine.tokens, target, spread)) {
+    target += Math.sign(delta) * per
+  }
+  // The end of the book, or nothing but empty pages that way: stay.
+  if (target < 0 || target >= pageCount) return
+  goToPage(engine, pageCount, spread, target)
 }
 
 /** "pages 3–4 / 340", or "page 3 / 340" for a single page. */

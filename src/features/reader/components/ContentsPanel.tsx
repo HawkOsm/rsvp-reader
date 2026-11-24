@@ -7,11 +7,14 @@ export interface ContentsPanelProps {
   chapters: BookChapter[]
   /** After a chapter is picked: a phone closes the panel to show the page. */
   onPicked?: () => void
+  /** How to go to a chapter's first word; the reader's way remembers where
+   * it was, for Back. */
+  go?: (index: number) => void
 }
 
 /** The book's chapters, with the one being read marked. Picking one goes
  * to its first word. */
-export function ContentsPanel({ chapters, onPicked }: ContentsPanelProps) {
+export function ContentsPanel({ chapters, onPicked, go }: ContentsPanelProps) {
   const engine = useEngine()
   const index = useEngineIndex()
   const current = chapterAt(chapters, index)
@@ -36,7 +39,7 @@ export function ContentsPanel({ chapters, onPicked }: ContentsPanelProps) {
           type="button"
           aria-current={i === current ? 'true' : undefined}
           onClick={() => {
-            engine.seek(chapter.startTokenIndex)
+            ;(go ?? engine.seek)(chapter.startTokenIndex)
             onPicked?.()
           }}
           className={`flex min-h-9 items-center rounded-lg px-2.5 text-left text-sm ${

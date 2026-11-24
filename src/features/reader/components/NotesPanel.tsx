@@ -48,16 +48,20 @@ export function NotesPanel({ bookId, title, author, totalWords, onClose }: Notes
   }, [bookId])
   useEffect(reload, [reload, revision])
 
-  /** Run a change, then show the notes as they now are. */
-  async function change(action: () => Promise<unknown>) {
+  /** Run a change, then show the notes as they now are. Says whether it
+   * went through: what the reader typed is kept when it didn't. */
+  async function change(action: () => Promise<unknown>): Promise<boolean> {
     setError(null)
+    let done = true
     try {
       await action()
     } catch (err) {
       logError('notes', err)
       setError(err instanceof Error ? err.message : String(err))
+      done = false
     }
     reload()
+    return done
   }
 
   const page = engine.tokens[index]?.page ?? -1
@@ -89,7 +93,9 @@ export function NotesPanel({ bookId, title, author, totalWords, onClose }: Notes
           const body = draft.trim()
           if (!body) return
           const anchor = { wordIndex: index, quote: here, ...(page >= 0 && { page }) }
-          void change(() => addNote(bookId, anchor, body)).then(() => setDraft(''))
+          void change(() => addNote(bookId, anchor, body)).then((done) => {
+            if (done) setDraft('')
+          })
         }}
       >
         <span className="line-clamp-2 text-[13px] text-text-dim italic">“{here}…”</span>
@@ -138,7 +144,7 @@ function NoteItem({
   note: NoteRecord
   place: string
   onGo: () => void
-  change: (action: () => Promise<unknown>) => Promise<void>
+  change: (action: () => Promise<unknown>) => Promise<boolean>
 }) {
   const [editing, setEditing] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -195,7 +201,9 @@ function NoteItem({
               className={BUTTON}
               disabled={!editing.trim()}
               onClick={() =>
-                void change(() => editNote(noteId, editing.trim())).then(() => setEditing(null))
+                void change(() => editNote(noteId, editing.trim())).then((done) => {
+                  if (done) setEditing(null)
+                })
               }
             >
               Save
@@ -244,7 +252,7 @@ function Conflict({
   change,
 }: {
   note: NoteRecord
-  change: (action: () => Promise<unknown>) => Promise<void>
+  change: (action: () => Promise<unknown>) => Promise<boolean>
 }) {
   const [merging, setMerging] = useState<string | null>(null)
   const versions = [note.shown, ...note.conflicts]
