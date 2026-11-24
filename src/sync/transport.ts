@@ -1,6 +1,6 @@
 // The shared store that devices sync through (docs/architecture/sync.md,
 // section 6): a flat folder of named files, text for sync's own and bytes for
-// books. Google Drive's app folder is the one used; `MemoryTransport` stands
+// books. A folder in the user's Google Drive is the one used; `MemoryTransport` stands
 // in for it in tests. Every file has exactly one writer, or (a book's files)
 // is named by a hash of what it holds, so no write can conflict with another.
 

@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # Fails if the Android manifest declares any permission beyond the
-# allow-list below. The app reads local files only, so the list is empty
-# (INTERNET went with the Gutendex search) — nothing should sneak in
-# un-reviewed.
+# allow-list below. INTERNET is there for the opt-in Google Drive sync only
+# (docs/architecture/sync.md); nothing else should sneak in un-reviewed.
 set -euo pipefail
 
 MANIFEST="android/app/src/main/AndroidManifest.xml"
-ALLOWED=()
+ALLOWED=(android.permission.INTERNET)
 
 if [[ ! -f "$MANIFEST" ]]; then
   echo "error: $MANIFEST not found (run from the repo root, after \`npx cap add android\`)" >&2

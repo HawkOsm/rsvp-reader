@@ -57,6 +57,8 @@ interface SyncStore {
   connectError: string | null
   /** The address of the sign-in under way, to open elsewhere (desktop). */
   signInLink: string | null
+  /** The code to enter at `signInLink`, where sign-in is by code (Android). */
+  signInCode: string | null
   /** Counts runs that brought changes in, so screens that show synced data
    * read it again when it changes. */
   revision: number
@@ -184,6 +186,7 @@ export const useSyncStore = create<SyncStore>((set, get) => {
     error: null,
     connectError: null,
     signInLink: null,
+    signInCode: null,
     revision: 0,
     bookFiles: bookFilesSetting(),
     upload: null,
@@ -204,7 +207,11 @@ export const useSyncStore = create<SyncStore>((set, get) => {
           const uploads = createSyncRunner(booksTask)
           books = uploads
           const onAuth = () => {
-            set({ auth: signIn.state(), signInLink: signIn.signInLink() })
+            set({
+              auth: signIn.state(),
+              signInLink: signIn.signInLink(),
+              signInCode: signIn.signInCode(),
+            })
             // A sign-in can fail after Connect stopped waiting (a slow
             // sign-in, then Google refusing): say why, not "hasn't finished".
             const failure = signIn.signInError()

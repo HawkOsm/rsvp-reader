@@ -8,8 +8,10 @@ import type { SyncAuth, SyncAuthState } from './types'
 // The token is kept in memory only. What is remembered is that the user
 // connected, so a reopened app says "Reconnect" rather than "Connect".
 
-/** Drive's hidden per-app folder, and nothing else of the user's. */
-export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata'
+/** Only the files this app itself puts in the user's Drive, and nothing else
+ * of theirs. Not the hidden per-app folder (`drive.appdata`): sign-in with a
+ * code, which Android uses, isn't allowed that one. */
+export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
 
 const GIS_URL = 'https://accounts.google.com/gsi/client'
 const CONNECTED_KEY = 'rsvp-reader:sync-connected'
@@ -109,6 +111,7 @@ export function createGoogleAuth({
     signInError: () => attempts.failure(),
     // Google's window is opened by its script, from the page: no link to give.
     signInLink: () => null,
+    signInCode: () => null,
     subscribe(listener) {
       listeners.add(listener)
       return () => void listeners.delete(listener)

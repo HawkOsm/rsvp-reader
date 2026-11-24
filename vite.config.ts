@@ -27,6 +27,15 @@ const desktopClientSecret = process.env.TAURI_ENV_PLATFORM
     '')
   : ''
 
+// The same for the Android app's client (sign-in with a code), from
+// GOOGLE_DEVICE_CLIENT_SECRET, built in only when the Android build says it is
+// one (RSVP_ANDROID_BUILD, set in .github/workflows/build-apps.yml).
+const deviceClientSecret = process.env.RSVP_ANDROID_BUILD
+  ? (process.env.GOOGLE_DEVICE_CLIENT_SECRET ??
+    loadEnv('', process.cwd(), 'GOOGLE_').GOOGLE_DEVICE_CLIENT_SECRET ??
+    '')
+  : ''
+
 const appVersion = (JSON.parse(readFileSync('package.json', 'utf8')) as { version: string }).version
 
 // https://vite.dev/config/
@@ -35,6 +44,7 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
     __DESKTOP_CLIENT_SECRET__: JSON.stringify(desktopClientSecret),
+    __DEVICE_CLIENT_SECRET__: JSON.stringify(deviceClientSecret),
   },
   // Must match `devUrl` in src-tauri/tauri.conf.json, or `pnpm tauri dev`
   // waits forever on a port nothing is listening on.

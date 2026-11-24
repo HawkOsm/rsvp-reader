@@ -1,16 +1,31 @@
 // An in-memory Google Drive, answering the few Drive v3 REST calls that
-// `DriveTransport` makes, so sync can be tested without the network. Only
-// `appDataFolder` exists. `failNext` makes the next requests fail, to test
+// `DriveTransport` makes, so sync can be tested without the network. As with
+// the `drive.file` scope, the app sees only what it made: folders it created
+// and the files in them. `failNext` makes the next requests fail, to test
 // retries and errors.
 
 interface DriveFile {
   id: string
   name: string
   data: string | Blob
+  /** The folder it is in. */
+  parent: string
+  /** The user put it in the bin. */
+  trashed?: boolean
 }
+
+interface DriveFolder {
+  id: string
+  name: string
+  trashed?: boolean
+}
+
+const FOLDER_TYPE = 'application/vnd.google-apps.folder'
 
 export class FakeDrive {
   readonly files: DriveFile[] = []
+  /** The folders the app made, oldest first. */
+  readonly folders: DriveFolder[] = []
   /** Bearer tokens the fake accepts. */
   readonly tokens = new Set(['good'])
   readonly requests: string[] = []
@@ -27,6 +42,11 @@ export class FakeDrive {
 
   /** Room left on the fake Drive, or `null` for no limit. */
   free: number | null = null
+
+  /** The folder a new file names as its parent, if the app made it. */
+  private folderOf(parents: string[] | undefined): string | undefined {
+    return this.folders.find((f) => f.id === parents?.[0] && !f.trashed)?.id
+  }
 
   byName(name: string): string | undefined {
     const data = this.files.find((f) => f.name === name)?.data
@@ -49,10 +69,20 @@ export class FakeDrive {
 
     const path = url.pathname
     if (method === 'GET' && path === '/drive/v3/files') {
-      if (url.searchParams.get('spaces') !== 'appDataFolder') return json({}, 400)
+      // The hidden app folder is no longer used; asking for it is a bug.
+      if (url.searchParams.has('spaces')) return json({}, 400)
+      const q = url.searchParams.get('q') ?? ''
+      if (q.includes(`mimeType='${FOLDER_TYPE}'`)) {
+        const name = /name='([^']*)'/.exec(q)?.[1]
+        const found = this.folders.filter((f) => f.name === name && !f.trashed)
+        return json({ files: found.map(({ id }) => ({ id })) })
+      }
+      const parent = /^'([^']+)' in parents and trashed=false$/.exec(q)?.[1]
+      if (!parent) return json({ error: { code: 400, message: `unexpected q: ${q}` } }, 400)
+      const inFolder = this.files.filter((f) => f.parent === parent && !f.trashed)
       const start = Number(url.searchParams.get('pageToken') ?? 0)
-      const page = this.files.slice(start, start + this.pageSize)
-      const more = start + this.pageSize < this.files.length
+      const page = inFolder.slice(start, start + this.pageSize)
+      const more = start + this.pageSize < inFolder.length
       return json({
         files: page.map(({ id, name, data }) => ({
           id,
@@ -87,9 +117,19 @@ export class FakeDrive {
       return json({ storageQuota: { usage: String(used), ...(limit && { limit }) } })
     }
     if (method === 'POST' && path === '/drive/v3/files') {
-      const metadata = JSON.parse(String(init.body)) as { name: string; parents: string[] }
-      if (metadata.parents[0] !== 'appDataFolder') return json({}, 400)
-      const file = { id: `f${this.nextId++}`, name: metadata.name, data: '' }
+      const metadata = JSON.parse(String(init.body)) as {
+        name: string
+        mimeType?: string
+        parents?: string[]
+      }
+      if (metadata.mimeType === FOLDER_TYPE) {
+        const folder = { id: `d${this.nextId++}`, name: metadata.name }
+        this.folders.push(folder)
+        return json({ id: folder.id })
+      }
+      const parent = this.folderOf(metadata.parents)
+      if (!parent) return json({}, 400)
+      const file = { id: `f${this.nextId++}`, name: metadata.name, data: '', parent }
       this.files.push(file)
       return json({ id: file.id })
     }
@@ -100,9 +140,10 @@ export class FakeDrive {
         .split(`--${boundary}`)
         .slice(1, -1)
         .map((part) => part.split('\r\n\r\n').slice(1).join('\r\n\r\n').replace(/\r\n$/, ''))
-      const metadata = JSON.parse(parts[0]!) as { name: string; parents: string[] }
-      if (metadata.parents[0] !== 'appDataFolder') return json({}, 400)
-      const file = { id: `f${this.nextId++}`, name: metadata.name, data: parts[1]! }
+      const metadata = JSON.parse(parts[0]!) as { name: string; parents?: string[] }
+      const parent = this.folderOf(metadata.parents)
+      if (!parent) return json({}, 400)
+      const file = { id: `f${this.nextId++}`, name: metadata.name, data: parts[1]!, parent }
       this.files.push(file)
       return json({ id: file.id })
     }

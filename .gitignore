@@ -51,3 +51,6 @@ android/build/
 # Playwright output
 /test-results/
 /playwright-report/
+
+# Local secret files (OAuth client downloads and the like). Never commit them.
+assets/secrets/

@@ -21,6 +21,7 @@ export function SyncSection() {
   const usage = useSyncStore((s) => s.usage)
   const bookError = useSyncStore((s) => s.bookError)
   const signInLink = useSyncStore((s) => s.signInLink)
+  const signInCode = useSyncStore((s) => s.signInCode)
   const label = connectLabel(phase)
   const connected = !['unavailable', 'off', 'connecting', 'needs-reconnect'].includes(phase)
 
@@ -45,7 +46,8 @@ export function SyncSection() {
           </button>
         )}
       </Row>
-      {signInLink && <SignInLinkRow link={signInLink} />}
+      {signInLink && signInCode && <SignInCodeRow link={signInLink} code={signInCode} />}
+      {signInLink && !signInCode && <SignInLinkRow link={signInLink} />}
       {connected && (
         <Row
           title="Sync now"
@@ -68,9 +70,10 @@ export function SyncSection() {
       )}
       {phase !== 'unavailable' && (
         <p className="px-[18px] py-3.5 text-[13px] leading-snug text-text-dim">
-          Your reading positions, settings, shelves, bookmarks and books are kept in a hidden folder
-          of your own Google Drive, so your other devices can pick them up. Google can read what is
-          stored there; nothing is sent anywhere else.
+          Your reading positions, settings, shelves, bookmarks and books are kept in a folder named
+          “RSVP Reader” in your own Google Drive, so your other devices can pick them up. The app
+          can’t see anything else in your Drive. Leave that folder’s files as they are: sync reads
+          and writes them. Google can read what is stored there; nothing is sent anywhere else.
         </p>
       )}
     </>
@@ -116,6 +119,50 @@ function SignInLinkRow({ link }: { link: string }) {
       >
         {copied ? 'Copied' : 'Copy sign-in link'}
       </button>
+    </Row>
+  )
+}
+
+/** Sign-in by code (Android): the code, and where to enter it. Any browser
+ * will do, on this device or another; the app connects once it is entered. */
+function SignInCodeRow({ link, code }: { link: string; code: string }) {
+  const [copied, setCopied] = useState(false)
+  const address = link.replace(/^https?:\/\/(www\.)?/, '')
+  return (
+    <Row
+      title="Enter this code to connect"
+      hint={
+        <>
+          Open{' '}
+          <a href={link} target="_blank" rel="noreferrer" className="text-text underline">
+            {address}
+          </a>{' '}
+          in a browser, on this device or another, sign in to Google and enter the code. This screen
+          connects by itself when you’re done.
+        </>
+      }
+    >
+      <span className="flex items-center gap-2">
+        <code
+          aria-label="Sign-in code"
+          className="text-lg font-semibold tracking-widest select-all"
+        >
+          {code}
+        </code>
+        <button
+          type="button"
+          className={SMALL_BUTTON}
+          onClick={() =>
+            // No clipboard, or it refused: the code is on screen to type.
+            void navigator.clipboard?.writeText(code).then(
+              () => setCopied(true),
+              () => {},
+            )
+          }
+        >
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </span>
     </Row>
   )
 }

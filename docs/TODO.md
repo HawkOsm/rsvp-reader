@@ -7,11 +7,14 @@ off. Design and history: [docs/architecture/sync.md](architecture/sync.md) and
 
 ## Needs the owner (Google Cloud console, GitHub, keys)
 
-- [ ] **Android OAuth client.** Create it with the release keystore's SHA-1 (and the debug
-      key's), then send its client ID, so Android sign-in can be built.
-- [ ] **`GOOGLE_DESKTOP_CLIENT_SECRET` repository secret** (GitHub → Settings → Secrets and
-      variables → Actions), so released desktop builds can sign in. Local builds read it from
-      `.env.local`.
+- [x] Android's OAuth client ("TVs and Limited Input devices"), its ID in the code and its
+      secret in `GOOGLE_DEVICE_CLIENT_SECRET` (2026-11-23).
+- [ ] Move or delete `assets/secrets/LICENSE` (the downloaded client file; git ignores the
+      folder, but it doesn't belong in the repository's folder).
+- [ ] **Release keystore secrets** (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
+      `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`). Without them every release APK is signed
+      with a throwaway key, so it can't install over the last one.
+- [x] `GOOGLE_DESKTOP_CLIENT_SECRET` repository secret (set 2026-11-03).
 - [ ] **Publish the consent screen** ("In production") before anyone but test users signs in.
       Testing mode caps users at 100 and expires desktop sign-ins after about 7 days. Google
       will want a homepage and a privacy-policy link.
@@ -21,10 +24,18 @@ off. Design and history: [docs/architecture/sync.md](architecture/sync.md) and
 
 ## Sync
 
-- [ ] Android sign-in (phase 5): a native Google sign-in plugin, once the client exists.
-- [ ] Try book files (phase 4) and snapshots/purge (phase 6) against real Drive; so far they
-      are tested against fakes only.
-- [ ] A two-device check of notes over real Drive.
+- [ ] Try Android sign-in (by code) on a real phone. The same code has signed in and synced
+      against real Drive from a computer, but has not run on a device. Check that the
+      google.com/device link opens the phone's browser.
+- [ ] Reconnect on the web and the desktop after updating: sync now asks for `drive.file` and
+      uses a visible "RSVP Reader" folder, so each device signs in once more and sends what it
+      holds to the new folder.
+- [ ] If two devices connect for the very first time in the same moment, each can make its own
+      "RSVP Reader" folder; all settle on the older, and the other's first push is stranded.
+- [ ] Maybe later: native one-tap sign-in on Android, if the code screen proves annoying.
+- [ ] Try snapshots and purging (phase 6) against real Drive; so far against fakes only.
+      (Book upload and download, and notes between devices, passed against real Drive on
+      2026-11-23.)
 - [ ] Remove the `sync` flag once it has been used for a while, and update the README's
       "never leave this device" line with it.
 - [ ] Maybe: a code sign-in on the desktop (Google's device flow), if the copy-link fallback

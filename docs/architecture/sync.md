@@ -1,12 +1,13 @@
 # Sync design (draft)
 
-Status: phases 1-3 (section 15) are built for the web, behind the `sync` flag (Settings →
-Advanced → Experimental): identity, clock, merge, the change log, sign-in with Google, the Drive
-transport, sync while the app is open, position offers, Settings → Sync and the sync log.
-Progress, settings, shelves, bookmarks and book removals sync; book files don't yet. With the
-flag off, or until the user connects, the app makes no network calls. Scope: cross-device sync
-of reading state and a new notes/drawing feature, using the user's own Google Drive as the only
-shared storage.
+Status: phases 1-7 are built behind the `sync` and `notes` flags (Settings → Advanced →
+Experimental), on the web, the desktop and Android; "As built" at the end of this page says
+where the code differs from the design below. The largest difference: the shared store is a
+**visible folder named "RSVP Reader"** in the user's Drive, under the `drive.file` scope, not
+the hidden `appDataFolder` the design sections describe (As built, "The store is a visible
+folder"). With the flags off, or until the user connects, the app makes no network calls.
+Scope: cross-device sync of reading state and notes, using the user's own Google Drive as the
+only shared storage.
 
 **Where the code is:** `core/sync/hlc.ts` (clock), `core/sync/merge.ts` (changes and the merge
 rule), `core/sync/run.ts` (a run as the log keeps it), `storage/sync-log.ts` (recording local
@@ -407,9 +408,10 @@ Assumptions made while recording these (correct me if wrong):
 3. Whether book-file sync should be Wi-Fi-only by default on Android.
 4. A code sign-in on the desktop (Google's device flow: show a code, enter it at
    google.com/device), as a sure route when a browser extension blocks the loopback sign-in.
-   Google allows it for `drive.appdata`. It needs a "TVs and Limited Input devices" client,
+   Google allows it for `drive.file`, not `drive.appdata`. It needs a "TVs and Limited Input devices" client,
    whose secret is handled like the desktop one, and the keychain would have to remember which
    client a refresh token belongs to. Deferred (2026-10-27): the copy-link fallback covers it.
+   Android has used this flow since 2026-11-23, so only wiring it to the desktop is left.
 
 ## 18. As built
 
@@ -446,7 +448,7 @@ Where the code differs from the design above, and why.
 - **Auth** is `Platform.syncAuth` (`platform/types.ts`): `getToken`, `renewToken`, `signIn`,
   `signOut`, and a `state` the UI subscribes to (`signed-out`, `signing-in`, `signed-in`,
   `needs-reconnect`). The web one (`platform/google-auth.ts`) uses Google Identity Services'
-  token flow with the `drive.appdata` scope. Google's script is added to the page when the user
+  token flow (the scope is `drive.file` now; see "The store is a visible folder"). Google's script is added to the page when the user
   presses Connect, never before. The token lives in memory only; what is remembered (in
   localStorage) is that the user connected, so a reopened app shows "Reconnect". The browser
   flow has no refresh token and a new token needs a click, so `renewToken` on the web always
@@ -474,7 +476,8 @@ Where the code differs from the design above, and why.
   id: that is made once per install (`localSyncState`) and never changes on retries,
   disconnecting or reconnecting, so a device is registered on Drive once.
 - **Drive transport** (`sync/drive.ts`): `DriveTransport` implements `Transport` with plain
-  `fetch` against Drive v3 in `appDataFolder`; no Google library. Drive names files by id, so
+  `fetch` against Drive v3, in a folder of the user's Drive (first `appDataFolder`; see "The
+  store is a visible folder"); no Google library. Drive names files by id, so
   ids are learned from `list` (ordered by creation time, so if two devices ever made the same
   name, every device uses the older file). 429, 5xx, Drive's rate-limit 403s and a lost
   connection are retried with full-jitter exponential backoff, six tries in all. A 401 asks
@@ -606,9 +609,38 @@ Where the code differs from the design above, and why.
   Android builds never contain it. It still ends up inside the
   installed app, which Google accepts for desktop clients; see decisions.md. The client ID is
   `DESKTOP_CLIENT_ID` in `platform/tauri.ts`.
-- Android is not built yet: Google no longer allows custom-scheme redirects for new Android
-  clients, so it needs a native sign-in plugin and an Android OAuth client with the release
-  keystore's SHA-1.
+- **Android signs in with a code** (`platform/device-auth.ts`), not natively as the table in
+  section 3 planned. Google's device flow: the app asks for a code, Settings shows it with
+  google.com/device, and the app asks the token endpoint every few seconds (more slowly when
+  told `slow_down`) until the code is entered, refused or runs out. Nothing comes back through
+  the browser, so there is no redirect, no signing-key fingerprint and no native code; Google's
+  endpoints answer `fetch` from the app's webview directly. It needs a client of type "TVs and
+  Limited Input devices" (`ANDROID_CLIENT_ID` in `platform/capacitor.ts`), whose secret is built
+  in only by Android builds, from `GOOGLE_DEVICE_CLIENT_SECRET` (as the desktop one is; never
+  committed). Keeping and renewing tokens is shared with the desktop (`installed-auth.ts`).
+  The saved sign-in is kept in the app's own storage, not Android's Keystore, which would need
+  native code; other apps can't read it, and Android's backup may carry it to the user's next
+  phone. Not yet run on a phone, but run from a computer against real Google, sign-in to sync.
+- **The store is a visible folder** (2026-11-23). Google's device flow refuses the
+  `drive.appdata` scope ("Invalid device flow scope", measured; the documentation suggested
+  otherwise), and accepts `drive.file`. So every platform now asks for `drive.file`
+  (`DRIVE_SCOPE`), and `DriveTransport` keeps the same flat set of files in a folder named
+  "RSVP Reader" in the user's Drive instead of `appDataFolder`. Under `drive.file` the app sees
+  only what it made itself, and that grant belongs to the Google project, not the client: a
+  file made by the Android client is read, overwritten and listed by the desktop client and
+  the other way round (measured against real Drive). The folder is found by name on every
+  `list` (oldest first, if two devices each made one in the same moment; the newer one's first
+  push is then stranded, a known gap) and made if missing. A file the user puts in the bin
+  counts as gone. Section 12's "the app can't see the rest of the user's Drive" still holds;
+  what is lost is that the user can now see, move and delete the files.
+- **A store has an id** (`storeId` in meta.json, random). A device remembers the store it last
+  synced with (`SyncStateRecord.store`, an optional field, so no schema version); on meeting
+  another (`adoptStore`) it marks every register it holds pending and reads every log from the
+  start. That is what carries data over from the hidden folder to the visible one, and what
+  restores a folder the user deleted (the design's "offers to re-seed", without asking, since
+  sending twice changes nothing). Data left in `appDataFolder` by v0.3 is not read again.
+- **The Android app declares `INTERNET`** for this, and only this; CI's permission check allows
+  that one permission (decisions.md, 2026-11-23).
 
 ### Phase 7 (text notes; there are no drawings)
 
@@ -638,5 +670,5 @@ Where the code differs from the design above, and why.
   Markdown everywhere; Save as .md where the platform can save a file (`Platform.savesFiles`:
   the web only for now; desktop would need Tauri's dialog plugin).
 
-Not built: sign-in on Android. Book files have no per-book "don't sync
-this" switch, and no Wi-Fi-only option (Android, phase 5).
+Not built: book files have no per-book "don't sync this" switch, and no Wi-Fi-only option on
+Android.

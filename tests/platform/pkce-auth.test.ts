@@ -178,12 +178,13 @@ describe('desktop sign-in (PKCE, loopback)', () => {
     const heard = vi.fn()
     auth.subscribe(heard)
     expect(auth.signInLink()).toBeNull()
-    const result = auth.signIn()
-    await settle()
+    // Listened for from the start: the wait is short, and may be up first.
+    const timedOut = expect(auth.signIn()).rejects.toThrow(/hasn’t finished/)
+    await vi.waitFor(() => expect(fake.opened()).not.toBeNull())
     expect(auth.signInLink()).toBe(fake.opened()!.toString())
     expect(heard).toHaveBeenCalled()
 
-    await expect(result).rejects.toThrow(/hasn’t finished/)
+    await timedOut
     expect(auth.signInLink()).toBe(fake.opened()!.toString()) // still good to finish elsewhere
 
     answer(`code=c1&state=${fake.opened()!.searchParams.get('state')}`)
