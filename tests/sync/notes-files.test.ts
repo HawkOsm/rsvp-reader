@@ -361,4 +361,35 @@ describe('syncNotesFiles', () => {
     expect(res).toEqual({ written: 0, applied: 0 })
     expect([...(await listNames())]).toEqual([])
   })
+
+  it('15. two devices that both read a hand-added section before either writes it back add one note between them', async () => {
+    const { bookId: onA } = await importReflowBook(a)
+    const { bookId: onB } = await importReflowBook(b)
+    await addNote(a, onA, { wordIndex: 0, quote: 'word1' }, 'Existing')
+    await syncOnce(a, store)
+    await syncOnce(b, store)
+    await syncNotesFiles(a, store, await listNames())
+    await syncNotesFiles(b, store, await listNames())
+
+    const edited = `${(await store.read('Notes/Dark.md'))!}\n## Word 4\n\nPerson added note\n`
+    await store.write('Notes/Dark.md', edited)
+    // B is shown Drive as it was before A wrote the note's line into the file.
+    const seenByB = new MemoryTransport()
+    await seenByB.write('Notes/Dark.md', edited)
+
+    await syncNotesFiles(a, store, await listNames())
+    await syncNotesFiles(b, seenByB, new Set(await seenByB.list()))
+    await syncOnce(a, store)
+    await syncOnce(b, store)
+    await syncOnce(a, store)
+
+    for (const [db, bookId] of [
+      [a, onA],
+      [b, onB],
+    ] as const) {
+      const added = (await notesOf(db, bookId)).filter((n) => n.shown.body === 'Person added note')
+      expect(added).toHaveLength(1)
+      expect(added[0]!.conflicts).toEqual([])
+    }
+  })
 })

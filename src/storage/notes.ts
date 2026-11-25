@@ -52,8 +52,13 @@ export async function refoldNote(db: RsvpDatabase, noteId: string): Promise<void
 }
 
 /** Record one edit of a note and fold it in. */
-async function recordEdit(db: RsvpDatabase, noteId: string, value: NoteEdit): Promise<void> {
-  await recordChange(db, { kind: 'note', note: noteId, edit: crypto.randomUUID(), value })
+async function recordEdit(
+  db: RsvpDatabase,
+  noteId: string,
+  value: NoteEdit,
+  edit: string = crypto.randomUUID(),
+): Promise<void> {
+  await recordChange(db, { kind: 'note', note: noteId, edit, value })
   await refoldNote(db, noteId)
 }
 
@@ -74,17 +79,21 @@ async function bookSyncId(db: RsvpDatabase, bookId: number): Promise<string> {
   return syncId
 }
 
-/** Add a note on a word. Returns its id. */
+/** Add a note on a word. Returns its id. `id` is for a note every device
+ * would make the same way (one read from a notes file): given the same id,
+ * two devices that each add it have made one note, not two. */
 export async function addNote(
   db: RsvpDatabase,
   bookId: number,
   anchor: NoteAnchor,
   body: string,
+  id?: string,
 ): Promise<string> {
   const book = await bookSyncId(db, bookId)
-  const noteId = crypto.randomUUID()
+  const noteId = id ?? crypto.randomUUID()
   await db.transaction('rw', noteTables(db), () =>
-    recordEdit(db, noteId, { book, base: null, body, anchor, at: Date.now() }),
+    // The first edit shares the id, so the two devices' edits are one too.
+    recordEdit(db, noteId, { book, base: null, body, anchor, at: Date.now() }, id),
   )
   return noteId
 }

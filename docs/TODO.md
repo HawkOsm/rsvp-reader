@@ -38,8 +38,8 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
 - [ ] Try the notes files against real Drive: edit `Notes/<title>.md` in Drive and see the
       note change in the app. (A file saved with CRLF line endings and a byte-order mark
       parses the same; there is a test.)
-- [ ] Two devices that read the same hand-added note section at once each add it (a
-      duplicate note).
+- [x] Two devices that read the same hand-added note section at once no longer each add it:
+      the note's id is hashed from the section (2026-11-25).
 
 - [ ] Try Android sign-in (by code) on a real phone. The same code has signed in and synced
       against real Drive from a computer, but has not run on a device. Check that the

@@ -11,6 +11,7 @@ import {
   putNotesFile,
 } from '@/storage/notes-files'
 import type { NotesFileRecord, RsvpDatabase } from '@/storage/schema'
+import { sha256 } from '@/storage/sync-id'
 import { readableDriveName } from './book-files'
 import { NOTES_DIR } from './files'
 import type { Transport } from './transport'
@@ -56,6 +57,13 @@ function anchorForPlace(place: ParsedSection['place'], tokens: readonly Token[])
     quote,
     ...(tokenPage !== undefined && tokenPage >= 0 && { page: tokenPage }),
   }
+}
+
+/** The id of a note a person added to a notes file: the same on every
+ * device that reads the section, so two reading it at once add one note. */
+async function handAddedId(syncId: string, section: ParsedSection): Promise<string> {
+  const what = JSON.stringify([syncId, section.place, section.body])
+  return `file-${(await sha256(new TextEncoder().encode(what))).slice(0, 32)}`
 }
 
 /** Sync readable per-book Markdown notes files in `Notes/` with Drive. */
@@ -139,7 +147,10 @@ export async function syncNotesFiles(
           }
         } else if (sec.body !== '') {
           tokens ??= (await getTokens(db, bookId)) ?? []
-          await addNote(db, bookId, anchorForPlace(sec.place, tokens), sec.body)
+          const id = await handAddedId(syncId, sec)
+          // Already here: the other device that read the section sent it.
+          if (existingNotes.has(id)) continue
+          await addNote(db, bookId, anchorForPlace(sec.place, tokens), sec.body, id)
           applied++
         }
       }

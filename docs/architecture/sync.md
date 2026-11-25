@@ -721,6 +721,8 @@ RSVP Reader/
     unsettled conflict is shown with every version and takes no edits from the file.
   - _A second device_ finds the file by its book line and does not make another. A file for
     a book that is not on the device is not touched, and a removed book's notes file is kept.
-  - Known gap: two devices reading the same hand-added section at the same moment each add
-    the note, giving it twice.
+  - A hand-added note's id is hashed from its book, place and text, and its first edit has
+    the same id, so two devices reading the same section at the same moment have added one
+    note, not two. (A note deleted in the app is therefore not brought back by writing the
+    very same section again.)
 - Checked against the fake Drive in the tests only; not yet against real Drive.
