@@ -213,4 +213,18 @@ describe('parseNotesFile', () => {
       sections: [],
     })
   })
+
+  it('reads a file an editor saved with a byte-order mark and CRLF line endings', () => {
+    const text = renderNotesFile({ title: 'Dark', syncId: 'book-1', totalWords: 100 }, [
+      {
+        noteId: 'n1',
+        anchor: { wordIndex: 3, quote: 'dark and stormy' },
+        body: 'Kept',
+        conflicts: [],
+      },
+    ])
+    const saved = '\uFEFF' + text.replace(/\n/g, '\r\n')
+    expect(parseNotesFile(saved)).toEqual(parseNotesFile(text))
+    expect(parseNotesFile(saved).sections[0]).toMatchObject({ noteId: 'n1', body: 'Kept' })
+  })
 })

@@ -134,6 +134,15 @@ inputs (`lib/keyboard.ts`). The one global shortcut (Ctrl/Cmd+L, back to the lib
 `app/hooks/useGlobalShortcuts.ts`. The README's shortcut tables are the user-facing
 specification; keep them in step.
 
+Escape, and Android's back button (`app/hooks/useBackButton.ts`), first close whatever lies
+over the page: the chapter list when it is laid over, the notes. Each registers how to close
+itself while it is open (`whileOpen` in `lib/dismiss.ts`), and the key or button asks
+`dismissTop()` before doing what it usually does. The jump panel and the popovers catch Escape
+themselves.
+
+The progress bar (`ScrubBar`) pauses playback while it is dragged and goes on afterwards, so
+the words don't move the knob from under the finger.
+
 ## Known fragile spots
 
 These broke most often in October 2026. Each one now has a browser test in `tests/e2e/reader.spec.ts`;

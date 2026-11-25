@@ -9,6 +9,7 @@ import {
   useReaderKeyboardShortcuts,
   type ReaderKeys,
 } from '@/features/reader/hooks/useReaderKeyboardShortcuts'
+import { dismissTop, whileOpen } from '@/lib/dismiss'
 import { useAppStore } from '@/stores/app-store'
 
 // Two words on each of pages 0, 1 and 2.
@@ -137,5 +138,19 @@ describe('book-mode keys for getting around', () => {
     setup(paged, 0, { onOpenJump, onToggleControls })
     press('g')
     expect(onOpenJump).toHaveBeenCalledOnce()
+  })
+})
+
+describe('Escape', () => {
+  it('closes a panel lying over the page before it leaves the book', () => {
+    const close = vi.fn()
+    const closed = whileOpen(close)
+    const engine = setup({ kind: 'paged', pages: 3 })
+    press('Escape')
+    expect(close).toHaveBeenCalledOnce()
+    closed()
+    // Nothing moved, and the reader is still in the book.
+    expect(engine.index).toBe(0)
+    expect(dismissTop()).toBe(false)
   })
 })
