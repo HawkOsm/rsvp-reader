@@ -80,9 +80,10 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
       book (`lib/dismiss.ts`, 2026-11-25).
 - [x] Dragging the progress bar while playing no longer fights the playback: it pauses for
       the drag and goes on after (2026-11-25).
-- [ ] From a review on 2026-11-24, read but not acted on: going back to a taller page can land
-      short of its bottom; the PDF worker is not restarted after an error inside MuPDF itself
-      (unconfirmed).
+- [ ] From a review on 2026-11-24, read but not acted on: the PDF worker is not restarted
+      after an error inside MuPDF itself (unconfirmed). Its other point, that going back to a
+      taller page can land short of its bottom, did not happen when tried with pages of two
+      sizes (2026-11-25); there is now a browser test for it.
 - [x] A page with no words (a full-page picture) can be turned to: it is shown apart from
       the reader's place (`blankPage`, 2026-11-25).
 

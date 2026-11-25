@@ -319,3 +319,40 @@ test('a page with no words can be turned to and away from', async ({ page }) => 
   expect(await wordNumber(page)).toBe(place)
   expect(errors).toEqual([])
 })
+
+// Turning back lands at the bottom of the page before, where the reader was
+// heading, even when that page has to be drawn at another size to fit.
+test('turning back to a taller page of another width lands at its bottom', async ({ page }) => {
+  desktopOnly()
+  const errors = collectErrors(page)
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/')
+  await addBook(page, 'tests/fixtures/mixed-page-sizes.pdf')
+  await page.keyboard.press('b')
+  await page.keyboard.press('d') // one page at a time
+  const scroller = page.locator('#book-scroll')
+  const label = page.getByTestId('book-page-label')
+  await expect(scroller.locator('canvas').first()).toBeVisible({ timeout: 20_000 })
+  const left = () => scroller.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop)
+  const tall = () => scroller.evaluate((el) => el.scrollHeight - el.clientHeight)
+
+  // Fit the width: the first page is then far taller than the window.
+  await page.keyboard.press('f')
+  await expect
+    .poll(async () => {
+      const room = await tall()
+      if (room < 1000) await page.keyboard.press('f')
+      return room
+    })
+    .toBeGreaterThan(1000)
+
+  await page.keyboard.press('PageDown')
+  await expect(label).toHaveText('page 2 / 2')
+  await expect.poll(tall).toBeLessThan(1000) // drawn to its own width
+  await page.keyboard.press('ArrowUp')
+  await expect(label).toHaveText('page 1 / 2')
+  await expect.poll(tall).toBeGreaterThan(1000)
+  await page.waitForTimeout(300)
+  expect(await left()).toBeLessThanOrEqual(1)
+  expect(errors).toEqual([])
+})
