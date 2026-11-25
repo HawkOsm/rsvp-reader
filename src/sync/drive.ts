@@ -1,17 +1,49 @@
+import { BOOKS_DIR, NOTES_DIR } from './files'
 import type { StoreUsage, Transport } from './transport'
 
 // The shared store on Google Drive (docs/architecture/sync.md, section 6):
 // the files of `Transport` kept in a folder of the user's Drive, through the
 // Drive v3 REST API with plain `fetch`. The app is only allowed files it made
 // itself (the `drive.file` scope), so it sees its own folder and nothing else
-// of the user's. Drive identifies files by id, not name, so the ids are
-// learned from `list` and kept.
+// of the user's. Inside the root folder live three subfolders ("Books",
+// "Notes", "App data"); Drive identifies items by id, not name, so the ids
+// are learned from `list` and kept.
 
 const API = 'https://www.googleapis.com/drive/v3'
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3'
 /** The folder's name in the user's Drive, where they can see it. */
 export const FOLDER_NAME = 'RSVP Reader'
 const FOLDER_TYPE = 'application/vnd.google-apps.folder'
+
+const SUBFOLDERS = {
+  books: 'Books',
+  notes: 'Notes',
+  appData: 'App data',
+} as const
+type SubfolderKey = keyof typeof SUBFOLDERS
+
+const PREFIXES: Record<SubfolderKey, string> = {
+  books: BOOKS_DIR,
+  notes: NOTES_DIR,
+  appData: '',
+}
+
+interface DriveItem {
+  id: string
+  name: string
+  mimeType?: string
+  size?: string
+}
+
+function splitName(name: string): { folder: SubfolderKey; shortName: string } {
+  if (name.startsWith(BOOKS_DIR)) {
+    return { folder: 'books', shortName: name.slice(BOOKS_DIR.length) }
+  }
+  if (name.startsWith(NOTES_DIR)) {
+    return { folder: 'notes', shortName: name.slice(NOTES_DIR.length) }
+  }
+  return { folder: 'appData', shortName: name }
+}
 
 /** Where the transport gets its access token (`Platform.syncAuth`). */
 export interface TokenSource {
@@ -77,8 +109,8 @@ export interface DriveOptions {
 export class DriveTransport implements Transport {
   private ids: Map<string, string> | null = null
   private sizes = new Map<string, number>()
-  /** The folder's id, as of the last `list`. */
-  private folder = ''
+  /** The subfolder ids, as of the last `list`. */
+  private folders: Record<SubfolderKey, string> = { books: '', notes: '', appData: '' }
   private readonly auth: TokenSource
   private readonly fetch: typeof fetch
   private readonly sleep: (ms: number) => Promise<void>
@@ -116,35 +148,89 @@ export class DriveTransport implements Transport {
     return ((await made.json()) as { id: string }).id
   }
 
-  async list(): Promise<string[]> {
-    const folder = await this.findFolder()
-    const ids = new Map<string, string>()
-    const sizes = new Map<string, number>()
+  private async createSubfolder(name: string, parent: string): Promise<string> {
+    const metadata = JSON.stringify({ name, mimeType: FOLDER_TYPE, parents: [parent] })
+    const made = await this.request('POST', `${API}/files?fields=id`, metadata, 'application/json')
+    return ((await made.json()) as { id: string }).id
+  }
+
+  private async listChildren(folderId: string): Promise<DriveItem[]> {
+    const items: DriveItem[] = []
     let pageToken = ''
     do {
       const query = new URLSearchParams({
         // Not ones the user put in the bin: to them, those are gone.
-        q: `'${folder}' in parents and trashed=false`,
-        fields: 'nextPageToken,files(id,name,size)',
+        q: `'${folderId}' in parents and trashed=false`,
+        fields: 'nextPageToken,files(id,name,mimeType,size)',
         pageSize: '1000',
-        // If two devices ever create the same name at once (meta.json), all
-        // devices settle on the same, older, file.
+        // If two devices ever create the same name at once, all devices
+        // settle on the same, older, item.
         orderBy: 'createdTime',
       })
       if (pageToken) query.set('pageToken', pageToken)
       const response = await this.request('GET', `${API}/files?${query}`)
       const page = (await response.json()) as {
-        files: { id: string; name: string; size?: string }[]
+        files: DriveItem[]
         nextPageToken?: string
       }
-      for (const file of page.files) {
-        if (ids.has(file.name)) continue
-        ids.set(file.name, file.id)
-        sizes.set(file.name, Number(file.size ?? 0))
-      }
+      items.push(...page.files)
       pageToken = page.nextPageToken ?? ''
     } while (pageToken)
-    this.folder = folder
+    return items
+  }
+
+  async list(): Promise<string[]> {
+    const root = await this.findFolder()
+    const rootChildren = await this.listChildren(root)
+    const foundSubfolders: Partial<Record<SubfolderKey, string>> = {}
+    const legacyFiles: DriveItem[] = []
+    for (const item of rootChildren) {
+      if (item.mimeType === FOLDER_TYPE) {
+        for (const key of Object.keys(SUBFOLDERS) as SubfolderKey[]) {
+          if (item.name === SUBFOLDERS[key] && !foundSubfolders[key]) {
+            foundSubfolders[key] = item.id
+          }
+        }
+      } else {
+        legacyFiles.push(item)
+      }
+    }
+
+    const folders: Record<SubfolderKey, string> = {
+      books: foundSubfolders.books ?? (await this.createSubfolder(SUBFOLDERS.books, root)),
+      notes: foundSubfolders.notes ?? (await this.createSubfolder(SUBFOLDERS.notes, root)),
+      appData: foundSubfolders.appData ?? (await this.createSubfolder(SUBFOLDERS.appData, root)),
+    }
+
+    const ids = new Map<string, string>()
+    const sizes = new Map<string, number>()
+    for (const key of ['appData', 'books', 'notes'] as const) {
+      if (!foundSubfolders[key]) continue
+      const prefix = PREFIXES[key]
+      for (const item of await this.listChildren(folders[key])) {
+        if (item.mimeType === FOLDER_TYPE) continue
+        const fullName = `${prefix}${item.name}`
+        if (ids.has(fullName)) continue
+        ids.set(fullName, item.id)
+        sizes.set(fullName, Number(item.size ?? 0))
+      }
+    }
+
+    // Legacy flat files directly under the root folder belong in App data
+    // unless App data already holds a file with that name.
+    for (const item of legacyFiles) {
+      if (ids.has(item.name)) continue
+      const params = new URLSearchParams({
+        addParents: folders.appData,
+        removeParents: root,
+      })
+      const moved = await this.request('PATCH', `${API}/files/${item.id}?${params}`)
+      if (moved.status === 404) continue
+      ids.set(item.name, item.id)
+      sizes.set(item.name, Number(item.size ?? 0))
+    }
+
+    this.folders = folders
     this.ids = ids
     this.sizes = sizes
     return [...ids.keys()]
@@ -173,7 +259,8 @@ export class DriveTransport implements Transport {
   }
 
   async write(name: string, data: string | Blob): Promise<void> {
-    const type = typeof data === 'string' ? 'application/json' : 'application/octet-stream'
+    const type =
+      typeof data === 'string' ? 'application/json' : data.type || 'application/octet-stream'
     const id = await this.idOf(name)
     if (id) {
       const url = `${UPLOAD}/files/${id}?uploadType=media`
@@ -181,9 +268,11 @@ export class DriveTransport implements Transport {
       if (response.status !== 404) return
       this.ids?.delete(name) // deleted on Drive since it was listed: make it again
     }
+    const { folder, shortName } = splitName(name)
+    const parent = this.folders[folder]
     if (typeof data !== 'string') {
       // Bytes don't fit a text multipart body: make the file, then fill it.
-      const metadata = JSON.stringify({ name, parents: [this.folder] })
+      const metadata = JSON.stringify({ name: shortName, parents: [parent] })
       const made = await this.request(
         'POST',
         `${API}/files?fields=id`,
@@ -196,7 +285,7 @@ export class DriveTransport implements Transport {
       return
     }
     const boundary = `rsvp-${Math.floor(this.random() * 1e12)}`
-    const metadata = JSON.stringify({ name, parents: [this.folder] })
+    const metadata = JSON.stringify({ name: shortName, parents: [parent] })
     const body = [
       `--${boundary}`,
       'Content-Type: application/json; charset=UTF-8',

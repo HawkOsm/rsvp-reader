@@ -230,9 +230,13 @@ describe('syncOnce', () => {
     expect((await progressOffers(a))[0]).toMatchObject({ progress: { wordIndex: 1 } })
   })
 
-  it('refuses to write to a store a newer version made', async () => {
-    await store.write('meta.json', JSON.stringify({ formatVersion: 99 }))
+  it('refuses to write to a store a newer version made, and raises format 2 to 3', async () => {
+    await store.write('meta.json', JSON.stringify({ formatVersion: 4 }))
     await expect(syncOnce(a, store)).rejects.toBeInstanceOf(SyncFormatError)
+
+    await store.write('meta.json', JSON.stringify({ formatVersion: 2 }))
+    await syncOnce(a, store)
+    expect(JSON.parse(store.files.get('meta.json')!)).toMatchObject({ formatVersion: 3 })
   })
 })
 

@@ -186,12 +186,17 @@ describe('book files', () => {
     await saveTokens(db, book.id as number, [makeToken('word')], `f-${syncId}`)
   }
 
-  it('uploads this device’s books after a sync, and says how much Drive holds', async () => {
-    await bookHere(`up-${Math.random()}`)
+  it('uploads this device’s books after a sync, cleans legacy files, and says how much Drive holds', async () => {
+    const syncId = `up-${Math.random()}`
+    await bookHere(syncId)
+    await store.write(`book-${syncId}.json.gz`, new Blob(['legacy-pkg']))
+    await store.write(`bookfile-${syncId}`, new Blob(['legacy-orig']))
     auth = fakeAuth('signed-in')
     stop = useSyncStore.getState().start()
     await vi.waitFor(() => expect(useSyncStore.getState().usage).not.toBeNull())
-    expect([...store.blobs.keys()].some((n) => n.startsWith('book-up-'))).toBe(true)
+    expect([...store.blobs.keys()].some((n) => n.startsWith('book2-up-'))).toBe(true)
+    expect(store.blobs.has(`book-${syncId}.json.gz`)).toBe(false)
+    expect(store.blobs.has(`bookfile-${syncId}`)).toBe(false)
     expect(useSyncStore.getState().upload).toBeNull()
     expect(useSyncStore.getState().usage!.used).toBeGreaterThan(0)
   })
@@ -202,7 +207,7 @@ describe('book files', () => {
     auth = fakeAuth('signed-in')
     stop = useSyncStore.getState().start()
     await vi.waitFor(() => expect(useSyncStore.getState().usage).not.toBeNull())
-    expect([...store.blobs.keys()].some((n) => n.startsWith('book-off-'))).toBe(false)
+    expect([...store.blobs.keys()].some((n) => n.startsWith('book2-off-'))).toBe(false)
     expect(localStorage.getItem('rsvp-reader:sync-book-files')).toBe('off')
     useSyncStore.getState().setBookFiles(true)
   })

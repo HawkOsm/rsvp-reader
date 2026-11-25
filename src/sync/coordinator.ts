@@ -29,8 +29,10 @@ import type { Transport } from './transport'
 
 /** The version of the files below. A device that finds a newer one stops,
  * rather than write files a newer version can't read. 2 added snapshots and
- * purging: a version 1 device would miss whatever was purged. */
-export const SYNC_FORMAT_VERSION = 2
+ * purging: a version 1 device would miss whatever was purged. 3 moved files
+ * into Books/, Notes/, and App data/ subfolders and renamed book packages: a
+ * version 2 device would write flat files. */
+export const SYNC_FORMAT_VERSION = 3
 
 export { OPS_PER_SEGMENT } from './files'
 

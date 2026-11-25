@@ -75,10 +75,20 @@ describe('importLocalFile', () => {
     expect((await loadFile(getDb(), book.id as number))?.fileName).toBe('report.pdf')
   })
 
-  it('keeps no file for text, which has no pages to draw', async () => {
-    parseFileInWorker.mockResolvedValue(text)
-    const book = await importLocalFile(fileOf('story.txt'))
-    expect(await loadFile(getDb(), book.id as number)).toBeUndefined()
+  it('keeps the original file for EPUB and text books as well as PDFs', async () => {
+    parseFileInWorker.mockResolvedValueOnce(text)
+    const txtFile = fileOf('story.txt')
+    const txtBook = await importLocalFile(txtFile)
+    const savedTxt = await loadFile(getDb(), txtBook.id as number)
+    expect(savedTxt?.fileName).toBe('story.txt')
+    expect(await savedTxt?.blob.text()).toBe(await txtFile.text())
+
+    parseFileInWorker.mockResolvedValueOnce({ ...text, formatId: 'epub', title: 'Novel' })
+    const epubFile = fileOf('novel.epub')
+    const epubBook = await importLocalFile(epubFile)
+    const savedEpub = await loadFile(getDb(), epubBook.id as number)
+    expect(savedEpub?.fileName).toBe('novel.epub')
+    expect(await savedEpub?.blob.text()).toBe(await epubFile.text())
   })
 
   it('keeps the cover the book came with', async () => {

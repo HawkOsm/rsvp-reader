@@ -15,9 +15,9 @@ export interface ImportBookOptions {
 }
 
 /** Parse a locally-picked file off the UI thread, then persist it: a
- * `books` row, its packed tokens, and — for PDFs — the original bytes too,
- * so the page panel can render offline without asking the user to
- * re-select the file. */
+ * `books` row, its packed tokens, and the original bytes too, so PDF pages
+ * render offline without asking the user to re-select the file and sync can
+ * upload the original file. */
 export async function importLocalFile(
   file: File,
   options: ImportBookOptions = {},
@@ -66,9 +66,7 @@ export async function importLocalFile(
     })
   }
   await saveTokens(db, bookId, result.tokens, fingerprint)
-  if (result.layout.kind === 'paged') {
-    await saveFile(db, bookId, file)
-  }
+  await saveFile(db, bookId, file)
   if (result.cover) await saveCover(db, bookId, result.cover)
 
   const updated = await db.books.get(bookId)

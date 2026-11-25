@@ -23,6 +23,10 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
 
 ## Sync
 
+- [ ] Try the new folder layout (Books / Notes / App data, format 3) against real Drive: the
+      move of old flat files into `App data`, and books re-uploading under their titles. Only
+      run against the fake Drive so far.
+
 - [ ] Try Android sign-in (by code) on a real phone. The same code has signed in and synced
       against real Drive from a computer, but has not run on a device. Check that the
       google.com/device link opens the phone's browser.

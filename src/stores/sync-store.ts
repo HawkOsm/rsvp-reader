@@ -13,6 +13,7 @@ import { getPlatform, type SyncAuth, type SyncAuthState } from '@/platform'
 import {
   booksToUpload,
   createSyncRunner,
+  deleteLegacyBookFiles,
   deleteRemovedBooks,
   DORMANT_MS,
   downloadBook,
@@ -156,10 +157,11 @@ export const useSyncStore = create<SyncStore>((set, get) => {
         const todo = await booksToUpload(names)
         for (const [done, book] of todo.entries()) {
           set({ upload: { done, total: todo.length } })
-          await uploadBook(store, book)
+          await uploadBook(store, book, names)
           names.add(packageFile(book.syncId as string))
         }
       }
+      await deleteLegacyBookFiles(store, names)
       set({
         upload: null,
         bookError: null,

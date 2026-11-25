@@ -673,3 +673,33 @@ Where the code differs from the design above, and why.
 
 Not built: book files have no per-book "don't sync this" switch, and no Wi-Fi-only option on
 Android.
+
+### The Drive folder, laid out to be read (2026-11-25, format 3)
+
+The folder used to be flat: sync's own files beside `book-<id>.json.gz` and `bookfile-<id>`,
+which told a person looking at their Drive nothing. Now:
+
+```
+RSVP Reader/
+  Books/      each book's original file under its title ("Pride and Prejudice.epub")
+  Notes/      one Markdown file of notes per book
+  App data/   everything sync writes for itself: meta.json, device-*, log-*, snapshot-*,
+              and the book packages (book2-<id>.json.gz)
+```
+
+- **`Transport` is unchanged**: names are still flat strings. A name starting `Books/` or
+  `Notes/` (`sync/files.ts`) is kept in that subfolder by `DriveTransport`; every other name
+  goes to `App data`. A file found directly in the root is from the flat layout and is moved
+  into `App data` by the next `list`.
+- **A book's readable name** is `readableBookName` (`sync/book-files.ts`): its title made safe
+  for a file name, with the first six characters of its sync id added when the name is taken
+  or another known book has the same title. The package records the name chosen
+  (`file.driveName`), so no device has to work it out again.
+- **Every imported book now keeps its original file**, not only paged ones, so EPUBs and text
+  files can be put in `Books/`. A book imported before this, with no file kept, gets a plain
+  `.txt` of its words there instead (`text` in its package).
+- **Moving over:** packages are named `book2-…`, so each device uploads its books once more
+  under the new layout; `deleteLegacyBookFiles` then removes the old pair. A book only an old
+  package exists for can still be downloaded. `SYNC_FORMAT_VERSION` is 3, so an app that only
+  knows the flat layout stops with the usual "newer version" message.
+- Checked against the fake Drive in the tests only; not yet against real Drive.
