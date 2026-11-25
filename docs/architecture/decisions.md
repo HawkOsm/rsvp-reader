@@ -1331,3 +1331,12 @@ none of this has run against real Drive yet (docs/TODO.md).
 
 **Rejected:** keeping one flat folder with readable names (sync's files would still clutter
 it); a write-only notes file (the owner asked for edits to be read back).
+
+## 2026-11-25: the release published as v0.5 is renumbered v0.3.2
+
+**Decision:** the owner asked for a lower number, by this rule: if the v0.3 releases already had
+sync, the next is v0.3.2, otherwise v0.4.0. The `v0.3` tag has `src/sync` and the `sync` flag,
+so it is v0.3.2. The v0.5 release and tag were removed and the same code released again.
+
+**What to know:** Android's `versionCode` went up all the same (6 to 7), since it may only
+rise. The v0.4 tag and its unpublished draft are older code under a higher number.
