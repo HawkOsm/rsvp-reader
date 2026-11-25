@@ -213,10 +213,10 @@ function ReaderBody({ book }: { book: BookRecord }) {
         </button>
       )}
       {mode === 'rsvp' && (
-        <Button
-          className={`flex items-center gap-1.5 ${
-            panelOpen && overlay ? 'text-text' : 'text-text-dim hover:text-text'
-          }`}
+        // An icon like the bookmark and notes beside it: its colour says
+        // whether the page is showing.
+        <button
+          type="button"
           aria-label={panelOpen && overlay ? 'Hide page' : 'Show page'}
           aria-pressed={Boolean(panelOpen && overlay)}
           onClick={() => setPanelOpen(!panelOpen)}
@@ -226,10 +226,12 @@ function ReaderBody({ book }: { book: BookRecord }) {
               ? 'No room for the page without covering the word: use a smaller text size, or turn the screen upright'
               : 'Show the page you are on  (P)'
           }
+          className={`flex h-9 w-9 items-center justify-center rounded-lg hover:bg-bg-hover disabled:opacity-40 ${
+            panelOpen && overlay ? 'text-text' : 'text-text-dim hover:text-text'
+          }`}
         >
-          <Icon name="page" size={16} />
-          <span>Page</span>
-        </Button>
+          <Icon name="page" size={17} />
+        </button>
       )}
       <BookmarkButton bookId={bookId} />
       <button
