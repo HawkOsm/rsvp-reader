@@ -214,8 +214,11 @@ function ReaderBody({ book }: { book: BookRecord }) {
       )}
       {mode === 'rsvp' && (
         <Button
-          className="flex items-center gap-1.5"
+          className={`flex items-center gap-1.5 ${
+            panelOpen && overlay ? 'text-text' : 'text-text-dim hover:text-text'
+          }`}
           aria-label={panelOpen && overlay ? 'Hide page' : 'Show page'}
+          aria-pressed={Boolean(panelOpen && overlay)}
           onClick={() => setPanelOpen(!panelOpen)}
           disabled={overlay === null}
           title={
@@ -225,7 +228,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
           }
         >
           <Icon name="page" size={16} />
-          <span>{panelOpen && overlay ? 'Page ‹' : 'Page ›'}</span>
+          <span>Page</span>
         </Button>
       )}
       <BookmarkButton bookId={bookId} />
