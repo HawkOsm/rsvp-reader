@@ -88,6 +88,11 @@ and are meant to match it word for word. Change them deliberately.
     once per flick however long the flick, and not at the end of a flick that was scrolling.
     A sideways swipe turns it. With Ctrl, which is also how a trackpad pinch arrives, it
     zooms: stretched at once, drawn again when the wheel rests.
+  - **A zoom keeps its spot.** A pinch is made about the point between the fingers, a wheel
+    zoom about the pointer (`zoomHold`). The page stays stretched about that point until it
+    has been drawn at its new size; then `PdfPagePanel` takes the stretch off and scrolls so
+    the same part of the page is where it was (`holdShift`). A page smaller than its area is
+    centred and cannot be scrolled, so there the spot can move.
   - **Pages with no words** (blank, or one whole picture) cannot be stopped on, because the
     page shown is the current word's: `turn` carries on past them, the way it was going.
 

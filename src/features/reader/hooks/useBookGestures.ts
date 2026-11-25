@@ -7,7 +7,9 @@ import {
   tapZone,
   TAP_MAX_MS,
   TAP_SLOP_PX,
+  zoomHold,
   type TapZone,
+  type ZoomHold,
 } from '@/features/reader/book-gestures'
 
 export interface BookGestures {
@@ -19,7 +21,10 @@ export interface BookGestures {
   minScale: number
   maxScale: number
   onTurn: (direction: 1 | -1) => void
-  onZoom: (scale: number) => void
+  /** A pinch ended at this scale, made about this spot. The page is left
+   * stretched, so it doesn't jump back to its old size while the new one is
+   * drawn: whoever draws it takes the stretch off. */
+  onZoom: (scale: number, about: ZoomHold) => void
   /** A tap, by where in the area it landed. */
   onTap: (zone: TapZone) => void
   /** A second tap in the middle, soon after the first (which was also
@@ -31,7 +36,7 @@ interface Touching {
   fingers: Map<number, { x: number; y: number }>
   start: { x: number; y: number; at: number } | null
   lastTap: { x: number; y: number; at: number } | null
-  pinch: { distance: number; ratio: number } | null
+  pinch: { distance: number; ratio: number; about: ZoomHold } | null
   /** More than one finger touched since all were up: not a tap or swipe. */
   many: boolean
 }
@@ -40,8 +45,9 @@ interface Touching {
  * it, tap the middle for the controls, pinch to zoom, double-tap the middle
  * to switch between fitting the page and its width. Fingers only: a mouse
  * selects text and clicks words as before. `area` is the
- * scrolling element; `content` is what a pinch stretches while it lasts, the
- * real zoom being drawn once the fingers lift. */
+ * scrolling element; `content` is what a pinch stretches while it lasts,
+ * about the spot between the fingers, the real zoom being drawn once they
+ * lift. */
 export function useBookGestures(
   area: RefObject<HTMLElement | null>,
   content: RefObject<HTMLElement | null>,
@@ -69,10 +75,17 @@ export function useBookGestures(
       const [a, b] = [...fingers.values()]
       return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0
     }
-    const stretch = (ratio: number | null) => {
+    /** The spot midway between the two fingers. */
+    const between = (): ZoomHold => {
+      const [a, b] = [...fingers.values()]
+      const sheet = content.current?.getBoundingClientRect() ?? el.getBoundingClientRect()
+      return zoomHold(sheet, ((a?.x ?? 0) + (b?.x ?? 0)) / 2, ((a?.y ?? 0) + (b?.y ?? 0)) / 2)
+    }
+    const stretch = (ratio: number | null, about?: ZoomHold) => {
       if (!content.current) return
       content.current.style.transform = ratio === null ? '' : `scale(${ratio})`
-      content.current.style.transformOrigin = ratio === null ? '' : 'center top'
+      content.current.style.transformOrigin =
+        ratio === null || !about ? '' : `${about.fx * 100}% ${about.fy * 100}%`
     }
     const zoneAt = (x: number) => {
       const box = el.getBoundingClientRect()
@@ -94,7 +107,9 @@ export function useBookGestures(
       } else {
         t.many = true
         t.start = null
-        if (fingers.size === 2 && scale !== null) t.pinch = { distance: distance(), ratio: 1 }
+        if (fingers.size === 2 && scale !== null) {
+          t.pinch = { distance: distance(), ratio: 1, about: between() }
+        }
       }
     }
 
@@ -103,7 +118,7 @@ export function useBookGestures(
       fingers.set(e.pointerId, { x: e.clientX, y: e.clientY })
       if (t.pinch && fingers.size === 2 && scale !== null) {
         t.pinch.ratio = pinchRatio(t.pinch.distance, distance(), scale, minScale, maxScale)
-        stretch(t.pinch.ratio)
+        stretch(t.pinch.ratio, t.pinch.about)
       }
     }
 
@@ -111,12 +126,13 @@ export function useBookGestures(
       if (!fingers.delete(e.pointerId)) return
       if (t.pinch) {
         if (fingers.size < 2) {
-          const { ratio } = t.pinch
+          const { ratio, about } = t.pinch
           t.pinch = null
-          stretch(null)
           // A touch the browser took back (to scroll, say) zooms nothing.
           const cancelled = e.type === 'pointercancel'
-          if (!cancelled && scale !== null && Math.abs(ratio - 1) > 0.02) onZoom(scale * ratio)
+          if (!cancelled && scale !== null && Math.abs(ratio - 1) > 0.02) {
+            onZoom(scale * ratio, about)
+          } else stretch(null)
         }
         return
       }
@@ -155,7 +171,8 @@ export function useBookGestures(
       el.removeEventListener('pointermove', move)
       el.removeEventListener('pointerup', up)
       el.removeEventListener('pointercancel', up)
-      stretch(null)
+      // The stretch stays: a zoom changes `gestures`, and the page must not
+      // jump back to its old size before the new one is drawn.
     }
   }, [area, content, gestures])
 }

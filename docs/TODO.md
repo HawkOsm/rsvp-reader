@@ -71,8 +71,9 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
       controls coming and going. So far only with made-up touches in a browser.
 - [ ] Check on Android that the reader's bottom edge is on screen (the root's height now
       leaves out the safe-area insets; unseen on a device).
-- [ ] A pinch should keep the spot between the fingers in place; it zooms about the top
-      middle and the page flickers back to its old size before the new one is drawn.
+- [x] A pinch keeps the spot between the fingers in place, and a Ctrl+wheel zoom the spot
+      under the pointer; the page no longer flickers back to its old size (2026-11-25).
+      The wheel has a browser test; the pinch only made-up touches, like the other gestures.
 - [ ] Pages go soft when zoomed far in on a dense screen: a page is drawn whole, capped at 16
       million pixels. Drawing only the part in view would fix it.
 - [x] Escape and Android's Back close the chapter list or the notes before they leave the

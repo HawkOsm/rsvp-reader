@@ -232,3 +232,55 @@ test('book mode on a desktop hides the header, shows it at the top edge, and tur
 
   expect(errors).toEqual([])
 })
+
+// A zoom is made about the pointer: what was under it stays under it.
+test('zooming with Ctrl and the wheel keeps the spot under the pointer in place', async ({
+  page,
+}) => {
+  desktopOnly()
+  const errors = collectErrors(page)
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/')
+  await addBook(page, PDF)
+  await page.keyboard.press('b')
+  const scroller = page.locator('#book-scroll')
+  await expect(scroller.locator('canvas').first()).toBeVisible({ timeout: 20_000 })
+  await page.keyboard.press('d') // one page: it is the sheet
+  const sheet = scroller.locator('> div')
+  const box = () =>
+    sheet.evaluate((el) => {
+      const { top, height } = el.getBoundingClientRect()
+      const { style } = el as unknown as { style: { transform: string } }
+      return { top, height, stretched: style.transform !== '' }
+    })
+  // Wait for the page to stop changing size.
+  let before = await box()
+  await expect
+    .poll(async () => {
+      const last = before
+      before = await box()
+      return before.height > 300 && before.height === last.height
+    })
+    .toBe(true)
+
+  const at = { x: 640, y: 560 }
+  const share = (at.y - before.top) / before.height
+  expect(share).toBeGreaterThan(0.3)
+  expect(share).toBeLessThan(1)
+  await page.mouse.move(at.x, at.y)
+  await page.keyboard.down('Control')
+  for (let notch = 0; notch < 4; notch++) await page.mouse.wheel(0, -100)
+  await page.keyboard.up('Control')
+
+  // Drawn bigger, the stretch taken off, and the same part of the page is
+  // still under the pointer.
+  await expect
+    .poll(async () => {
+      const now = await box()
+      return !now.stretched && now.height > before.height * 1.3
+    })
+    .toBe(true)
+  const after = await box()
+  expect(Math.abs(after.top + share * after.height - at.y)).toBeLessThan(3)
+  expect(errors).toEqual([])
+})
