@@ -1290,3 +1290,18 @@ service before anything is built on it.
 
 **Rejected:** native Android sign-in with a keystore fingerprint, which would have kept the
 hidden folder (see the entry above).
+
+## 2026-11-25: Sync and notes are on for everyone; the Experimental setting is gone
+
+**Decision:** the `sync` and `notes` flags are deleted, with their `if`s, and Settings no longer
+has an Experimental row. The owner's reason: the whole app is still experimental, so hiding two
+parts of it behind a switch only made them hard to find. The flag mechanism stays
+(`src/lib/flags.ts`); a switch appears in Settings → Advanced again whenever a flag exists.
+
+**What keeps the "no network call" rule true:** sync starts with the app, but a run does
+nothing unless the user is signed in to Google, and Google's sign-in script is fetched only by
+the Connect button. A device that connected before renews its sign-in when the app opens.
+
+**Costs accepted:** sync has run against real Drive from the web and the desktop but not yet
+from a phone, and snapshots and purging only against fakes (docs/TODO.md); they are now in
+front of every user.

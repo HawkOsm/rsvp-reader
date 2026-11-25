@@ -34,7 +34,6 @@ import { useReaderKeyboardShortcuts } from '@/features/reader/hooks/useReaderKey
 import { useTouchControls } from '@/features/reader/hooks/useTouchControls'
 import { useWakeLock } from '@/features/reader/hooks/useWakeLock'
 import { useAppStore } from '@/stores/app-store'
-import { useFlag } from '@/lib/flags'
 import { HAS_KEYBOARD, useMediaQuery, WIDE } from '@/lib/media'
 
 /** A mouse this near the top edge brings the header back (Readest's 44). */
@@ -114,7 +113,6 @@ function ReaderBody({ book }: { book: BookRecord }) {
   const contentsBeside = wide && mode === 'book'
   const [contentsOpen, setContentsOpen] = useState(contentsBeside)
   const hasContents = book.chapters.length > 0
-  const notesOn = useFlag('notes')
   const [notesOpen, setNotesOpen] = useState(false)
   useEffect(() => setContentsOpen(contentsBeside), [contentsBeside])
   const keyboard = useMediaQuery(HAS_KEYBOARD)
@@ -231,20 +229,18 @@ function ReaderBody({ book }: { book: BookRecord }) {
         </Button>
       )}
       <BookmarkButton bookId={bookId} />
-      {notesOn && (
-        <button
-          type="button"
-          aria-label="Notes"
-          aria-expanded={notesOpen}
-          title="Notes on this book"
-          onClick={() => setNotesOpen(!notesOpen)}
-          className={`flex h-9 w-9 items-center justify-center rounded-lg hover:bg-bg-hover ${
-            notesOpen ? 'text-text' : 'text-text-dim hover:text-text'
-          }`}
-        >
-          <Icon name="note" size={17} />
-        </button>
-      )}
+      <button
+        type="button"
+        aria-label="Notes"
+        aria-expanded={notesOpen}
+        title="Notes on this book"
+        onClick={() => setNotesOpen(!notesOpen)}
+        className={`flex h-9 w-9 items-center justify-center rounded-lg hover:bg-bg-hover ${
+          notesOpen ? 'text-text' : 'text-text-dim hover:text-text'
+        }`}
+      >
+        <Icon name="note" size={17} />
+      </button>
     </>
   )
 
@@ -328,7 +324,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
             </div>
           </div>
         )}
-        {notesOn && notesOpen && (
+        {notesOpen && (
           <div className="absolute inset-y-0 right-0 z-40 shadow-xl">
             <NotesPanel
               bookId={bookId}

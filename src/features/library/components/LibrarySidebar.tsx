@@ -1,5 +1,4 @@
 import { Icon, type IconName } from '@/components/Icon'
-import { useFlag } from '@/lib/flags'
 import { formatBytes } from '@/lib/format'
 import type { ShelfRecord } from '@/features/library/api/library'
 import { SECTIONS, SHELF_DOT, type Section } from '@/features/library/shelf'
@@ -45,7 +44,6 @@ export function LibrarySidebar({
   onSettings,
 }: LibrarySidebarProps) {
   const isSection = (s: Section) => place.kind === 'section' && place.section === s
-  const sync = useFlag('sync')
 
   return (
     <aside className="flex min-w-0 flex-[1_1_13rem] flex-col gap-6 border-border bg-bg-raised/40 px-1 py-2 sm:min-h-screen sm:max-w-64 sm:border-r sm:px-3.5 sm:py-5">
@@ -117,9 +115,7 @@ export function LibrarySidebar({
               <span>On this device</span>
               <span className="text-text-dim">{formatBytes(usageBytes)}</span>
             </span>
-            {sync
-              ? 'Copied to Google Drive only if you connect it in Settings.'
-              : 'No account, no sync. Your books never leave this device.'}
+            {'Copied to Google Drive only if you connect it in Settings.'}
           </p>
         )}
         {onSettings && (

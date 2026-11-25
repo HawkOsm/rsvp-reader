@@ -1,9 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { RemoteBooks } from '@/features/library/components/RemoteBooks'
-import { flags } from '@/lib/flags'
 import { useSyncStore } from '@/stores/sync-store'
 
 const BOOKS = [
@@ -26,17 +25,14 @@ function renderList() {
   )
 }
 
-afterEach(() => flags.setEnabled('sync', false))
-
 describe('RemoteBooks', () => {
-  it('shows nothing with the sync flag off', () => {
-    useSyncStore.setState({ remoteBooks: BOOKS })
+  it('shows nothing when no other device has a book this one lacks', () => {
+    useSyncStore.setState({ remoteBooks: [] })
     renderList()
     expect(screen.queryByText('On your other devices')).not.toBeInTheDocument()
   })
 
   it('lists other devices’ books, and opens one once downloaded', async () => {
-    flags.setEnabled('sync', true)
     const downloadBook = vi.fn(async () => 42)
     useSyncStore.setState({ remoteBooks: BOOKS, downloadBook })
     renderList()
@@ -50,7 +46,6 @@ describe('RemoteBooks', () => {
   })
 
   it('says why a download failed', async () => {
-    flags.setEnabled('sync', true)
     const downloadBook = vi.fn(async () => {
       throw new Error('Google Drive couldn’t be reached.')
     })

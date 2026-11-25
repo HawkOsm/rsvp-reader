@@ -1,8 +1,7 @@
 # To do
 
-What is left, as of v0.4 (2026-11-24). Sync and notes are built but behind experimental flags
-(Settings → Advanced → Experimental); nothing here changes the app for someone who leaves them
-off. Design and history: [docs/architecture/sync.md](architecture/sync.md) and
+What is left, as of v0.4 (2026-11-24). Sync and notes are built and on for everyone since 2026-11-25; sync does nothing until Drive is
+connected in Settings. Design and history: [docs/architecture/sync.md](architecture/sync.md) and
 [decisions.md](architecture/decisions.md).
 
 ## Needs the owner (Google Cloud console, GitHub, keys)
@@ -36,8 +35,8 @@ off. Design and history: [docs/architecture/sync.md](architecture/sync.md) and
 - [ ] Try snapshots and purging (phase 6) against real Drive; so far against fakes only.
       (Book upload and download, and notes between devices, passed against real Drive on
       2026-11-23.)
-- [ ] Remove the `sync` flag once it has been used for a while, and update the README's
-      "never leave this device" line with it.
+- [x] Remove the `sync` flag, and update the README's "never leave this device" line with it
+      (2026-11-25).
 - [ ] Maybe: a code sign-in on the desktop (Google's device flow), if the copy-link fallback
       isn't enough when a browser extension blocks sign-in (sync.md, still open 4).
 - [ ] Book files: a per-book "don't sync this file" switch; Wi-Fi-only uploads on Android.
@@ -69,7 +68,7 @@ off. Design and history: [docs/architecture/sync.md](architecture/sync.md) and
 
 - [ ] Save as .md on the desktop (needs Tauri's dialog plugin); it has Copy only.
 - [ ] Notes on a range of words, not only one word.
-- [ ] Remove the `notes` flag once notes have been used for a while.
+- [x] Remove the `notes` flag (2026-11-25).
 
 ## Desktop
 

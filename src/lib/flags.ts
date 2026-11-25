@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 
 // Feature flags: unfinished work is merged switched off, so `main` is always
 // releasable and the build you read with is never half a feature. A flag is
-// switched on per device, from Settings → Experimental, for trying the work
+// switched on per device, from Settings → Advanced, for trying the work
 // out; it never changes for anyone else. Delete a flag (and its `if`s) when
 // the feature is finished. See docs/architecture/principles.md.
 
@@ -12,10 +12,7 @@ export interface FlagInfo {
 }
 
 /** Every flag that exists. Add one here before writing the code it guards. */
-export const FLAGS = {
-  sync: { description: 'Sync with Google Drive' },
-  notes: { description: 'Notes in the reader' },
-} as const satisfies Record<string, FlagInfo>
+export const FLAGS = {} as const satisfies Record<string, FlagInfo>
 
 export type Flag = keyof typeof FLAGS
 

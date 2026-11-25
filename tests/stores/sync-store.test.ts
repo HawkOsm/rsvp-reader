@@ -2,7 +2,6 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSync } from '@/app/hooks/useSync'
 import { readErrorLog } from '@/lib/error-log'
-import { flags } from '@/lib/flags'
 import { readSyncRuns } from '@/lib/sync-runs'
 import type { SyncAuth, SyncAuthState } from '@/platform'
 import { NeedsReconnectError } from '@/sync/drive'
@@ -210,15 +209,13 @@ describe('book files', () => {
 })
 
 describe('useSync', () => {
-  it('starts sync only with the sync flag on', () => {
-    const start = vi.fn(() => () => {})
+  it('starts sync with the app, and stops it when the app goes', () => {
+    const stop = vi.fn()
+    const start = vi.fn(() => stop)
     useSyncStore.setState({ start })
-    flags.setEnabled('sync', false)
-    const { rerender } = renderHook(() => useSync())
-    expect(start).not.toHaveBeenCalled()
-    act(() => flags.setEnabled('sync', true))
-    rerender()
+    const { unmount } = renderHook(() => useSync())
     expect(start).toHaveBeenCalledOnce()
-    flags.setEnabled('sync', false)
+    unmount()
+    expect(stop).toHaveBeenCalledOnce()
   })
 })

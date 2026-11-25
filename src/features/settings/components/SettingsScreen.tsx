@@ -7,7 +7,6 @@ import { Switch } from '@/components/Switch'
 import { storageSummary, type StorageSummary } from '@/features/settings/api/storage'
 import { logError } from '@/lib/error-log'
 import { fontName } from '@/lib/fonts'
-import { useFlag } from '@/lib/flags'
 import { formatBytes } from '@/lib/format'
 import { useMediaQuery, WIDE } from '@/lib/media'
 import type { ThemeMode } from '@/lib/theme'
@@ -42,7 +41,6 @@ const SECTIONS: { id: string; label: string; icon: IconName }[] = [
 const PHONE_PAGE_TITLES = {
   reading: 'Word display',
   'sync-log': 'Sync log',
-  experimental: 'Experimental',
   errors: 'Error log',
   about: 'About and licences',
 }
@@ -72,7 +70,6 @@ function WideSettings({ storage }: { storage: StorageSummary | null }) {
   const setShowHints = useAppStore((s) => s.setShowHints)
   const orpColor = useAppStore((s) => s.orpColor)
   const setOrpColor = useAppStore((s) => s.setOrpColor)
-  const sync = useFlag('sync')
 
   return (
     <Page
@@ -88,7 +85,7 @@ function WideSettings({ storage }: { storage: StorageSummary | null }) {
             Library
           </button>
           <nav aria-label="Settings sections" className="flex flex-col gap-0.5">
-            {SECTIONS.filter(({ id }) => sync || id !== 'sync').map(({ id, label, icon }) => (
+            {SECTIONS.map(({ id, label, icon }) => (
               <a
                 key={id}
                 href={`#${id}`}
@@ -166,16 +163,14 @@ function WideSettings({ storage }: { storage: StorageSummary | null }) {
           </Card>
         </Section>
 
-        {sync && (
-          <Section id="sync" title="Sync">
-            <Card>
-              <SyncSection />
-            </Card>
-            <Card>
-              <SyncLog />
-            </Card>
-          </Section>
-        )}
+        <Section id="sync" title="Sync">
+          <Card>
+            <SyncSection />
+          </Card>
+          <Card>
+            <SyncLog />
+          </Card>
+        </Section>
 
         <Section id="advanced" title="Advanced">
           <Card>
@@ -210,7 +205,6 @@ function Section({ id, title, children }: { id: string; title: string; children:
 }
 
 function StorageRow({ storage, phone }: { storage: StorageSummary | null; phone?: boolean }) {
-  const sync = useFlag('sync')
   const size = storage?.usageBytes != null ? formatBytes(storage.usageBytes) : null
   const books = storage ? `${storage.books} ${storage.books === 1 ? 'book' : 'books'}` : null
   return (
@@ -231,9 +225,7 @@ function StorageRow({ storage, phone }: { storage: StorageSummary | null; phone?
       )}
       {!phone && (
         <span className="text-[13px] text-text-dim">
-          {sync
-            ? 'Your books are copied to Google Drive only if you connect it under Sync.'
-            : 'No account and no sync. Your books and reading positions never leave this device.'}
+          {'Your books are copied to Google Drive only if you connect it under Sync.'}
           {storage?.persisted && ' The browser has agreed not to clear them.'}
         </span>
       )}
@@ -302,7 +294,6 @@ function PhoneSettings({ storage }: { storage: StorageSummary | null }) {
   const fontFamily = useAppStore((s) => s.fontFamily)
   const fontSize = useAppStore((s) => s.fontSize)
   const wpm = useAppStore((s) => s.defaultWpm)
-  const sync = useFlag('sync')
   const open = (page: PhonePage) => setSearch({ page })
 
   return (
@@ -358,21 +349,16 @@ function PhoneSettings({ storage }: { storage: StorageSummary | null }) {
             <StorageRow storage={storage} phone />
           </PhoneGroup>
           <p className="mx-3.5 text-xs leading-snug text-text-dim">
-            {sync
-              ? 'Copied to Google Drive only if you connect it under Sync.'
-              : 'No account, no sync. Your books never leave this device.'}
+            {'Copied to Google Drive only if you connect it under Sync.'}
           </p>
         </div>
 
-        {sync && (
-          <PhoneGroup title="Sync">
-            <SyncSection />
-            <LinkRow title="Sync log" onClick={() => open('sync-log')} />
-          </PhoneGroup>
-        )}
+        <PhoneGroup title="Sync">
+          <SyncSection />
+          <LinkRow title="Sync log" onClick={() => open('sync-log')} />
+        </PhoneGroup>
 
         <PhoneGroup title="More">
-          <LinkRow title="Experimental" onClick={() => open('experimental')} />
           <LinkRow title="Error log" onClick={() => open('errors')} />
           <LinkRow
             title="About and licences"
@@ -433,11 +419,6 @@ function PhoneSubpage({ page }: { page: PhonePage }) {
         {page === 'sync-log' && (
           <Card>
             <SyncLog />
-          </Card>
-        )}
-        {page === 'experimental' && (
-          <Card>
-            <ExperimentalFlags />
           </Card>
         )}
         {page === 'errors' && (

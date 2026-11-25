@@ -1,11 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { createEngine } from '@/core/engine'
 import { makeToken } from '@/core/types'
 import { PositionOffer } from '@/features/reader/components/PositionOffer'
 import { EngineProvider } from '@/features/reader/engine-context'
-import { flags } from '@/lib/flags'
 import { saveSeenDevices } from '@/lib/sync-runs'
 import { addBook, getProgress } from '@/storage/library'
 import { getDb } from '@/storage/schema'
@@ -35,8 +34,6 @@ beforeEach(async () => {
   saveSeenDevices([{ device: 'phone', name: 'Chrome on Android', lastSeen: 1 }])
 })
 
-afterEach(() => flags.setEnabled('sync', false))
-
 function renderOffer() {
   const engine = createEngine(words)
   render(
@@ -48,14 +45,7 @@ function renderOffer() {
 }
 
 describe('PositionOffer', () => {
-  it('shows nothing with the sync flag off', async () => {
-    renderOffer()
-    await new Promise((r) => setTimeout(r, 50))
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
-  })
-
   it('asks before jumping to another device’s place', async () => {
-    flags.setEnabled('sync', true)
     const engine = renderOffer()
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Chrome on Android is 5 words further on. Jump there?',
@@ -69,7 +59,6 @@ describe('PositionOffer', () => {
   })
 
   it('staying makes this device’s place the newer one', async () => {
-    flags.setEnabled('sync', true)
     renderOffer()
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Stay here' }))
     expect(screen.queryByRole('status')).not.toBeInTheDocument()

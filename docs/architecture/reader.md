@@ -16,9 +16,9 @@ ReaderScreen
      ├─ BookmarkButton           marks the current word (the library lists the marks)
      ├─ ReaderMenu               on a phone, the "⋯" holding the mode switch, Contents, page
      │                               view and bookmark, which the header has no room for
-     ├─ PositionOffer            with sync on: another device's newer place, offered under
+     ├─ PositionOffer            once Drive is connected: another device's newer place, offered under
      │                               the header ("Jump there?"); never applied unasked
-     ├─ NotesPanel               with the notes flag on: add a note on the word being read,
+     ├─ NotesPanel               add a note on the word being read,
      │                               list, jump, edit, delete, settle a conflict, export
      │                               (copy as Markdown; save as .md where `savesFiles`)
      ├─ ContentsPanel            a book with chapters: jump to one, current marked; beside

@@ -1,7 +1,8 @@
 # Sync design (draft)
 
-Status: phases 1-7 are built behind the `sync` and `notes` flags (Settings → Advanced →
-Experimental), on the web, the desktop and Android; "As built" at the end of this page says
+Status: phases 1-7 are built, on the web, the desktop and Android, and since 2026-11-25 are
+on for everyone (the `sync` and `notes` flags the notes below mention are gone; nothing
+reaches Google until the user connects Drive in Settings → Sync); "As built" at the end of this page says
 where the code differs from the design below. The largest difference: the shared store is a
 **visible folder named "RSVP Reader"** in the user's Drive, under the `drive.file` scope, not
 the hidden `appDataFolder` the design sections describe (As built, "The store is a visible

@@ -11,7 +11,6 @@ import {
 import { useEngine } from '@/features/reader/engine-context'
 import { offerMessage } from '@/features/reader/offer-text'
 import { logError } from '@/lib/error-log'
-import { useFlag } from '@/lib/flags'
 import { readSeenDevices } from '@/lib/sync-runs'
 import { useAppStore } from '@/stores/app-store'
 import { useSyncStore } from '@/stores/sync-store'
@@ -21,13 +20,11 @@ import { useSyncStore } from '@/stores/sync-store'
  * decision 7). Staying is saving this device's place again, which makes it
  * the newer one everywhere. */
 export function PositionOffer({ bookId, layout }: { bookId: number; layout: ContentLayout }) {
-  const sync = useFlag('sync')
   const revision = useSyncStore((s) => s.revision)
   const engine = useEngine()
   const [offer, setOffer] = useState<ProgressOffer | null>(null)
 
   useEffect(() => {
-    if (!sync) return
     let current = true
     progressOfferFor(bookId)
       .then((found) => current && setOffer(found))
@@ -35,9 +32,9 @@ export function PositionOffer({ bookId, layout }: { bookId: number; layout: Cont
     return () => {
       current = false
     }
-  }, [sync, bookId, revision])
+  }, [bookId, revision])
 
-  if (!sync || !offer || offer.progress.wordIndex === engine.index) return null
+  if (!offer || offer.progress.wordIndex === engine.index) return null
   const device = readSeenDevices().find((d) => d.device === offer.device)?.name ?? 'Another device'
 
   const jump = () => {
