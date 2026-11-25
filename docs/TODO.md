@@ -1,6 +1,6 @@
 # To do
 
-What is left, as of v0.4 (2026-11-24). Sync and notes are built and on for everyone since 2026-11-25; sync does nothing until Drive is
+What is left, as of v0.5 (2026-11-25). Sync and notes are built and on for everyone since 2026-11-25; sync does nothing until Drive is
 connected in Settings. Design and history: [docs/architecture/sync.md](architecture/sync.md) and
 [decisions.md](architecture/decisions.md).
 
@@ -23,9 +23,8 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
 
 ## Sync
 
-- [ ] Try the new folder layout (Books / Notes / App data, format 3) against real Drive: the
-      move of old flat files into `App data`, and books re-uploading under their titles. Only
-      run against the fake Drive so far.
+- [x] Try the new folder layout (Books / Notes / App data, format 3) against real Drive: the
+      owner ran it and reported it working (2026-11-25).
 - [ ] Try the notes files against real Drive: edit `Notes/<title>.md` in Drive and see the
       note change in the app. Check what Drive's own editor does to the file (line endings, a
       byte-order mark); the parser takes CRLF, a mark is untested.
