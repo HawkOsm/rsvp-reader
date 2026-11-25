@@ -62,7 +62,8 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
 
 ## Book mode
 
-- [ ] Real full screen (F11) for book mode: needs a `Platform` method for the desktop app.
+- [x] Full screen with F11 in the desktop app (`Platform.toggleFullScreen`, 2026-11-25); a
+      browser has its own. Compiled and tested against stand-ins, not yet seen in the app.
 - [ ] A grid of small page pictures to pick from (KOReader's page browser, Readest's
       thumbnails) was considered for the jump panel and left out: drawing every page costs.
 - [ ] Try the touch gestures on a real phone: tap zones, swipe, pinch (above all a pinch with

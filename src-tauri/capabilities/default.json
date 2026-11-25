@@ -1,10 +1,11 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Only what the app actually needs: read a file passed on the command line and remember the window's size and position. The book-picker itself is a plain HTML <input type=file> — the system webview already shows the real native dialog for that, no plugin needed.",
+  "description": "Only what the app actually needs: read a file passed on the command line, go full screen, and remember the window's size and position. The book-picker itself is a plain HTML <input type=file> — the system webview already shows the real native dialog for that, no plugin needed.",
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "core:window:allow-set-fullscreen",
     "fs:allow-read-file",
     "fs:allow-read-text-file",
     {

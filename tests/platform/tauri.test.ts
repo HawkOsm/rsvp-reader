@@ -8,6 +8,8 @@ vi.mock('@tauri-apps/api/core', () => ({
 vi.mock('@tauri-apps/plugin-fs', () => ({
   readFile: async () => new TextEncoder().encode('hello'),
 }))
+const appWindow = { isFullscreen: vi.fn(), setFullscreen: vi.fn(async () => {}) }
+vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => appWindow }))
 
 const { getPlatform } = await import('@/platform')
 
@@ -41,5 +43,15 @@ describe('the desktop platform', () => {
     await new Promise((r) => setTimeout(r, 0))
     expect(invoke).toHaveBeenCalledWith('secret_get', { key: 'google-refresh-token' })
     expect(auth.state()).toBe('signed-out')
+  })
+
+  it('takes the window into full screen and out again', async () => {
+    const platform = await getPlatform()
+    appWindow.isFullscreen.mockResolvedValueOnce(false)
+    await platform.toggleFullScreen?.()
+    expect(appWindow.setFullscreen).toHaveBeenLastCalledWith(true)
+    appWindow.isFullscreen.mockResolvedValueOnce(true)
+    await platform.toggleFullScreen?.()
+    expect(appWindow.setFullscreen).toHaveBeenLastCalledWith(false)
   })
 })

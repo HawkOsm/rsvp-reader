@@ -48,6 +48,12 @@ const desktopSignIn: PkceNative = {
   },
 }
 
+async function toggleFullScreen(): Promise<void> {
+  const { getCurrentWindow } = await import('@tauri-apps/api/window')
+  const appWindow = getCurrentWindow()
+  await appWindow.setFullscreen(!(await appWindow.isFullscreen()))
+}
+
 export const tauriPlatform: Platform = {
   ...webPlatform,
   kind: 'desktop',
@@ -55,6 +61,7 @@ export const tauriPlatform: Platform = {
   // A webview ignores download links; a save dialog would need the dialog plugin.
   savesFiles: false,
   saveTextFile: async () => {},
+  toggleFullScreen,
   // Google blocks sign-in inside a webview, so this goes through the system
   // browser (src/platform/pkce-auth.ts).
   syncAuth: createPkceAuth({

@@ -70,6 +70,7 @@ export const webPlatform: Platform = {
   keepScreenOn: requestWakeLock,
   savesFiles: true,
   saveTextFile: downloadText,
+  toggleFullScreen: null, // F11 is the browser's own
   // A build without a client ID still shows Connect, and says why it can't.
   syncAuth: createGoogleAuth({
     clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID,
