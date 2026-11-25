@@ -8,35 +8,44 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
 
 - [x] Android's OAuth client ("TVs and Limited Input devices"), its ID in the code and its
       secret in `GOOGLE_DEVICE_CLIENT_SECRET` (2026-11-23).
-- [ ] Move or delete `assets/secrets/LICENSE` (the downloaded client file; git ignores the
-      folder, but it doesn't belong in the repository's folder).
+- [x] Move `assets/secrets/LICENSE` (the downloaded Android client file) out of the
+      repository's folder: it is now `~/.config/rsvp-reader/google-android-client.json`
+      (2026-11-25). Its secret is also in `.env.local` and in the repository's secrets.
 - [ ] **Release keystore secrets** (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
       `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`). Without them every release APK is signed
       with a throwaway key, so it can't install over the last one.
 - [x] `GOOGLE_DESKTOP_CLIENT_SECRET` repository secret (set 2026-11-03).
-- [ ] **Publish the consent screen** ("In production") before anyone but test users signs in.
-      Testing mode caps users at 100 and expires desktop sign-ins after about 7 days. Google
-      will want a homepage and a privacy-policy link.
-- [ ] **Add the PWA's real address** (GitHub Pages) to the Web client's authorized JavaScript
-      origins; only `http://localhost:5180` is there.
-- [ ] **Reset the Web client's secret**, which was shared once; nothing in the app uses it.
+- [x] **Publish the consent screen**: "In production" since 2026-11-25, so any Google account
+      can connect. The home page is the web build and the privacy page is its `privacy.html`;
+      `hawkosm.github.io` is the authorized domain. No review was needed: the app asks only for
+      `drive.file`, which Google does not class as sensitive. The Cloud project is now named
+      "RSVP Reader" (its id is still `gen-lang-client-0927837107`).
+- [ ] **Verify the branding** (Google Auth Platform → Branding). Until then Google does not
+      show the app's name and links on its sign-in screen; signing in works without it. It
+      needs the domain proved in Google Search Console.
+- [ ] Deploy the web build after the privacy page merges (`deploy-app.yml`, by hand), so the
+      privacy link on the sign-in screen is not a 404.
+- [x] **Add the PWA's real address**: `https://hawkosm.github.io` is in the Web client's
+      authorized JavaScript origins, beside `http://localhost:5180` (2026-11-25).
+- [x] **Reset the Web client's secret**: the one that was shared is disabled, and a new one
+      made (2026-11-25). Nothing in the app uses either. The disabled one can be deleted in
+      the console whenever.
 
 ## Sync
 
 - [x] Try the new folder layout (Books / Notes / App data, format 3) against real Drive: the
       owner ran it and reported it working (2026-11-25).
 - [ ] Try the notes files against real Drive: edit `Notes/<title>.md` in Drive and see the
-      note change in the app. Check what Drive's own editor does to the file (line endings, a
-      byte-order mark); the parser takes CRLF, a mark is untested.
+      note change in the app. (A file saved with CRLF line endings and a byte-order mark
+      parses the same; there is a test.)
 - [ ] Two devices that read the same hand-added note section at once each add it (a
       duplicate note).
 
 - [ ] Try Android sign-in (by code) on a real phone. The same code has signed in and synced
       against real Drive from a computer, but has not run on a device. Check that the
       google.com/device link opens the phone's browser.
-- [ ] Reconnect on the web and the desktop after updating: sync now asks for `drive.file` and
-      uses a visible "RSVP Reader" folder, so each device signs in once more and sends what it
-      holds to the new folder.
+- [x] Reconnect after updating to the visible folder: done on the owner's desktop, where sync
+      against real Drive works (2026-11-25).
 - [ ] If two devices connect for the very first time in the same moment, each can make its own
       "RSVP Reader" folder; all settle on the older, and the other's first push is stranded.
 - [ ] Maybe later: native one-tap sign-in on Android, if the code screen proves annoying.
@@ -65,10 +74,13 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
       middle and the page flickers back to its old size before the new one is drawn.
 - [ ] Pages go soft when zoomed far in on a dense screen: a page is drawn whole, capped at 16
       million pixels. Drawing only the part in view would fix it.
+- [x] Escape and Android's Back close the chapter list or the notes before they leave the
+      book (`lib/dismiss.ts`, 2026-11-25).
+- [x] Dragging the progress bar while playing no longer fights the playback: it pauses for
+      the drag and goes on after (2026-11-25).
 - [ ] From a review on 2026-11-24, read but not acted on: going back to a taller page can land
-      short of its bottom; Escape and Android's Back leave the book while the chapter list or
-      notes are open, instead of closing them; dragging the progress bar while playing fights the playback; the PDF worker
-      is not restarted after an error inside MuPDF itself (unconfirmed).
+      short of its bottom; the PDF worker is not restarted after an error inside MuPDF itself
+      (unconfirmed).
 - [ ] A page with no words (a full-page picture) is skipped, since the page shown is the
       current word's. Showing it needs a page position of its own.
 

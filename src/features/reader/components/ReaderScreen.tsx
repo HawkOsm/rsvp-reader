@@ -34,6 +34,7 @@ import { useReaderKeyboardShortcuts } from '@/features/reader/hooks/useReaderKey
 import { useTouchControls } from '@/features/reader/hooks/useTouchControls'
 import { useWakeLock } from '@/features/reader/hooks/useWakeLock'
 import { useAppStore } from '@/stores/app-store'
+import { whileOpen } from '@/lib/dismiss'
 import { HAS_KEYBOARD, useMediaQuery, WIDE } from '@/lib/media'
 
 /** A mouse this near the top edge brings the header back (Readest's 44). */
@@ -160,6 +161,15 @@ function ReaderBody({ book }: { book: BookRecord }) {
 
   const jumps = useJumps()
   const [jumpOpen, setJumpOpen] = useState(false)
+
+  // Escape and Android's back button close a panel lying over the page
+  // before they leave the book.
+  const contentsOver = hasContents && contentsOpen && !contentsBeside
+  useEffect(
+    () => (contentsOver ? whileOpen(() => setContentsOpen(false)) : undefined),
+    [contentsOver],
+  )
+  useEffect(() => (notesOpen ? whileOpen(() => setNotesOpen(false)) : undefined), [notesOpen])
   useReaderKeyboardShortcuts(layout, {
     jumps,
     onToggleControls: () => onControls('toggle'),

@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useEngine, useEngineIndex } from '@/features/reader/engine-context'
 
 /** The reading-position bar, shared by RSVP and book mode: a slim track with
@@ -10,6 +11,18 @@ export function ScrubBar({ ticks = [] }: { ticks?: number[] }) {
   const last = Math.max(0, engine.count - 1)
   const fraction = last > 0 ? index / last : 0
   const at = (f: number) => `${f * 100}%`
+  // Dragging while the words are playing would fight the drag: each word
+  // played moves the knob on from under the finger. Playing stops for the
+  // drag and goes on from where it is let go.
+  const resume = useRef(false)
+  function hold() {
+    resume.current = engine.isPlaying
+    engine.pause()
+  }
+  function release() {
+    if (resume.current) engine.play()
+    resume.current = false
+  }
 
   return (
     <div className="relative h-[18px]">
@@ -39,6 +52,9 @@ export function ScrubBar({ ticks = [] }: { ticks?: number[] }) {
         max={last}
         value={index}
         onChange={(e) => engine.seek(Number(e.target.value))}
+        onPointerDown={hold}
+        onPointerUp={release}
+        onPointerCancel={release}
         aria-label="Scrub"
         className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
       />

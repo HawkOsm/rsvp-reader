@@ -36,7 +36,8 @@ the old one and exactly what's unverified.
   positions stay on the device, unless you connect Google Drive in Settings
   to sync them between your own devices. The folder it keeps there
   ("RSVP Reader") is yours to read: your books under their titles, and each
-  book's notes as a Markdown file you can also edit.
+  book's notes as a Markdown file you can also edit. What the app does with your
+  data is set out in its [privacy page](https://hawkosm.github.io/rsvp-reader/privacy.html).
 
 ## Where to get it
 

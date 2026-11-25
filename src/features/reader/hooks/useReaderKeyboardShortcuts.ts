@@ -6,6 +6,7 @@ import { goToPage, turn } from '@/features/reader/book-nav'
 import { SCALE_STEP } from '@/lib/book-layout'
 import { scrollOrTurn, scrollScreen } from '@/features/reader/book-scroll'
 import { useEngine } from '@/features/reader/engine-context'
+import { dismissTop } from '@/lib/dismiss'
 import { isTypingTarget } from '@/lib/keyboard'
 import { useBookSpread } from '@/features/reader/hooks/useBookSpread'
 import type { Jumps } from '@/features/reader/hooks/useJumps'
@@ -121,7 +122,10 @@ export function useReaderKeyboardShortcuts(layout: ContentLayout, extra: ReaderK
 
     const keys: Keys = {
       ...modeKeys,
-      Escape: () => navigate('/'),
+      // Escape first closes a panel lying over the page, then leaves the book.
+      Escape: () => {
+        if (!dismissTop()) navigate('/')
+      },
       b: () => setMode(mode === 'rsvp' ? 'book' : 'rsvp'),
     }
 

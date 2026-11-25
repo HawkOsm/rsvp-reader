@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RSVP Reader: privacy</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        max-width: 42rem;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 4rem;
+        font:
+          16px/1.6 system-ui,
+          sans-serif;
+      }
+      h1 {
+        font-size: 1.6rem;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin-top: 2rem;
+      }
+      small {
+        opacity: 0.7;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>RSVP Reader: privacy</h1>
+    <p><small>Last changed 25 November 2026.</small></p>
+
+    <p>
+      RSVP Reader is a reading app that runs on your own device. It has no server and no accounts,
+      and its developer receives nothing from it: no books, no reading history, no usage statistics,
+      no crash reports.
+    </p>
+
+    <h2>What stays on your device</h2>
+    <p>
+      Your books, your place in each one, your notes, bookmarks, shelves and settings are kept in
+      the app's own storage on the device you are using. The app's error log is kept there too, and
+      is only ever shown to you. Removing the app, or clearing its data, removes all of it.
+    </p>
+
+    <h2>Google Drive sync, if you turn it on</h2>
+    <p>
+      Sync is off until you press Connect in Settings. If you connect, you sign in with Google and
+      the app is given one permission: to see and manage the files it creates itself in your Google
+      Drive. It cannot see any other file in your Drive.
+    </p>
+    <p>
+      With that permission the app keeps a folder named "RSVP Reader" in your own Drive. It holds
+      your books, your notes, your reading positions, bookmarks, shelves and settings, and a name
+      for each device you have connected (such as "Firefox on Linux"), so that your other devices
+      can read them. This information goes from your device to your Google Drive and back. It is not
+      sent to the developer or to anyone else, and it is not used for advertising or for anything
+      other than keeping your devices in step.
+    </p>
+    <p>
+      What is in your Drive is held by Google under
+      <a href="https://policies.google.com/privacy">Google's privacy policy</a>. The sign-in that
+      lets the app reach your Drive is kept on your device.
+    </p>
+    <p>
+      RSVP Reader's use of information received from Google APIs adheres to the
+      <a href="https://developers.google.com/terms/api-services-user-data-policy"
+        >Google API Services User Data Policy</a
+      >, including the Limited Use requirements.
+    </p>
+
+    <h2>Stopping sync and deleting what it stored</h2>
+    <ul>
+      <li>Press Disconnect in Settings to stop syncing on a device.</li>
+      <li>
+        Delete the "RSVP Reader" folder in your Google Drive to delete everything sync stored there.
+      </li>
+      <li>
+        Remove the app's access at any time under
+        <a href="https://myaccount.google.com/permissions">Third-party apps with account access</a>
+        in your Google Account.
+      </li>
+    </ul>
+
+    <h2>Questions</h2>
+    <p>
+      The app is open source. Its code, and a place to ask questions, is at
+      <a href="https://github.com/HawkOsm/rsvp-reader">github.com/HawkOsm/rsvp-reader</a>.
+    </p>
+  </body>
+</html>
