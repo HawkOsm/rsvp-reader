@@ -5,8 +5,9 @@ import type { SyncAuth, SyncAuthState } from './types'
 // (docs/architecture/sync.md, section 3). It gives an access token for about
 // an hour and no refresh token, and a new one needs a click, so an expired
 // token puts sync into "needs reconnect" rather than interrupting anything.
-// The token is kept in memory only. What is remembered is that the user
-// connected, so a reopened app says "Reconnect" rather than "Connect".
+// The token is kept for the tab only (sessionStorage), so a reload inside its
+// hour doesn't ask again. What is remembered beyond that is only that the
+// user connected, so a reopened app says "Reconnect" rather than "Connect".
 
 /** Only the files this app itself puts in the user's Drive, and nothing else
  * of theirs. Not the hidden per-app folder (`drive.appdata`): sign-in with a
@@ -15,6 +16,7 @@ export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
 
 const GIS_URL = 'https://accounts.google.com/gsi/client'
 const CONNECTED_KEY = 'rsvp-reader:sync-connected'
+const TOKEN_KEY = 'rsvp-reader:sync-token'
 /** A token this close to expiring is treated as expired, so it can't run out
  * halfway through a sync. */
 const EXPIRY_MARGIN_MS = 60_000
@@ -43,6 +45,9 @@ export interface GoogleAuthOptions {
   /** Loads Google's script; called on the first sign-in, never before. */
   loadGis: () => Promise<GoogleOAuth2>
   storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null
+  /** Where the token is kept while the tab lives (sessionStorage); without
+   * one it is kept in memory, and a reload needs a reconnect. */
+  session?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null
   now?: () => number
   /** How long Connect waits before giving the button back. */
   signInTimeoutMs?: number
@@ -64,12 +69,12 @@ export function createGoogleAuth({
   clientId,
   loadGis,
   storage,
+  session = null,
   now = Date.now,
   signInTimeoutMs,
 }: GoogleAuthOptions): SyncAuth {
   const listeners = new Set<() => void>()
   let token: { value: string; expiresAt: number } | null = null
-  let state: SyncAuthState = connected() ? 'needs-reconnect' : 'signed-out'
   let gis: GoogleOAuth2 | null = null
 
   function connected(): boolean {
@@ -89,6 +94,40 @@ export function createGoogleAuth({
     }
   }
 
+  /** Keep the token for the tab, or with `null` forget it. */
+  function keep(next: typeof token) {
+    token = next
+    try {
+      if (next) session?.setItem(TOKEN_KEY, JSON.stringify(next))
+      else session?.removeItem(TOKEN_KEY)
+    } catch {
+      // Storage refused: the token lasts until the page is reloaded.
+    }
+  }
+
+  /** The token this tab was given before it was reloaded, if still good. */
+  function kept(): typeof token {
+    try {
+      const saved = JSON.parse(session?.getItem(TOKEN_KEY) ?? 'null') as typeof token
+      if (
+        typeof saved?.value === 'string' &&
+        typeof saved.expiresAt === 'number' &&
+        now() < saved.expiresAt - EXPIRY_MARGIN_MS
+      ) {
+        return saved
+      }
+    } catch {
+      // Unreadable: as good as none.
+    }
+    return null
+  }
+
+  let state: SyncAuthState = 'signed-out'
+  if (connected()) {
+    keep(kept())
+    state = token ? 'signed-in' : 'needs-reconnect'
+  }
+
   function setState(next: SyncAuthState) {
     if (next === state) return
     state = next
@@ -102,7 +141,7 @@ export function createGoogleAuth({
 
   /** The token is gone; the user has to sign in again to sync. */
   function lose() {
-    token = null
+    keep(null)
     if (state === 'signed-in') setState('needs-reconnect')
   }
 
@@ -157,10 +196,10 @@ export function createGoogleAuth({
           throw new Error('Google Drive access wasn’t allowed, so there is nowhere to sync to.')
         }
         if (!isCurrent()) return // Connect was pressed again since
-        token = {
+        keep({
           value: response.access_token,
           expiresAt: now() + Number(response.expires_in ?? 3600) * 1000,
-        }
+        })
         remember(true)
         setState('signed-in')
       })
@@ -170,7 +209,7 @@ export function createGoogleAuth({
       attempts.abandon()
       // Revoking is a courtesy: an unrevoked token expires within the hour.
       if (token && gis) gis.revoke(token.value)
-      token = null
+      keep(null)
       remember(false)
       setState('signed-out')
     },

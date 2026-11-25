@@ -1340,3 +1340,18 @@ so it is v0.3.2. The v0.5 release and tag were removed and the same code release
 
 **What to know:** Android's `versionCode` went up all the same (6 to 7), since it may only
 rise. The v0.4 tag and its unpublished draft are older code under a higher number.
+
+## 2026-11-25: the web build keeps its Drive token for the tab
+
+**Decision:** in the browser the access token is kept in `sessionStorage` as well as in memory,
+so reloading the page inside the token's hour does not put sync into "needs reconnect".
+
+**Why:** the browser sign-in gives no refresh token and a new token needs a press, so every
+reload asked for one. The token was in memory only until now.
+
+**Cost accepted:** a script running on the page's origin could read the token while the tab is
+open. It is good for at most an hour and only for files this app made (`drive.file`); it is
+gone when the tab closes, and it is never written to `localStorage`. The app loads no
+third-party script but Google's own sign-in.
+
+**Rejected:** `localStorage` (the token would outlive the tab and be shared by every tab).

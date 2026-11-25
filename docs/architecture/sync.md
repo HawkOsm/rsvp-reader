@@ -405,7 +405,9 @@ Assumptions made while recording these (correct me if wrong):
 
 1. ~~How drawings anchor in reflowed (non-PDF) text (section 9).~~ Settled: there are no
    drawings, only text notes (decisions.md, 2026-10-28).
-2. Web/PWA token renewal UX, given no refresh token in the browser.
+2. Web/PWA token renewal UX, given no refresh token in the browser. A reload no longer asks
+   (the token is kept for the tab, 2026-11-25); after its hour, or in a new tab, Reconnect is
+   still a press.
 3. Whether book-file sync should be Wi-Fi-only by default on Android.
 4. A code sign-in on the desktop (Google's device flow: show a code, enter it at
    google.com/device), as a sure route when a browser extension blocks the loopback sign-in.
@@ -450,8 +452,9 @@ Where the code differs from the design above, and why.
   `signOut`, and a `state` the UI subscribes to (`signed-out`, `signing-in`, `signed-in`,
   `needs-reconnect`). The web one (`platform/google-auth.ts`) uses Google Identity Services'
   token flow (the scope is `drive.file` now; see "The store is a visible folder"). Google's script is added to the page when the user
-  presses Connect, never before. The token lives in memory only; what is remembered (in
-  localStorage) is that the user connected, so a reopened app shows "Reconnect". The browser
+  presses Connect, never before. The token is kept for the tab (sessionStorage), so a reload
+  inside its hour stays connected; what is remembered beyond that (in localStorage) is only
+  that the user connected, so a reopened app shows "Reconnect". The browser
   flow has no refresh token and a new token needs a click, so `renewToken` on the web always
   gives up and sync waits in `needs-reconnect`. Desktop and Android have `syncAuth: null` until
   phase 5. The client ID is `GOOGLE_CLIENT_ID` in `platform/web.ts` (`VITE_GOOGLE_CLIENT_ID`

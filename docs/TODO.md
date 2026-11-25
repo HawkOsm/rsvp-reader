@@ -57,8 +57,8 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
 - [ ] Maybe: a code sign-in on the desktop (Google's device flow), if the copy-link fallback
       isn't enough when a browser extension blocks sign-in (sync.md, still open 4).
 - [ ] Book files: a per-book "don't sync this file" switch; Wi-Fi-only uploads on Android.
-- [ ] Web: Reconnect is needed after every reload (no refresh token in the browser); see
-      sync.md, still open 2.
+- [x] Web: a reload no longer needs Reconnect; the token is kept for the tab (2026-11-25).
+      After its hour, or in a new tab, Reconnect is still a press (sync.md, still open 2).
 
 ## Book mode
 
