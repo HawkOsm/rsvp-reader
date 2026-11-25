@@ -14,9 +14,16 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
       `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`). Without them every release APK is signed
       with a throwaway key, so it can't install over the last one.
 - [x] `GOOGLE_DESKTOP_CLIENT_SECRET` repository secret (set 2026-11-03).
-- [ ] **Publish the consent screen** ("In production") before anyone but test users signs in.
-      Testing mode caps users at 100 and expires desktop sign-ins after about 7 days. Google
-      will want a homepage and a privacy-policy link.
+- [x] **Publish the consent screen**: "In production" since 2026-11-25, so any Google account
+      can connect. The home page is the web build and the privacy page is its `privacy.html`;
+      `hawkosm.github.io` is the authorized domain. No review was needed: the app asks only for
+      `drive.file`, which Google does not class as sensitive. The Cloud project is now named
+      "RSVP Reader" (its id is still `gen-lang-client-0927837107`).
+- [ ] **Verify the branding** (Google Auth Platform → Branding). Until then Google does not
+      show the app's name and links on its sign-in screen; signing in works without it. It
+      needs the domain proved in Google Search Console.
+- [ ] Deploy the web build after the privacy page merges (`deploy-app.yml`, by hand), so the
+      privacy link on the sign-in screen is not a 404.
 - [ ] **Add the PWA's real address** (GitHub Pages) to the Web client's authorized JavaScript
       origins; only `http://localhost:5180` is there.
 - [ ] **Reset the Web client's secret**, which was shared once; nothing in the app uses it.
