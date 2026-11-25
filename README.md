@@ -34,7 +34,9 @@ the old one and exactly what's unverified.
   document and prompts to continue
 - **Local first.** No account, no telemetry. Your files and reading
   positions stay on the device, unless you connect Google Drive in Settings
-  to sync them between your own devices.
+  to sync them between your own devices. The folder it keeps there
+  ("RSVP Reader") is yours to read: your books under their titles, and each
+  book's notes as a Markdown file you can also edit.
 
 ## Where to get it
 

@@ -7,7 +7,8 @@ import type { SyncAuth, SyncAuthState } from '@/platform'
 import { NeedsReconnectError } from '@/sync/drive'
 import { MemoryTransport } from '@/sync/transport'
 import { makeToken } from '@/core/types'
-import { addBook, saveTokens } from '@/storage/library'
+import { addBook, removeBook, saveTokens } from '@/storage/library'
+import { addNote, notesOf } from '@/storage/notes'
 import { getDb } from '@/storage/schema'
 import { TEXT_BOOK } from '../storage/fixtures'
 
@@ -23,6 +24,7 @@ vi.mock('@/stores/api/sync', async (original) => ({
     delete: (name: string) => store.delete(name),
     readBlob: (name: string) => store.readBlob(name),
     usage: () => store.usage(),
+    versionOf: (name: string) => store.versionOf(name),
   }),
 }))
 
@@ -210,6 +212,43 @@ describe('book files', () => {
     expect([...store.blobs.keys()].some((n) => n.startsWith('book2-off-'))).toBe(false)
     expect(localStorage.getItem('rsvp-reader:sync-book-files')).toBe('off')
     useSyncStore.getState().setBookFiles(true)
+  })
+
+  it('syncs notes files during booksTask even with book files off, and bumps revision when edits apply', async () => {
+    const db = getDb()
+    const syncId = `notes-${Math.random().toString(36).slice(2)}`
+    const book = await addBook(db, {
+      title: `NotesBook ${syncId}`,
+      source: 'local',
+      fingerprint: `f-${syncId}`,
+      syncId,
+      ...TEXT_BOOK,
+    })
+    const bookId = book.id as number
+    await saveTokens(db, bookId, [makeToken('hello'), makeToken('world')], `f-${syncId}`)
+    const noteId = await addNote(db, bookId, { wordIndex: 0, quote: 'hello world' }, 'Initial note')
+
+    try {
+      useSyncStore.getState().setBookFiles(false)
+      auth = fakeAuth('signed-in')
+      stop = useSyncStore.getState().start()
+      const fileName = `Notes/NotesBook ${syncId}.md`
+      await vi.waitFor(() => expect(store.files.has(fileName)).toBe(true))
+
+      const revBefore = useSyncStore.getState().revision
+      const current = (await store.read(fileName))!
+      await store.write(fileName, current.replace('Initial note', 'Edited remotely'))
+
+      await act(() => useSyncStore.getState().syncNow())
+      await vi.waitFor(() => expect(useSyncStore.getState().revision).toBeGreaterThan(revBefore))
+      expect((await notesOf(db, bookId)).find((n) => n.noteId === noteId)?.shown.body).toBe(
+        'Edited remotely',
+      )
+    } finally {
+      useSyncStore.getState().setBookFiles(true)
+      await removeBook(db, bookId)
+      await db.notesFiles.clear()
+    }
   })
 })
 

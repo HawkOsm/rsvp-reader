@@ -3,6 +3,7 @@ import { localSyncState, recordChange, syncTables } from '@/storage/sync-log'
 import { syncOnce } from '@/sync/coordinator'
 import * as books from '@/sync/book-files'
 import { DriveTransport, type TokenSource } from '@/sync/drive'
+import * as notesFiles from '@/sync/notes-files'
 import type { Transport } from '@/sync/transport'
 
 // The sync store's one door to the sync engine (docs/architecture/sync.md).
@@ -45,3 +46,6 @@ export const deleteRemovedBooks = (transport: Transport, names: ReadonlySet<stri
   books.deleteRemovedBooks(getDb(), transport, names)
 export const deleteLegacyBookFiles = (transport: Transport, names: ReadonlySet<string>) =>
   books.deleteLegacyBookFiles(transport, names)
+
+export const syncNotesFiles = (transport: Transport, names: ReadonlySet<string>) =>
+  notesFiles.syncNotesFiles(getDb(), transport, names)

@@ -161,6 +161,16 @@ export interface NoteRecord {
   createdAt: number
 }
 
+/** Local memory of a book's readable Markdown notes file on Drive, so
+ * unchanged files are not downloaded again and edits made in Drive can be
+ * compared against what this device last saw. */
+export interface NotesFileRecord {
+  name: string
+  syncId: string | null
+  base: string
+  version?: string
+}
+
 /** The newest known version of one synced value (`core/sync/merge.ts`).
  * `pending` marks a local change other devices haven't been sent yet; it's a
  * number, not a boolean, so Dexie can index it. */
@@ -226,6 +236,7 @@ export class RsvpDatabase extends Dexie {
   shelves!: Table<ShelfRecord, number>
   bookmarks!: Table<BookmarkRecord, number>
   notes!: Table<NoteRecord, number>
+  notesFiles!: Table<NotesFileRecord, string>
   syncRegisters!: Table<SyncRegisterRecord, string>
   syncState!: Table<SyncStateRecord, string>
 
@@ -332,6 +343,9 @@ export class RsvpDatabase extends Dexie {
 
     // Notes. A new table only: there were none before.
     this.version(11).stores({ notes: '++id, &noteId, bookId' })
+
+    // Local memory of readable Markdown notes files on Drive.
+    this.version(12).stores({ notesFiles: 'name, syncId' })
   }
 }
 

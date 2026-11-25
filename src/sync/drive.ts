@@ -33,6 +33,7 @@ interface DriveItem {
   name: string
   mimeType?: string
   size?: string
+  md5Checksum?: string
 }
 
 function splitName(name: string): { folder: SubfolderKey; shortName: string } {
@@ -109,6 +110,7 @@ export interface DriveOptions {
 export class DriveTransport implements Transport {
   private ids: Map<string, string> | null = null
   private sizes = new Map<string, number>()
+  private versions = new Map<string, string>()
   /** The subfolder ids, as of the last `list`. */
   private folders: Record<SubfolderKey, string> = { books: '', notes: '', appData: '' }
   private readonly auth: TokenSource
@@ -161,7 +163,7 @@ export class DriveTransport implements Transport {
       const query = new URLSearchParams({
         // Not ones the user put in the bin: to them, those are gone.
         q: `'${folderId}' in parents and trashed=false`,
-        fields: 'nextPageToken,files(id,name,mimeType,size)',
+        fields: 'nextPageToken,files(id,name,mimeType,size,md5Checksum)',
         pageSize: '1000',
         // If two devices ever create the same name at once, all devices
         // settle on the same, older, item.
@@ -204,6 +206,7 @@ export class DriveTransport implements Transport {
 
     const ids = new Map<string, string>()
     const sizes = new Map<string, number>()
+    const versions = new Map<string, string>()
     for (const key of ['appData', 'books', 'notes'] as const) {
       if (!foundSubfolders[key]) continue
       const prefix = PREFIXES[key]
@@ -213,6 +216,7 @@ export class DriveTransport implements Transport {
         if (ids.has(fullName)) continue
         ids.set(fullName, item.id)
         sizes.set(fullName, Number(item.size ?? 0))
+        if (item.md5Checksum) versions.set(fullName, item.md5Checksum)
       }
     }
 
@@ -228,12 +232,18 @@ export class DriveTransport implements Transport {
       if (moved.status === 404) continue
       ids.set(item.name, item.id)
       sizes.set(item.name, Number(item.size ?? 0))
+      if (item.md5Checksum) versions.set(item.name, item.md5Checksum)
     }
 
     this.folders = folders
     this.ids = ids
     this.sizes = sizes
+    this.versions = versions
     return [...ids.keys()]
+  }
+
+  versionOf(name: string): string | undefined {
+    return this.versions.get(name)
   }
 
   async read(name: string): Promise<string | null> {
@@ -242,6 +252,7 @@ export class DriveTransport implements Transport {
     const response = await this.request('GET', `${API}/files/${id}?alt=media`)
     if (response.status === 404) {
       this.ids?.delete(name)
+      this.versions.delete(name)
       return null
     }
     return response.text()
@@ -253,12 +264,19 @@ export class DriveTransport implements Transport {
     const response = await this.request('GET', `${API}/files/${id}?alt=media`)
     if (response.status === 404) {
       this.ids?.delete(name)
+      this.versions.delete(name)
       return null
     }
     return response.blob()
   }
 
   async write(name: string, data: string | Blob): Promise<void> {
+    await this.writeFile(name, data)
+    // Forget the old md5Checksum: the next `list()` will fetch Drive's new one.
+    this.versions.delete(name)
+  }
+
+  private async writeFile(name: string, data: string | Blob): Promise<void> {
     const type =
       typeof data === 'string' ? 'application/json' : data.type || 'application/octet-stream'
     const id = await this.idOf(name)
@@ -311,6 +329,7 @@ export class DriveTransport implements Transport {
 
   async delete(name: string): Promise<void> {
     const id = await this.idOf(name)
+    this.versions.delete(name)
     if (!id) return
     // A 404 means another run deleted it already: the same result.
     await this.request('DELETE', `${API}/files/${id}`)

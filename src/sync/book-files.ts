@@ -76,6 +76,22 @@ function fileExtension(fileName: string | undefined, formatId: FormatId): string
   return FORMAT_EXT[formatId] ?? 'txt'
 }
 
+/** Readable transport name in `dir` (`Books/` or `Notes/`) for a book,
+ * disambiguated with the first six characters of `syncId` when `taken` reports
+ * a collision. */
+export function readableDriveName(
+  dir: string,
+  title: string,
+  ext: string,
+  syncId: string,
+  taken: (name: string) => boolean,
+): string {
+  const safeTitle = sanitizeTitle(title)
+  const cleanExt = ext.replace(/^\.+/, '').toLowerCase()
+  const candidate = `${dir}${safeTitle}.${cleanExt}`
+  return taken(candidate) ? `${dir}${safeTitle} (${syncId.slice(0, 6)}).${cleanExt}` : candidate
+}
+
 /** Readable `Books/` transport name for a book, disambiguated with the first
  * six characters of `syncId` when `taken` reports a collision. */
 export function readableBookName(
@@ -84,12 +100,7 @@ export function readableBookName(
   syncId: string,
   taken: (name: string) => boolean,
 ): string {
-  const safeTitle = sanitizeTitle(title)
-  const cleanExt = ext.replace(/^\.+/, '').toLowerCase()
-  const candidate = `${BOOKS_DIR}${safeTitle}.${cleanExt}`
-  return taken(candidate)
-    ? `${BOOKS_DIR}${safeTitle} (${syncId.slice(0, 6)}).${cleanExt}`
-    : candidate
+  return readableDriveName(BOOKS_DIR, title, ext, syncId, taken)
 }
 
 async function knownOtherTitles(db: RsvpDatabase, syncId: string): Promise<Set<string>> {

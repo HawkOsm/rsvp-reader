@@ -26,6 +26,7 @@ import {
   removeSyncDevice,
   runRecord,
   runSync,
+  syncNotesFiles,
   uploadBook,
   type RemoteBook,
   type StoreUsage,
@@ -162,12 +163,16 @@ export const useSyncStore = create<SyncStore>((set, get) => {
         }
       }
       await deleteLegacyBookFiles(store, names)
-      set({
+      const notesResult = await syncNotesFiles(store, names)
+      const [remote, usage] = await Promise.all([remoteBooks(names), store.usage()])
+      set((s) => ({
         upload: null,
         bookError: null,
-        remoteBooks: await remoteBooks(names),
-        usage: await store.usage(),
-      })
+        remoteBooks: remote,
+        usage,
+        revision: notesResult.applied > 0 ? s.revision + 1 : s.revision,
+      }))
+      if (notesResult.applied > 0) runner?.soon()
     } catch (err) {
       const outcome = outcomeOf(err)
       // Offline or signed out: the next run tries again; not a fault.

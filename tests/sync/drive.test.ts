@@ -241,6 +241,32 @@ describe('DriveTransport', () => {
     expect(backoffDelay(20, 1)).toBe(32_000)
     expect(backoffDelay(5, 0)).toBe(0)
   })
+
+  it('tracks file versions from list, clears them on write, and detects remote changes', async () => {
+    const store = transport()
+    await store.write('Notes/Dark.md', 'first')
+    expect(store.versionOf('Notes/Dark.md')).toBeUndefined()
+
+    await store.list()
+    const v1 = store.versionOf('Notes/Dark.md')
+    expect(v1).toEqual(expect.any(String))
+
+    // Another device modifies the file on Drive.
+    await transport().write('Notes/Dark.md', 'second')
+    await store.list()
+    const v2 = store.versionOf('Notes/Dark.md')
+    expect(v2).toEqual(expect.any(String))
+    expect(v2).not.toBe(v1)
+
+    // Writing locally forgets the cached version until the next list.
+    await store.write('Notes/Dark.md', 'third')
+    expect(store.versionOf('Notes/Dark.md')).toBeUndefined()
+    await store.list()
+    expect(store.versionOf('Notes/Dark.md')).toEqual(expect.any(String))
+
+    await store.delete('Notes/Dark.md')
+    expect(store.versionOf('Notes/Dark.md')).toBeUndefined()
+  })
 })
 
 describe('two devices syncing through Drive', () => {

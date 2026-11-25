@@ -702,4 +702,25 @@ RSVP Reader/
   under the new layout; `deleteLegacyBookFiles` then removes the old pair. A book only an old
   package exists for can still be downloaded. `SYNC_FORMAT_VERSION` is 3, so an app that only
   knows the flat layout stops with the usual "newer version" message.
+- **Notes files** (`sync/notes-files.ts`, run by the store's books task after the uploads,
+  whatever the "book files" setting): each book here that has notes gets `Notes/<title>.md`.
+  Notes still sync as registers; the file is a second way in and out for a person.
+  - _The format_ is `core/sync/notes-file.ts`, pure, with `parse(render(x))` giving back every
+    note's text whatever it contains (a body line that looks like a heading or a marker is
+    written with a backslash in front). A line `<!-- rsvp-reader:book:<id> -->` names the
+    book, and each note has a `<!-- note:<id> -->` line under its heading.
+  - _What this device last saw_ of each file is kept in the `notesFiles` table (schema 12):
+    its text (`base`) and the transport's `versionOf` token (Drive's `md5Checksum`), so an
+    unchanged file is not read again.
+  - _A file changed in Drive_ is compared with `base`, note by note. A note whose text
+    changed in the file is edited here (`editNote`), so the change goes to every device; the
+    file's text wins over a change made here to the same note since. A note whose text did
+    not change in the file is left alone, though it may have changed here. A heading with no
+    note line under it (`## Page 12`, `## Word 340`) is a note the person added. A section
+    removed from the file deletes nothing: the next write puts it back. A note with an
+    unsettled conflict is shown with every version and takes no edits from the file.
+  - _A second device_ finds the file by its book line and does not make another. A file for
+    a book that is not on the device is not touched, and a removed book's notes file is kept.
+  - Known gap: two devices reading the same hand-added section at the same moment each add
+    the note, giving it twice.
 - Checked against the fake Drive in the tests only; not yet against real Drive.
