@@ -5,6 +5,8 @@ import type { Register, SyncOp } from '@/core/sync/merge'
 // section 6). Every file has one writer: the device named in it.
 
 export const META = 'meta.json'
+export const BOOKS_DIR = 'Books/'
+export const NOTES_DIR = 'Notes/'
 
 /** Changes per log file, so each stays small. */
 export const OPS_PER_SEGMENT = 500

@@ -291,6 +291,55 @@ describe('the version 11 upgrade', () => {
   })
 })
 
+describe('the version 12 upgrade', () => {
+  it('adds an empty notesFiles table and keeps the books and notes a version 11 database holds', async () => {
+    const name = `v11-test-${Math.random().toString(36).slice(2)}`
+    const old = new Dexie(name)
+    old.version(11).stores({
+      books: '++id, source, sourceId, fingerprint, addedAt, lastOpenedAt, syncId',
+      tokens: 'bookId',
+      progress: 'bookId, updatedAt',
+      settings: 'key',
+      files: 'bookId',
+      covers: 'bookId',
+      shelves: '++id, syncId',
+      bookmarks: '++id, bookId',
+      notes: '++id, &noteId, bookId',
+      syncRegisters: 'key, pending',
+      syncState: 'id',
+    })
+    await old.table('books').put({ id: 1, title: 'Kept', ...base, fingerprint: 'k', syncId: 'h' })
+    const anchor = { wordIndex: 2, quote: 'a dark' }
+    const version = { edit: 'e1', body: 'kept note', at: 1, device: 'd' }
+    await old.table('notes').put({
+      id: 1,
+      noteId: 'n1',
+      bookId: 1,
+      anchor,
+      shown: version,
+      conflicts: [],
+      lostDeletes: [],
+      createdAt: 1,
+    })
+    old.close()
+
+    const db = getDb(name)
+    expect(await db.books.get(1)).toMatchObject({ title: 'Kept', syncId: 'h' })
+    expect(await db.notes.where('noteId').equals('n1').first()).toMatchObject({
+      bookId: 1,
+      shown: { body: 'kept note' },
+    })
+    expect(await db.notesFiles.count()).toBe(0)
+    await db.notesFiles.put({
+      name: 'Notes/Kept.md',
+      syncId: 'h',
+      base: '# Notes on Kept\n',
+      version: 'v1',
+    })
+    expect(await db.notesFiles.where('syncId').equals('h').count()).toBe(1)
+  })
+})
+
 describe('importing an old backup', () => {
   it('upgrades books written before formatId/layout existed', async () => {
     const backup: Backup = {

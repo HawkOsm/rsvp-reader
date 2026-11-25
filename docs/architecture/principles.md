@@ -67,7 +67,7 @@ ships. Nothing should merge while CI is red (see 7).
 Anything on `main` could ship today. Work that takes more than one PR goes behind a feature
 flag, off by default.
 
-- **Mechanism:** `src/lib/flags.ts` and Settings → Experimental; CI on every PR.
+- **Mechanism:** `src/lib/flags.ts` and its switches in Settings → Advanced; CI on every PR.
 - **Enforced by:** GitHub branch protection on `main`: the `test` check must pass on code that
   is up to date with `main`, and nothing is pushed straight to it. The native builds are not
   required, because they only run when native files change.

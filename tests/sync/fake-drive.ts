@@ -17,6 +17,7 @@ interface DriveFile {
 interface DriveFolder {
   id: string
   name: string
+  parent?: string
   trashed?: boolean
 }
 
@@ -46,6 +47,12 @@ export class FakeDrive {
   /** The folder a new file names as its parent, if the app made it. */
   private folderOf(parents: string[] | undefined): string | undefined {
     return this.folders.find((f) => f.id === parents?.[0] && !f.trashed)?.id
+  }
+
+  folderId(name: string, parent?: string): string | undefined {
+    return this.folders.find(
+      (f) => f.name === name && !f.trashed && (parent === undefined || f.parent === parent),
+    )?.id
   }
 
   byName(name: string): string | undefined {
@@ -79,16 +86,30 @@ export class FakeDrive {
       }
       const parent = /^'([^']+)' in parents and trashed=false$/.exec(q)?.[1]
       if (!parent) return json({ error: { code: 400, message: `unexpected q: ${q}` } }, 400)
-      const inFolder = this.files.filter((f) => f.parent === parent && !f.trashed)
+      const filesInFolder = await Promise.all(
+        this.files
+          .filter((f) => f.parent === parent && !f.trashed)
+          .map(async ({ id, name, data }) => {
+            const bytes = new Uint8Array(await new Blob([data]).arrayBuffer())
+            return {
+              id,
+              name,
+              size: String(bytes.byteLength),
+              md5Checksum: fakeDigest(bytes),
+            }
+          }),
+      )
+      const inFolder = [
+        ...this.folders
+          .filter((f) => f.parent === parent && !f.trashed)
+          .map(({ id, name }) => ({ id, name, mimeType: FOLDER_TYPE })),
+        ...filesInFolder,
+      ]
       const start = Number(url.searchParams.get('pageToken') ?? 0)
       const page = inFolder.slice(start, start + this.pageSize)
       const more = start + this.pageSize < inFolder.length
       return json({
-        files: page.map(({ id, name, data }) => ({
-          id,
-          name,
-          size: String(typeof data === 'string' ? new Blob([data]).size : data.size),
-        })),
+        files: page,
         ...(more && { nextPageToken: String(start + this.pageSize) }),
       })
     }
@@ -107,6 +128,14 @@ export class FakeDrive {
         file.data = init.body instanceof Blob ? init.body : String(init.body)
         return json({ id: file.id })
       }
+      if (method === 'PATCH' && !path.startsWith('/upload/')) {
+        const addParents = url.searchParams.get('addParents')
+        if (!addParents) return json({ error: { code: 400 } }, 400)
+        const target = this.folderOf([addParents])
+        if (!target) return json({ error: { code: 400 } }, 400)
+        file.parent = target
+        return json({ id: file.id })
+      }
     }
     if (method === 'GET' && path === '/drive/v3/about') {
       const used = this.files.reduce(
@@ -123,7 +152,13 @@ export class FakeDrive {
         parents?: string[]
       }
       if (metadata.mimeType === FOLDER_TYPE) {
-        const folder = { id: `d${this.nextId++}`, name: metadata.name }
+        const parent = metadata.parents ? this.folderOf(metadata.parents) : undefined
+        if (metadata.parents && !parent) return json({}, 400)
+        const folder: DriveFolder = {
+          id: `d${this.nextId++}`,
+          name: metadata.name,
+          ...(parent && { parent }),
+        }
         this.folders.push(folder)
         return json({ id: folder.id })
       }
@@ -149,6 +184,16 @@ export class FakeDrive {
     }
     return json({ error: { code: 400, message: `unexpected ${method} ${path}` } }, 400)
   }
+}
+
+function fakeDigest(bytes: Uint8Array): string {
+  let h1 = 0x811c9dc5
+  let h2 = 0x9e3779b9
+  for (const byte of bytes) {
+    h1 = Math.imul(h1 ^ byte, 0x01000193)
+    h2 = Math.imul(h2 ^ (byte + 1), 0x85ebca6b)
+  }
+  return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0')
 }
 
 function json(body: unknown, status = 200): Response {

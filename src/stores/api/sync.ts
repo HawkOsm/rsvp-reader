@@ -3,6 +3,7 @@ import { localSyncState, recordChange, syncTables } from '@/storage/sync-log'
 import { syncOnce } from '@/sync/coordinator'
 import * as books from '@/sync/book-files'
 import { DriveTransport, type TokenSource } from '@/sync/drive'
+import * as notesFiles from '@/sync/notes-files'
 import type { Transport } from '@/sync/transport'
 
 // The sync store's one door to the sync engine (docs/architecture/sync.md).
@@ -33,10 +34,18 @@ export async function removeSyncDevice(device: string): Promise<void> {
 
 // Book files on Drive (phase 4).
 export const booksToUpload = (names: ReadonlySet<string>) => books.booksToUpload(getDb(), names)
-export const uploadBook = (transport: Transport, book: Parameters<typeof books.uploadBook>[2]) =>
-  books.uploadBook(getDb(), transport, book)
+export const uploadBook = (
+  transport: Transport,
+  book: Parameters<typeof books.uploadBook>[2],
+  names?: Set<string>,
+) => books.uploadBook(getDb(), transport, book, names)
 export const remoteBooks = (names: ReadonlySet<string>) => books.remoteBooks(getDb(), names)
 export const downloadBook = (transport: Transport, syncId: string) =>
   books.downloadBook(getDb(), transport, syncId)
 export const deleteRemovedBooks = (transport: Transport, names: ReadonlySet<string>) =>
   books.deleteRemovedBooks(getDb(), transport, names)
+export const deleteLegacyBookFiles = (transport: Transport, names: ReadonlySet<string>) =>
+  books.deleteLegacyBookFiles(transport, names)
+
+export const syncNotesFiles = (transport: Transport, names: ReadonlySet<string>) =>
+  notesFiles.syncNotesFiles(getDb(), transport, names)

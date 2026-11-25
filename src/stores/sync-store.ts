@@ -13,6 +13,7 @@ import { getPlatform, type SyncAuth, type SyncAuthState } from '@/platform'
 import {
   booksToUpload,
   createSyncRunner,
+  deleteLegacyBookFiles,
   deleteRemovedBooks,
   DORMANT_MS,
   downloadBook,
@@ -25,6 +26,7 @@ import {
   removeSyncDevice,
   runRecord,
   runSync,
+  syncNotesFiles,
   uploadBook,
   type RemoteBook,
   type StoreUsage,
@@ -156,16 +158,21 @@ export const useSyncStore = create<SyncStore>((set, get) => {
         const todo = await booksToUpload(names)
         for (const [done, book] of todo.entries()) {
           set({ upload: { done, total: todo.length } })
-          await uploadBook(store, book)
+          await uploadBook(store, book, names)
           names.add(packageFile(book.syncId as string))
         }
       }
-      set({
+      await deleteLegacyBookFiles(store, names)
+      const notesResult = await syncNotesFiles(store, names)
+      const [remote, usage] = await Promise.all([remoteBooks(names), store.usage()])
+      set((s) => ({
         upload: null,
         bookError: null,
-        remoteBooks: await remoteBooks(names),
-        usage: await store.usage(),
-      })
+        remoteBooks: remote,
+        usage,
+        revision: notesResult.applied > 0 ? s.revision + 1 : s.revision,
+      }))
+      if (notesResult.applied > 0) runner?.soon()
     } catch (err) {
       const outcome = outcomeOf(err)
       // Offline or signed out: the next run tries again; not a fault.

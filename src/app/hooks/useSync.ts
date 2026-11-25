@@ -1,11 +1,10 @@
 import { useEffect } from 'react'
-import { useFlag } from '@/lib/flags'
 import { useSyncStore } from '@/stores/sync-store'
 
-/** Sync with Google Drive while the app is open, with the `sync` flag on.
- * With it off nothing starts, so the app makes no network call. */
+/** Sync with Google Drive while the app is open. Until the user connects
+ * Drive in Settings nothing is sent or fetched: a sync run does nothing
+ * unless signed in. */
 export function useSync(): void {
-  const on = useFlag('sync')
   const start = useSyncStore((s) => s.start)
-  useEffect(() => (on ? start() : undefined), [on, start])
+  useEffect(() => start(), [start])
 }

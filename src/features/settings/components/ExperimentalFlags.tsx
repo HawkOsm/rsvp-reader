@@ -3,19 +3,14 @@ import { Switch } from '@/components/Switch'
 import { flags, FLAGS, type Flag } from '@/lib/flags'
 import { Row } from './SettingsControls'
 
-/** Settings → Experimental: unfinished features, switched on for this device
- * only. */
+/** A switch in Settings → Advanced for each unfinished feature, on for this
+ * device only. Nothing while there are none. */
 export function ExperimentalFlags() {
   const enabled = useSyncExternalStore(flags.subscribe, flags.snapshot)
   const all = Object.entries(FLAGS) as [Flag, { description: string }][]
 
-  if (all.length === 0) {
-    return (
-      <Row title="Experimental features" hint="Unfinished features you can try on this device.">
-        <span className="text-[13px] text-text-dim">None right now</span>
-      </Row>
-    )
-  }
+  // No unfinished feature to offer: nothing to show.
+  if (all.length === 0) return null
   return (
     <>
       {all.map(([flag, info]) => (

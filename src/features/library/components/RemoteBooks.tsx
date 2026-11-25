@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { logError } from '@/lib/error-log'
-import { useFlag } from '@/lib/flags'
 import { useSyncStore } from '@/stores/sync-store'
 
 const BUTTON =
@@ -10,13 +9,12 @@ const BUTTON =
 /** Books on the user's other devices and not on this one, with sync on:
  * downloaded from Google Drive when asked, then opened. */
 export function RemoteBooks() {
-  const sync = useFlag('sync')
   const books = useSyncStore((s) => s.remoteBooks)
   const download = useSyncStore((s) => s.downloadBook)
   const navigate = useNavigate()
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  if (!sync || books.length === 0) return null
+  if (books.length === 0) return null
 
   async function fetchBook(syncId: string) {
     setBusy(syncId)

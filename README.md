@@ -32,8 +32,11 @@ the old one and exactly what's unverified.
   into one scrolling page, current word highlighted; click any word to read on from it
 - **Library with resume** — IndexedDB-backed, remembers your place in every
   document and prompts to continue
-- **Fully local.** No account, no telemetry. Your files and reading
-  positions never leave the device.
+- **Local first.** No account, no telemetry. Your files and reading
+  positions stay on the device, unless you connect Google Drive in Settings
+  to sync them between your own devices. The folder it keeps there
+  ("RSVP Reader") is yours to read: your books under their titles, and each
+  book's notes as a Markdown file you can also edit.
 
 ## Where to get it
 

@@ -57,27 +57,86 @@ describe('DriveTransport', () => {
     expect(drive.requests.every((r) => !r.includes('spaces=drive'))).toBe(true)
   })
 
-  it('keeps everything in one visible folder, made once and found again', async () => {
+  it('keeps everything in one visible folder with Books, Notes and App data subfolders', async () => {
     const store = transport()
     await store.write('a.json', 'a')
-    expect(drive.folders.map((f) => f.name)).toEqual(['RSVP Reader'])
-    expect(drive.files.every((f) => f.parent === drive.folders[0]!.id)).toBe(true)
+    const root = drive.folderId('RSVP Reader')!
+    expect(drive.folders.map((f) => f.name)).toEqual(['RSVP Reader', 'Books', 'Notes', 'App data'])
+    expect(drive.folders.slice(1).every((f) => f.parent === root)).toBe(true)
+    const appData = drive.folderId('App data', root)!
+    expect(drive.files.every((f) => f.parent === appData)).toBe(true)
 
-    // Another device, and this one again later, use the same folder.
+    // Another device, and this one again later, use the same folder and subfolders.
     await transport().write('b.json', 'b')
     await store.list()
-    expect(drive.folders).toHaveLength(1)
+    expect(drive.folders).toHaveLength(4)
     // The hidden app folder is never asked for.
     expect(drive.requests.some((r) => r.includes('appDataFolder') || r.includes('spaces='))).toBe(
       false,
     )
   })
 
-  it('settles on the older folder if two devices each made one', async () => {
-    drive.folders.push({ id: 'older', name: 'RSVP Reader' }, { id: 'newer', name: 'RSVP Reader' })
+  it('settles on the older folder and older subfolder if two devices each made one', async () => {
+    drive.folders.push(
+      { id: 'older', name: 'RSVP Reader' },
+      { id: 'newer', name: 'RSVP Reader' },
+      { id: 'books-old', name: 'Books', parent: 'older' },
+      { id: 'books-new', name: 'Books', parent: 'older' },
+    )
     const store = transport()
     await store.write('a.json', 'a')
-    expect(drive.files[0]!.parent).toBe('older')
+    await store.write('Books/Novel.epub', 'bytes')
+    const appData = drive.folderId('App data', 'older')!
+    expect(drive.files.find((f) => f.name === 'a.json')?.parent).toBe(appData)
+    expect(drive.files.find((f) => f.name === 'Novel.epub')?.parent).toBe('books-old')
+  })
+
+  it('routes Books/ and Notes/ prefixes to their subfolders and returns prefixed names', async () => {
+    const store = transport()
+    await store.write('Books/Pride and Prejudice.epub', new Blob(['epub']))
+    await store.write('Notes/Highlights.md', '# Notes')
+    await store.write('meta.json', '{"formatVersion":3}')
+
+    const root = drive.folderId('RSVP Reader')!
+    const books = drive.folderId('Books', root)!
+    const notes = drive.folderId('Notes', root)!
+    const appData = drive.folderId('App data', root)!
+    expect(drive.files.find((f) => f.parent === books)?.name).toBe('Pride and Prejudice.epub')
+    expect(drive.files.find((f) => f.parent === notes)?.name).toBe('Highlights.md')
+    expect(drive.files.find((f) => f.parent === appData)?.name).toBe('meta.json')
+
+    const reader = transport()
+    expect((await reader.list()).sort()).toEqual([
+      'Books/Pride and Prejudice.epub',
+      'Notes/Highlights.md',
+      'meta.json',
+    ])
+    expect(await (await reader.readBlob('Books/Pride and Prejudice.epub'))!.text()).toBe('epub')
+    expect(await reader.read('Notes/Highlights.md')).toBe('# Notes')
+    expect(await reader.read('meta.json')).toBe('{"formatVersion":3}')
+    expect(await reader.usage()).toEqual({ used: 4 + 7 + 19, free: null })
+  })
+
+  it('moves legacy root-level files into App data on list, unless App data already has that name', async () => {
+    drive.folders.push(
+      { id: 'root', name: 'RSVP Reader' },
+      { id: 'books', name: 'Books', parent: 'root' },
+      { id: 'notes', name: 'Notes', parent: 'root' },
+      { id: 'appdata', name: 'App data', parent: 'root' },
+    )
+    drive.files.push(
+      { id: 'legacy-meta', name: 'meta.json', data: '{"formatVersion":2}', parent: 'root' },
+      { id: 'legacy-dup', name: 'device-a.json', data: 'old', parent: 'root' },
+      { id: 'new-dup', name: 'device-a.json', data: 'new', parent: 'appdata' },
+    )
+
+    const store = transport()
+    const listed = (await store.list()).sort()
+    expect(listed).toEqual(['device-a.json', 'meta.json'])
+    expect(drive.files.find((f) => f.id === 'legacy-meta')?.parent).toBe('appdata')
+    expect(drive.files.find((f) => f.id === 'legacy-dup')?.parent).toBe('root')
+    expect(await store.read('meta.json')).toBe('{"formatVersion":2}')
+    expect(await store.read('device-a.json')).toBe('new')
   })
 
   it('treats a file in the bin as gone, and starts a new folder if the folder is binned', async () => {
@@ -91,7 +150,7 @@ describe('DriveTransport', () => {
     const fresh = transport()
     expect(await fresh.list()).toEqual([])
     await fresh.write('c.json', 'c')
-    expect(drive.folders.filter((f) => !f.trashed)).toHaveLength(1)
+    expect(drive.folders.filter((f) => !f.trashed && !f.parent)).toHaveLength(1)
     expect(await transport().list()).toEqual(['c.json'])
   })
 
@@ -181,6 +240,32 @@ describe('DriveTransport', () => {
     expect(backoffDelay(3, 1)).toBe(4000)
     expect(backoffDelay(20, 1)).toBe(32_000)
     expect(backoffDelay(5, 0)).toBe(0)
+  })
+
+  it('tracks file versions from list, clears them on write, and detects remote changes', async () => {
+    const store = transport()
+    await store.write('Notes/Dark.md', 'first')
+    expect(store.versionOf('Notes/Dark.md')).toBeUndefined()
+
+    await store.list()
+    const v1 = store.versionOf('Notes/Dark.md')
+    expect(v1).toEqual(expect.any(String))
+
+    // Another device modifies the file on Drive.
+    await transport().write('Notes/Dark.md', 'second')
+    await store.list()
+    const v2 = store.versionOf('Notes/Dark.md')
+    expect(v2).toEqual(expect.any(String))
+    expect(v2).not.toBe(v1)
+
+    // Writing locally forgets the cached version until the next list.
+    await store.write('Notes/Dark.md', 'third')
+    expect(store.versionOf('Notes/Dark.md')).toBeUndefined()
+    await store.list()
+    expect(store.versionOf('Notes/Dark.md')).toEqual(expect.any(String))
+
+    await store.delete('Notes/Dark.md')
+    expect(store.versionOf('Notes/Dark.md')).toBeUndefined()
   })
 })
 

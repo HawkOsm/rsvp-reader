@@ -1290,3 +1290,44 @@ service before anything is built on it.
 
 **Rejected:** native Android sign-in with a keystore fingerprint, which would have kept the
 hidden folder (see the entry above).
+
+## 2026-11-25: Sync and notes are on for everyone; the Experimental setting is gone
+
+**Decision:** the `sync` and `notes` flags are deleted, with their `if`s, and Settings no longer
+has an Experimental row. The owner's reason: the whole app is still experimental, so hiding two
+parts of it behind a switch only made them hard to find. The flag mechanism stays
+(`src/lib/flags.ts`); a switch appears in Settings → Advanced again whenever a flag exists.
+
+**What keeps the "no network call" rule true:** sync starts with the app, but a run does
+nothing unless the user is signed in to Google, and Google's sign-in script is fetched only by
+the Connect button. A device that connected before renews its sign-in when the app opens.
+
+**Costs accepted:** sync has run against real Drive from the web and the desktop but not yet
+from a phone, and snapshots and purging only against fakes (docs/TODO.md); they are now in
+front of every user.
+
+## 2026-11-25: the Drive folder is for people too: Books, Notes, App data
+
+**Decision:** the visible folder is laid out to be read. Books are stored under their titles
+in `Books/`, each book's notes as a Markdown file in `Notes/` that the app also reads back,
+and sync's own files in `App data/`. The owner's reason: a visible folder full of
+`bookfile-<hash>` told them nothing, which defeated the point of making it visible.
+
+**How:** `Transport` keeps flat names; a `Books/` or `Notes/` prefix is a subfolder only to
+`DriveTransport`. Sync format 3. Every imported book now keeps its original file (it took
+EPUBs and text files only as their words before), which costs storage on each device.
+
+**Notes files, what was chosen and why:**
+
+- The file is a second door, not the truth: notes still sync as registers, and an edit made
+  in the file becomes an ordinary note edit.
+- Removing a section from the file deletes nothing. A file is easy to damage by hand, and a
+  lost note is worse than one that has to be deleted in the app.
+- When a note changed both in the app and in the file, the file wins, as the later of two
+  deliberate acts by the same person. No conflict is raised.
+
+**Costs accepted:** each device uploads its books once more; older versions stop syncing;
+none of this has run against real Drive yet (docs/TODO.md).
+
+**Rejected:** keeping one flat folder with readable names (sync's files would still clutter
+it); a write-only notes file (the owner asked for edits to be read back).

@@ -2,13 +2,13 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSync } from '@/app/hooks/useSync'
 import { readErrorLog } from '@/lib/error-log'
-import { flags } from '@/lib/flags'
 import { readSyncRuns } from '@/lib/sync-runs'
 import type { SyncAuth, SyncAuthState } from '@/platform'
 import { NeedsReconnectError } from '@/sync/drive'
 import { MemoryTransport } from '@/sync/transport'
 import { makeToken } from '@/core/types'
-import { addBook, saveTokens } from '@/storage/library'
+import { addBook, removeBook, saveTokens } from '@/storage/library'
+import { addNote, notesOf } from '@/storage/notes'
 import { getDb } from '@/storage/schema'
 import { TEXT_BOOK } from '../storage/fixtures'
 
@@ -24,6 +24,7 @@ vi.mock('@/stores/api/sync', async (original) => ({
     delete: (name: string) => store.delete(name),
     readBlob: (name: string) => store.readBlob(name),
     usage: () => store.usage(),
+    versionOf: (name: string) => store.versionOf(name),
   }),
 }))
 
@@ -187,12 +188,17 @@ describe('book files', () => {
     await saveTokens(db, book.id as number, [makeToken('word')], `f-${syncId}`)
   }
 
-  it('uploads this device’s books after a sync, and says how much Drive holds', async () => {
-    await bookHere(`up-${Math.random()}`)
+  it('uploads this device’s books after a sync, cleans legacy files, and says how much Drive holds', async () => {
+    const syncId = `up-${Math.random()}`
+    await bookHere(syncId)
+    await store.write(`book-${syncId}.json.gz`, new Blob(['legacy-pkg']))
+    await store.write(`bookfile-${syncId}`, new Blob(['legacy-orig']))
     auth = fakeAuth('signed-in')
     stop = useSyncStore.getState().start()
     await vi.waitFor(() => expect(useSyncStore.getState().usage).not.toBeNull())
-    expect([...store.blobs.keys()].some((n) => n.startsWith('book-up-'))).toBe(true)
+    expect([...store.blobs.keys()].some((n) => n.startsWith('book2-up-'))).toBe(true)
+    expect(store.blobs.has(`book-${syncId}.json.gz`)).toBe(false)
+    expect(store.blobs.has(`bookfile-${syncId}`)).toBe(false)
     expect(useSyncStore.getState().upload).toBeNull()
     expect(useSyncStore.getState().usage!.used).toBeGreaterThan(0)
   })
@@ -203,22 +209,57 @@ describe('book files', () => {
     auth = fakeAuth('signed-in')
     stop = useSyncStore.getState().start()
     await vi.waitFor(() => expect(useSyncStore.getState().usage).not.toBeNull())
-    expect([...store.blobs.keys()].some((n) => n.startsWith('book-off-'))).toBe(false)
+    expect([...store.blobs.keys()].some((n) => n.startsWith('book2-off-'))).toBe(false)
     expect(localStorage.getItem('rsvp-reader:sync-book-files')).toBe('off')
     useSyncStore.getState().setBookFiles(true)
+  })
+
+  it('syncs notes files during booksTask even with book files off, and bumps revision when edits apply', async () => {
+    const db = getDb()
+    const syncId = `notes-${Math.random().toString(36).slice(2)}`
+    const book = await addBook(db, {
+      title: `NotesBook ${syncId}`,
+      source: 'local',
+      fingerprint: `f-${syncId}`,
+      syncId,
+      ...TEXT_BOOK,
+    })
+    const bookId = book.id as number
+    await saveTokens(db, bookId, [makeToken('hello'), makeToken('world')], `f-${syncId}`)
+    const noteId = await addNote(db, bookId, { wordIndex: 0, quote: 'hello world' }, 'Initial note')
+
+    try {
+      useSyncStore.getState().setBookFiles(false)
+      auth = fakeAuth('signed-in')
+      stop = useSyncStore.getState().start()
+      const fileName = `Notes/NotesBook ${syncId}.md`
+      await vi.waitFor(() => expect(store.files.has(fileName)).toBe(true))
+
+      const revBefore = useSyncStore.getState().revision
+      const current = (await store.read(fileName))!
+      await store.write(fileName, current.replace('Initial note', 'Edited remotely'))
+
+      await act(() => useSyncStore.getState().syncNow())
+      await vi.waitFor(() => expect(useSyncStore.getState().revision).toBeGreaterThan(revBefore))
+      expect((await notesOf(db, bookId)).find((n) => n.noteId === noteId)?.shown.body).toBe(
+        'Edited remotely',
+      )
+    } finally {
+      useSyncStore.getState().setBookFiles(true)
+      await removeBook(db, bookId)
+      await db.notesFiles.clear()
+    }
   })
 })
 
 describe('useSync', () => {
-  it('starts sync only with the sync flag on', () => {
-    const start = vi.fn(() => () => {})
+  it('starts sync with the app, and stops it when the app goes', () => {
+    const stop = vi.fn()
+    const start = vi.fn(() => stop)
     useSyncStore.setState({ start })
-    flags.setEnabled('sync', false)
-    const { rerender } = renderHook(() => useSync())
-    expect(start).not.toHaveBeenCalled()
-    act(() => flags.setEnabled('sync', true))
-    rerender()
+    const { unmount } = renderHook(() => useSync())
     expect(start).toHaveBeenCalledOnce()
-    flags.setEnabled('sync', false)
+    unmount()
+    expect(stop).toHaveBeenCalledOnce()
   })
 })

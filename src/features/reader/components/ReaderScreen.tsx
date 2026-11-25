@@ -34,7 +34,6 @@ import { useReaderKeyboardShortcuts } from '@/features/reader/hooks/useReaderKey
 import { useTouchControls } from '@/features/reader/hooks/useTouchControls'
 import { useWakeLock } from '@/features/reader/hooks/useWakeLock'
 import { useAppStore } from '@/stores/app-store'
-import { useFlag } from '@/lib/flags'
 import { HAS_KEYBOARD, useMediaQuery, WIDE } from '@/lib/media'
 
 /** A mouse this near the top edge brings the header back (Readest's 44). */
@@ -114,7 +113,6 @@ function ReaderBody({ book }: { book: BookRecord }) {
   const contentsBeside = wide && mode === 'book'
   const [contentsOpen, setContentsOpen] = useState(contentsBeside)
   const hasContents = book.chapters.length > 0
-  const notesOn = useFlag('notes')
   const [notesOpen, setNotesOpen] = useState(false)
   useEffect(() => setContentsOpen(contentsBeside), [contentsBeside])
   const keyboard = useMediaQuery(HAS_KEYBOARD)
@@ -215,9 +213,12 @@ function ReaderBody({ book }: { book: BookRecord }) {
         </button>
       )}
       {mode === 'rsvp' && (
-        <Button
-          className="flex items-center gap-1.5"
+        // An icon like the bookmark and notes beside it: its colour says
+        // whether the page is showing.
+        <button
+          type="button"
           aria-label={panelOpen && overlay ? 'Hide page' : 'Show page'}
+          aria-pressed={Boolean(panelOpen && overlay)}
           onClick={() => setPanelOpen(!panelOpen)}
           disabled={overlay === null}
           title={
@@ -225,26 +226,26 @@ function ReaderBody({ book }: { book: BookRecord }) {
               ? 'No room for the page without covering the word: use a smaller text size, or turn the screen upright'
               : 'Show the page you are on  (P)'
           }
-        >
-          <Icon name="page" size={16} />
-          <span>{panelOpen && overlay ? 'Page ‹' : 'Page ›'}</span>
-        </Button>
-      )}
-      <BookmarkButton bookId={bookId} />
-      {notesOn && (
-        <button
-          type="button"
-          aria-label="Notes"
-          aria-expanded={notesOpen}
-          title="Notes on this book"
-          onClick={() => setNotesOpen(!notesOpen)}
-          className={`flex h-9 w-9 items-center justify-center rounded-lg hover:bg-bg-hover ${
-            notesOpen ? 'text-text' : 'text-text-dim hover:text-text'
+          className={`flex h-9 w-9 items-center justify-center rounded-lg hover:bg-bg-hover disabled:opacity-40 ${
+            panelOpen && overlay ? 'text-text' : 'text-text-dim hover:text-text'
           }`}
         >
-          <Icon name="note" size={17} />
+          <Icon name="page" size={17} />
         </button>
       )}
+      <BookmarkButton bookId={bookId} />
+      <button
+        type="button"
+        aria-label="Notes"
+        aria-expanded={notesOpen}
+        title="Notes on this book"
+        onClick={() => setNotesOpen(!notesOpen)}
+        className={`flex h-9 w-9 items-center justify-center rounded-lg hover:bg-bg-hover ${
+          notesOpen ? 'text-text' : 'text-text-dim hover:text-text'
+        }`}
+      >
+        <Icon name="note" size={17} />
+      </button>
     </>
   )
 
@@ -328,7 +329,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
             </div>
           </div>
         )}
-        {notesOn && notesOpen && (
+        {notesOpen && (
           <div className="absolute inset-y-0 right-0 z-40 shadow-xl">
             <NotesPanel
               bookId={bookId}
