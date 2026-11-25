@@ -23,8 +23,8 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
 - [ ] **Verify the branding** (Google Auth Platform → Branding). Until then Google does not
       show the app's name and links on its sign-in screen; signing in works without it. It
       needs the domain proved in Google Search Console.
-- [ ] Deploy the web build after the privacy page merges (`deploy-app.yml`, by hand), so the
-      privacy link on the sign-in screen is not a 404.
+- [x] Deploy the web build (`deploy-app.yml`, by hand): done 2026-11-25, the first time this
+      app replaced the old one at that address. It is built with `--base=/rsvp-reader/`.
 - [x] **Add the PWA's real address**: `https://hawkosm.github.io` is in the Web client's
       authorized JavaScript origins, beside `http://localhost:5180` (2026-11-25).
 - [x] **Reset the Web client's secret**: the one that was shared is disabled, and a new one

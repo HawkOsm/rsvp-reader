@@ -30,7 +30,8 @@ jobs:
           node-version: 22 # @capacitor/cli 8 requires >= 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build
+      # GitHub Pages serves the site under /rsvp-reader/, not at the root.
+      - run: pnpm build --base=/rsvp-reader/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v5
         with:
