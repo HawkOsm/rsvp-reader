@@ -87,7 +87,8 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
 
 ## Notes
 
-- [ ] Save as .md on the desktop (needs Tauri's dialog plugin); it has Copy only.
+- [x] Save as .md on the desktop, through a save dialog (Tauri's dialog plugin, 2026-11-25).
+      Compiled and tested against stand-ins, not yet seen in the app.
 - [ ] Notes on a range of words, not only one word.
 - [x] Remove the `notes` flag (2026-11-25).
 

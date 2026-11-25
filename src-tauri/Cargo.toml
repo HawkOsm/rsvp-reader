@@ -28,3 +28,4 @@ tauri-plugin-window-state = "2.5.0"
 tauri-plugin-opener = "2"
 ureq = "3"
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
+tauri-plugin-dialog = "2"

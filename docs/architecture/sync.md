@@ -672,7 +672,7 @@ Where the code differs from the design above, and why.
 - **Markdown export** (`notes-markdown.ts`, section 9): the place (page, or word and percent),
   the passage as a quote, the note, and every version of an unsettled conflict. Copy as
   Markdown everywhere; Save as .md where the platform can save a file (`Platform.savesFiles`:
-  the web only for now; desktop would need Tauri's dialog plugin).
+  the web as a download, the desktop through a save dialog; not Android yet).
 
 Not built: book files have no per-book "don't sync this" switch, and no Wi-Fi-only option on
 Android.
