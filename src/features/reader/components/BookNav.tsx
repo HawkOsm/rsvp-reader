@@ -3,9 +3,11 @@ import type { ContentLayout } from '@/core/types'
 import type { BookChapter } from '@/features/reader/api/book'
 import {
   firstIndexAt,
+  goToPage,
   pageLabel,
   pageOfToken,
   perSpread,
+  spreadHasText,
   spreadStart,
   turn,
 } from '@/features/reader/book-nav'
@@ -46,7 +48,8 @@ export function BookNav({ layout, chapters, jumps, open, onOpen }: BookNavProps)
   const rootRef = useRef<HTMLDivElement>(null)
   const paged = layout.kind === 'paged'
   const pageCount = paged ? layout.pages : 0
-  const page = spreadStart(pageOfToken(engine.tokens[index]), spread)
+  const blankPage = useAppStore((s) => s.blankPage)
+  const page = spreadStart(blankPage ?? pageOfToken(engine.tokens[index]), spread)
   const last = Math.max(1, engine.count - 1)
   const percent = Math.round((index / last) * 100)
   const chapter = chapters[chapterAt(chapters, index)]
@@ -175,7 +178,11 @@ function JumpPanel({
     if (typed.trim() === '' || !Number.isFinite(number)) return
     if (paged) {
       const target = Math.max(1, Math.min(pageCount, Math.round(number))) - 1
-      jumps.to(firstIndexAt(engine.tokens, target, spread))
+      // A page with no words has no place to jump to: it is only shown.
+      if (spreadHasText(engine.tokens, spreadStart(target, spread), spread)) {
+        useAppStore.getState().setBlankPage(null)
+        jumps.to(firstIndexAt(engine.tokens, target, spread))
+      } else goToPage(engine, pageCount, spread, target)
     } else {
       jumps.to(Math.round((Math.max(0, Math.min(100, number)) / 100) * last))
     }

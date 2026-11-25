@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { PDF, addBook, collectErrors } from './helpers.ts'
+import { PDF, addBook, collectErrors, wordNumber } from './helpers.ts'
 
 // The reader's fragile spots (docs/architecture/reader.md): the page overlay,
 // book-mode fitting, and the PDF engine dying under an open book. Run on the
@@ -282,5 +282,40 @@ test('zooming with Ctrl and the wheel keeps the spot under the pointer in place'
     .toBe(true)
   const after = await box()
   expect(Math.abs(after.top + share * after.height - at.y)).toBeLessThan(3)
+  expect(errors).toEqual([])
+})
+
+// A page with nothing to read on it can still be looked at: it is shown
+// without moving the reader's place, which has no word there to be on.
+test('a page with no words can be turned to and away from', async ({ page }) => {
+  desktopOnly()
+  const errors = collectErrors(page)
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/')
+  await addBook(page, 'tests/fixtures/blank-middle-page.pdf')
+  const place = await wordNumber(page)
+  await page.keyboard.press('b')
+  await page.keyboard.press('d') // one page at a time
+  const label = page.getByTestId('book-page-label')
+  await expect(label).toHaveText('page 1 / 3')
+  const canvas = page.locator('#book-scroll canvas').first()
+  await expect(canvas).toBeVisible({ timeout: 20_000 })
+
+  await page.keyboard.press('PageDown')
+  await expect(label).toHaveText('page 2 / 3')
+  // The blank page is drawn, with no word marked on it.
+  await expect.poll(() => canvas.evaluate((c) => (c as { width: number }).width)).toBeGreaterThan(0)
+  await page.keyboard.press('PageDown')
+  await expect(label).toHaveText('page 3 / 3')
+  await page.keyboard.press('PageUp')
+  await expect(label).toHaveText('page 2 / 3')
+  await page.keyboard.press('PageUp')
+  await expect(label).toHaveText('page 1 / 3')
+
+  // Back in RSVP from the blank page, the place is where it was.
+  await page.keyboard.press('PageDown')
+  await expect(label).toHaveText('page 2 / 3')
+  await page.keyboard.press('b')
+  expect(await wordNumber(page)).toBe(place)
   expect(errors).toEqual([])
 })

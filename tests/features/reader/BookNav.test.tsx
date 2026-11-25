@@ -51,6 +51,7 @@ beforeEach(() => {
     bookScale: 0.5,
     bookFits: { page: 0.4, width: 0.6 },
     bookFit: null,
+    blankPage: null,
   })
 })
 afterEach(() => vi.unstubAllGlobals())
@@ -86,6 +87,23 @@ describe('BookNav', () => {
     const engine = renderNav()
     await user.type(screen.getByRole('textbox', { name: 'Page number' }), '99{Enter}')
     expect(engine.index).toBe(30) // the last page
+  })
+
+  it('shows a page with no words when asked for it, and leaves the place where it was', async () => {
+    const user = userEvent.setup()
+    // A fifth page, with nothing on it to read.
+    const engine = renderNav({ ...PAGED, pages: 5 }, false)
+    act(() => engine.seek(12))
+    await user.click(screen.getByTestId('book-status'))
+    await user.type(screen.getByRole('textbox', { name: 'Page number' }), '5{Enter}')
+    expect(screen.getByTestId('book-page-label')).toHaveTextContent('page 5 / 5')
+    expect(engine.index).toBe(12)
+    expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'Previous page' }))
+    expect(screen.getByTestId('book-page-label')).toHaveTextContent('page 4 / 5')
+    expect(engine.index).toBe(30)
+    expect(useAppStore.getState().blankPage).toBeNull()
   })
 
   it('steps by chapter: first back to the start of this one', async () => {

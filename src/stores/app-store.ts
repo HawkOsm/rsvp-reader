@@ -55,6 +55,11 @@ interface AppState extends Settings {
    * `consumeArriveAtBottom`, when the spread changes, and applies it after
    * the new pages have laid out. */
   arriveAtBottom: boolean
+  /** A page with no words (blank, or one whole picture) being shown in a
+   * paged book, or `null`. The page shown is otherwise the current word's,
+   * and no word is on this one, so it is kept apart from the reader's
+   * place, which stays where it was. Not saved. */
+  blankPage: number | null
 
   loadSettings: () => Promise<void>
   setTheme: (theme: ThemeMode) => void
@@ -74,6 +79,7 @@ interface AppState extends Settings {
   fitBook: () => void
   setMode: (mode: ReadingMode) => void
   setArriveAtBottom: (value: boolean) => void
+  setBlankPage: (page: number | null) => void
   consumeArriveAtBottom: () => boolean
 }
 
@@ -103,6 +109,7 @@ export const useAppStore = create<AppState>((set, get) => {
     pendingFit: fitFor(DEFAULT_SETTINGS.bookLayout),
     bookFit: null,
     arriveAtBottom: false,
+    blankPage: null,
 
     loadSettings: async () => {
       const keys = Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]
@@ -176,6 +183,9 @@ export const useAppStore = create<AppState>((set, get) => {
     // whoever subscribes without a selector, and page turns are frequent.
     setArriveAtBottom: (arriveAtBottom) => {
       if (get().arriveAtBottom !== arriveAtBottom) set({ arriveAtBottom })
+    },
+    setBlankPage: (blankPage) => {
+      if (get().blankPage !== blankPage) set({ blankPage })
     },
     consumeArriveAtBottom: () => {
       const { arriveAtBottom, setArriveAtBottom } = get()

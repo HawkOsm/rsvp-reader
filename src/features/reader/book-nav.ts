@@ -1,10 +1,13 @@
 import type { Engine } from '@/core/engine'
 import type { Token } from '@/core/types'
 import { type PageSpread } from '@/lib/book-layout'
+import { useAppStore } from '@/stores/app-store'
 
 // Ported from ui/book_view.py's paging logic. A page is a range of token
 // indices, so the RSVP position and the book position are the same number
-// and switching modes keeps the reader's place.
+// and switching modes keeps the reader's place. The one page that is not a
+// range of words is one with none (blank, or a whole picture): while it is
+// shown, the store's `blankPage` says so and the place stays where it was.
 
 export function perSpread(spread: PageSpread): number {
   return spread === 'spread' ? 2 : 1
@@ -89,7 +92,22 @@ export function wordAt(tokens: Token[], page: number, x: number, y: number): num
   return best
 }
 
-/** Seek to the spread containing `page`. No-op if it is already showing. */
+/** Whether any page of the spread starting at `page` has words. */
+export function spreadHasText(tokens: Token[], page: number, spread: PageSpread): boolean {
+  const { first } = pageIndexOf(tokens)
+  for (let p = page; p < page + perSpread(spread); p++) if (first.has(p)) return true
+  return false
+}
+
+/** The left-hand page of the spread on screen: the current word's, unless a
+ * page with no words is being shown instead. */
+export function shownStart(engine: Engine, spread: PageSpread): number {
+  const { blankPage } = useAppStore.getState()
+  return spreadStart(blankPage ?? pageOfToken(engine.tokens[engine.index]), spread)
+}
+
+/** Show the spread containing `page`: seek to its first word, or, if it has
+ * no words, show it and leave the reader's place where it is. */
 export function goToPage(
   engine: Engine,
   pageCount: number,
@@ -98,32 +116,18 @@ export function goToPage(
 ): void {
   if (pageCount <= 0) return
   const target = spreadStart(Math.max(0, Math.min(page, pageCount - 1)), spread)
+  const { setBlankPage } = useAppStore.getState()
+  if (!spreadHasText(engine.tokens, target, spread)) return setBlankPage(target)
+  setBlankPage(null)
   const current = spreadStart(pageOfToken(engine.tokens[engine.index]), spread)
   if (target === current) return
   engine.seek(firstIndexAt(engine.tokens, target, spread))
 }
 
-/** Whether any page of the spread starting at `page` has words. */
-function spreadHasText(tokens: Token[], page: number, spread: PageSpread): boolean {
-  const { first } = pageIndexOf(tokens)
-  for (let p = page; p < page + perSpread(spread); p++) if (first.has(p)) return true
-  return false
-}
-
-/** Flip to the next or previous spread. The page shown is the current
- * word's, so a spread with no words (a blank page, a full-page picture)
- * can't be stopped on: the turn carries on, the same way, to the next spread
- * that has some. (It once went to the nearest page with words, which from
- * the page before a blank one was that same page: Next did nothing.) */
+/** Flip to the next or previous spread, from the one on screen. */
 export function turn(engine: Engine, pageCount: number, spread: PageSpread, delta: number): void {
   if (delta === 0) return
-  const per = perSpread(spread)
-  const current = spreadStart(pageOfToken(engine.tokens[engine.index]), spread)
-  let target = current + delta * per
-  while (target >= 0 && target < pageCount && !spreadHasText(engine.tokens, target, spread)) {
-    target += Math.sign(delta) * per
-  }
-  // The end of the book, or nothing but empty pages that way: stay.
+  const target = shownStart(engine, spread) + delta * perSpread(spread)
   if (target < 0 || target >= pageCount) return
   goToPage(engine, pageCount, spread, target)
 }

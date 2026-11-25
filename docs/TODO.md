@@ -83,8 +83,8 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
 - [ ] From a review on 2026-11-24, read but not acted on: going back to a taller page can land
       short of its bottom; the PDF worker is not restarted after an error inside MuPDF itself
       (unconfirmed).
-- [ ] A page with no words (a full-page picture) is skipped, since the page shown is the
-      current word's. Showing it needs a page position of its own.
+- [x] A page with no words (a full-page picture) can be turned to: it is shown apart from
+      the reader's place (`blankPage`, 2026-11-25).
 
 ## Notes
 

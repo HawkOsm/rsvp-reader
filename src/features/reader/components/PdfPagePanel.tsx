@@ -84,7 +84,12 @@ export function PdfPagePanel({
 
   const token = engine.tokens[index]
   const tokenPage = pageOfToken(token)
-  const start = spreadStart(tokenPage, layout)
+  // A page with no words is shown apart from the reader's place; any move
+  // of the place puts it away.
+  const blankPage = useAppStore((s) => s.blankPage)
+  const setBlankPage = useAppStore((s) => s.setBlankPage)
+  useEffect(() => setBlankPage(null), [index, setBlankPage])
+  const start = spreadStart(blankPage ?? tokenPage, layout)
   const count = doc?.pageCount ?? 0
   const pages = useMemo(() => {
     const list: number[] = []
@@ -284,7 +289,7 @@ export function PdfPagePanel({
           >
             ‹
           </Button>
-          <span>{pageLabel(tokenPage, count, layout)}</span>
+          <span>{pageLabel(start, count, layout)}</span>
           <Button
             aria-label="Next page"
             disabled={start + perSpread(layout) >= count}

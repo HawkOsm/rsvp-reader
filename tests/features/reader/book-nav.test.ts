@@ -1,15 +1,17 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { createEngine } from '@/core/engine'
 import { makeToken } from '@/core/types'
 import {
   firstIndexAt,
   goToPage,
   pageLabel,
+  shownStart,
   spreadStart,
   turn,
   wordAt,
 } from '@/features/reader/book-nav'
 import { clampScale, fitScales } from '@/lib/book-layout'
+import { useAppStore } from '@/stores/app-store'
 
 /** Two words on each of pages 0,1,2,4 — page 3 has no text (a blank page). */
 function tokens() {
@@ -44,18 +46,43 @@ describe('firstIndexAt', () => {
 })
 
 describe('turn / goToPage', () => {
-  it('turns past a page with no words, either way, and stays when only such pages are left', () => {
+  beforeEach(() => useAppStore.setState({ blankPage: null }))
+
+  it('stops on a page with no words, showing it without moving the reader’s place', () => {
+    const shown = () => useAppStore.getState().blankPage
     const engine = createEngine(tokens())
     engine.seek(4) // page 2; page 3 is blank
     turn(engine, 5, 'single', 1)
-    expect(engine.index).toBe(6) // page 4, not page 2 again
+    expect([engine.index, shown()]).toEqual([4, 3])
+    turn(engine, 5, 'single', 1)
+    expect([engine.index, shown()]).toEqual([6, null]) // page 4
     turn(engine, 5, 'single', -1)
-    expect(engine.index).toBe(4)
+    expect([engine.index, shown()]).toEqual([6, 3])
+    turn(engine, 5, 'single', -1)
+    expect([engine.index, shown()]).toEqual([4, null])
 
-    // A book ending in blank pages: Next on the last page with words stays.
+    // Back from the blank page to the page the place is on: nothing to
+    // seek, but the blank page is put away.
+    turn(engine, 5, 'single', 1)
+    turn(engine, 5, 'single', -1)
+    expect([engine.index, shown()]).toEqual([4, null])
+
+    // A book ending in blank pages: they can be turned to, and no further.
     engine.seek(6)
-    turn(engine, 7, 'single', 1)
-    expect(engine.index).toBe(6)
+    turn(engine, 6, 'single', 1)
+    expect([engine.index, shown()]).toEqual([6, 5])
+    turn(engine, 6, 'single', 1)
+    expect([engine.index, shown()]).toEqual([6, 5])
+  })
+
+  it('goes to a page with no words when asked for it by number', () => {
+    const engine = createEngine(tokens())
+    goToPage(engine, 5, 'single', 3)
+    expect([engine.index, useAppStore.getState().blankPage]).toEqual([0, 3])
+    expect(shownStart(engine, 'single')).toBe(3)
+    // In a spread it sits beside page 2, which has words.
+    goToPage(engine, 5, 'spread', 3)
+    expect([engine.index, useAppStore.getState().blankPage]).toEqual([4, null])
   })
 
   it('turns a single page forward and back by moving the engine to its first word', () => {

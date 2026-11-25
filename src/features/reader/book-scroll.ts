@@ -1,5 +1,5 @@
 import type { Engine } from '@/core/engine'
-import { turn } from '@/features/reader/book-nav'
+import { shownStart, turn } from '@/features/reader/book-nav'
 import { type PageSpread } from '@/lib/book-layout'
 import { useAppStore } from '@/stores/app-store'
 
@@ -36,9 +36,9 @@ export function scrollOrTurn(
       return true
     }
   }
-  const before = engine.index
+  const before = shownStart(engine, spread)
   turn(engine, pageCount, spread, delta)
-  useAppStore.getState().setArriveAtBottom(delta < 0 && engine.index !== before)
+  useAppStore.getState().setArriveAtBottom(delta < 0 && shownStart(engine, spread) !== before)
   return false
 }
 
