@@ -66,3 +66,36 @@ export function pinchRatio(
   // than `max` stays as it is; it is not snapped to the limit.
   return Math.max(Math.min(1, min / scale), Math.min(Math.max(1, max / scale), ratio))
 }
+
+/** The spot a zoom is made about: where the fingers (or the pointer) are. */
+export interface ZoomHold {
+  /** The spot on the screen. */
+  x: number
+  y: number
+  /** The same spot as a share of the page(s), across and down. */
+  fx: number
+  fy: number
+}
+
+interface Rect {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+/** The spot at (x, y) on the screen, over page(s) drawn in `sheet`. A spot
+ * beside the page is held at its nearest edge. */
+export function zoomHold(sheet: Rect, x: number, y: number): ZoomHold {
+  const share = (at: number, size: number) => (size > 0 ? Math.max(0, Math.min(1, at / size)) : 0.5)
+  return { x, y, fx: share(x - sheet.left, sheet.width), fy: share(y - sheet.top, sheet.height) }
+}
+
+/** How far to scroll, now the page(s) are drawn in `sheet`, to bring the held
+ * spot back to where it was on the screen. */
+export function holdShift(sheet: Rect, hold: ZoomHold): { left: number; top: number } {
+  return {
+    left: sheet.left + hold.fx * sheet.width - hold.x,
+    top: sheet.top + hold.fy * sheet.height - hold.y,
+  }
+}

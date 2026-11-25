@@ -34,6 +34,14 @@ function browserStorage(): Storage | null {
   }
 }
 
+function tabStorage(): Storage | null {
+  try {
+    return typeof sessionStorage === 'undefined' ? null : sessionStorage
+  } catch {
+    return null
+  }
+}
+
 /** The Google OAuth client (type "Web application") sync signs in with. A
  * client ID is a public identifier and belongs in the build; a client secret
  * never does. `VITE_GOOGLE_CLIENT_ID` in `.env.local` overrides it for local
@@ -62,10 +70,12 @@ export const webPlatform: Platform = {
   keepScreenOn: requestWakeLock,
   savesFiles: true,
   saveTextFile: downloadText,
+  toggleFullScreen: null, // F11 is the browser's own
   // A build without a client ID still shows Connect, and says why it can't.
   syncAuth: createGoogleAuth({
     clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID,
     loadGis: loadGisScript,
     storage: browserStorage(),
+    session: tabStorage(),
   }),
 }

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { PDF, addBook, collectErrors } from './helpers.ts'
+import { PDF, addBook, collectErrors, wordNumber } from './helpers.ts'
 
 // The reader's fragile spots (docs/architecture/reader.md): the page overlay,
 // book-mode fitting, and the PDF engine dying under an open book. Run on the
@@ -230,5 +230,129 @@ test('book mode on a desktop hides the header, shows it at the top edge, and tur
   await page.keyboard.press('Alt+ArrowLeft')
   await expect(label).toHaveText(/^page 2 \//)
 
+  expect(errors).toEqual([])
+})
+
+// A zoom is made about the pointer: what was under it stays under it.
+test('zooming with Ctrl and the wheel keeps the spot under the pointer in place', async ({
+  page,
+}) => {
+  desktopOnly()
+  const errors = collectErrors(page)
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/')
+  await addBook(page, PDF)
+  await page.keyboard.press('b')
+  const scroller = page.locator('#book-scroll')
+  await expect(scroller.locator('canvas').first()).toBeVisible({ timeout: 20_000 })
+  await page.keyboard.press('d') // one page: it is the sheet
+  const sheet = scroller.locator('> div')
+  const box = () =>
+    sheet.evaluate((el) => {
+      const { top, height } = el.getBoundingClientRect()
+      const { style } = el as unknown as { style: { transform: string } }
+      return { top, height, stretched: style.transform !== '' }
+    })
+  // Wait for the page to stop changing size.
+  let before = await box()
+  await expect
+    .poll(async () => {
+      const last = before
+      before = await box()
+      return before.height > 300 && before.height === last.height
+    })
+    .toBe(true)
+
+  const at = { x: 640, y: 560 }
+  const share = (at.y - before.top) / before.height
+  expect(share).toBeGreaterThan(0.3)
+  expect(share).toBeLessThan(1)
+  await page.mouse.move(at.x, at.y)
+  await page.keyboard.down('Control')
+  for (let notch = 0; notch < 4; notch++) await page.mouse.wheel(0, -100)
+  await page.keyboard.up('Control')
+
+  // Drawn bigger, the stretch taken off, and the same part of the page is
+  // still under the pointer.
+  await expect
+    .poll(async () => {
+      const now = await box()
+      return !now.stretched && now.height > before.height * 1.3
+    })
+    .toBe(true)
+  const after = await box()
+  expect(Math.abs(after.top + share * after.height - at.y)).toBeLessThan(3)
+  expect(errors).toEqual([])
+})
+
+// A page with nothing to read on it can still be looked at: it is shown
+// without moving the reader's place, which has no word there to be on.
+test('a page with no words can be turned to and away from', async ({ page }) => {
+  desktopOnly()
+  const errors = collectErrors(page)
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/')
+  await addBook(page, 'tests/fixtures/blank-middle-page.pdf')
+  const place = await wordNumber(page)
+  await page.keyboard.press('b')
+  await page.keyboard.press('d') // one page at a time
+  const label = page.getByTestId('book-page-label')
+  await expect(label).toHaveText('page 1 / 3')
+  const canvas = page.locator('#book-scroll canvas').first()
+  await expect(canvas).toBeVisible({ timeout: 20_000 })
+
+  await page.keyboard.press('PageDown')
+  await expect(label).toHaveText('page 2 / 3')
+  // The blank page is drawn, with no word marked on it.
+  await expect.poll(() => canvas.evaluate((c) => (c as { width: number }).width)).toBeGreaterThan(0)
+  await page.keyboard.press('PageDown')
+  await expect(label).toHaveText('page 3 / 3')
+  await page.keyboard.press('PageUp')
+  await expect(label).toHaveText('page 2 / 3')
+  await page.keyboard.press('PageUp')
+  await expect(label).toHaveText('page 1 / 3')
+
+  // Back in RSVP from the blank page, the place is where it was.
+  await page.keyboard.press('PageDown')
+  await expect(label).toHaveText('page 2 / 3')
+  await page.keyboard.press('b')
+  expect(await wordNumber(page)).toBe(place)
+  expect(errors).toEqual([])
+})
+
+// Turning back lands at the bottom of the page before, where the reader was
+// heading, even when that page has to be drawn at another size to fit.
+test('turning back to a taller page of another width lands at its bottom', async ({ page }) => {
+  desktopOnly()
+  const errors = collectErrors(page)
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/')
+  await addBook(page, 'tests/fixtures/mixed-page-sizes.pdf')
+  await page.keyboard.press('b')
+  await page.keyboard.press('d') // one page at a time
+  const scroller = page.locator('#book-scroll')
+  const label = page.getByTestId('book-page-label')
+  await expect(scroller.locator('canvas').first()).toBeVisible({ timeout: 20_000 })
+  const left = () => scroller.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop)
+  const tall = () => scroller.evaluate((el) => el.scrollHeight - el.clientHeight)
+
+  // Fit the width: the first page is then far taller than the window.
+  await page.keyboard.press('f')
+  await expect
+    .poll(async () => {
+      const room = await tall()
+      if (room < 1000) await page.keyboard.press('f')
+      return room
+    })
+    .toBeGreaterThan(1000)
+
+  await page.keyboard.press('PageDown')
+  await expect(label).toHaveText('page 2 / 2')
+  await expect.poll(tall).toBeLessThan(1000) // drawn to its own width
+  await page.keyboard.press('ArrowUp')
+  await expect(label).toHaveText('page 1 / 2')
+  await expect.poll(tall).toBeGreaterThan(1000)
+  await page.waitForTimeout(300)
+  expect(await left()).toBeLessThanOrEqual(1)
   expect(errors).toEqual([])
 })

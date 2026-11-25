@@ -26,7 +26,7 @@ export async function syncIdOf(
   return sha256(new TextEncoder().encode(text))
 }
 
-async function sha256(data: ArrayBuffer | Uint8Array): Promise<string> {
+export async function sha256(data: ArrayBuffer | Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', data as BufferSource)
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }

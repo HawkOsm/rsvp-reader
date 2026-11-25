@@ -1,15 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { pageLabel, pageOfToken, perSpread, spreadStart, turn } from '@/features/reader/book-nav'
 import {
   GUTTER,
   MARGIN,
   MAX_SCALE,
+  clampScale,
   fitScales,
   type PageSpread,
   type FitScales,
 } from '@/lib/book-layout'
 import { useBookGestures, type BookGestures } from '@/features/reader/hooks/useBookGestures'
-import { pinchRatio } from '@/features/reader/book-gestures'
+import { holdShift, pinchRatio, zoomHold, type ZoomHold } from '@/features/reader/book-gestures'
 import { BOOK_SCROLL_ID, scrollOrTurn } from '@/features/reader/book-scroll'
 import { WHEEL_AT_REST, WHEEL_REST_MS, wheelPixels, wheelTurn } from '@/features/reader/wheel-turn'
 import { useEngine, useEngineIndex } from '@/features/reader/engine-context'
@@ -70,10 +71,25 @@ export function PdfPagePanel({
   // pass after mount, so watch it rather than read it once.
   const box = useElementSize(scrollRef)
   const pendingBottom = useRef(false)
+  /** The spot a zoom still being drawn is held at, and the count of drawn
+   * pages at which it is done. */
+  const held = useRef<{ about: ZoomHold; until: number } | null>(null)
+  const readyRef = useRef(0)
+  readyRef.current = ready
+  const unstretch = useCallback(() => {
+    if (!pagesRef.current) return
+    pagesRef.current.style.transform = ''
+    pagesRef.current.style.transformOrigin = ''
+  }, [])
 
   const token = engine.tokens[index]
   const tokenPage = pageOfToken(token)
-  const start = spreadStart(tokenPage, layout)
+  // A page with no words is shown apart from the reader's place; any move
+  // of the place puts it away.
+  const blankPage = useAppStore((s) => s.blankPage)
+  const setBlankPage = useAppStore((s) => s.setBlankPage)
+  useEffect(() => setBlankPage(null), [index, setBlankPage])
+  const start = spreadStart(blankPage ?? tokenPage, layout)
   const count = doc?.pageCount ?? 0
   const pages = useMemo(() => {
     const list: number[] = []
@@ -109,9 +125,11 @@ export function PdfPagePanel({
   // the bottom once its pages have reported their size.
   useEffect(() => {
     setReady(0)
+    held.current = null
+    unstretch()
     pendingBottom.current = useAppStore.getState().consumeArriveAtBottom()
     if (scrollRef.current) scrollRef.current.scrollTop = 0
-  }, [start, layout])
+  }, [start, layout, unstretch])
   useEffect(() => {
     const el = scrollRef.current
     if (el && pendingBottom.current && pages.length > 0 && ready >= pages.length) {
@@ -119,6 +137,31 @@ export function PdfPagePanel({
       pendingBottom.current = false
     }
   }, [ready, pages.length])
+
+  // A zoom is made about a spot (between the fingers, under the pointer),
+  // which should stay where it is. The page is stretched while the zoom
+  // lasts, and stays stretched until it has been drawn at its new size:
+  // then the stretch comes off and the view scrolls the spot back into place.
+  const zoomAbout = useCallback(
+    (next: number, about: ZoomHold) => {
+      // Nothing will be drawn again for the scale it already has.
+      if (scale == null || clampScale(next) === scale) return unstretch()
+      held.current = { about, until: readyRef.current + pages.length }
+      onZoom?.(next)
+    },
+    [scale, pages.length, onZoom, unstretch],
+  )
+  useLayoutEffect(() => {
+    const hold = held.current
+    const el = scrollRef.current
+    const sheet = pagesRef.current
+    if (!hold || !el || !sheet || ready === 0) return
+    unstretch()
+    const shift = holdShift(sheet.getBoundingClientRect(), hold.about)
+    el.scrollLeft += shift.left
+    el.scrollTop += shift.top
+    if (ready >= hold.until) held.current = null
+  }, [ready, unstretch])
 
   // Touch: a swipe turns the page while it is no wider than its area (a
   // wider one scrolls sideways instead); a tap at an edge turns it too,
@@ -137,7 +180,7 @@ export function PdfPagePanel({
         turn(engine, count, layout, direction)
         onControls?.(false)
       },
-      onZoom,
+      onZoom: zoomAbout,
       onTap: (zone) => {
         if (zone === 'middle') return onControls?.('toggle')
         scrollOrTurn(engine, count, layout, zone === 'forward' ? 1 : -1)
@@ -145,7 +188,7 @@ export function PdfPagePanel({
       },
       onDoubleTap: onFitToggle,
     }
-  }, [onZoom, onFitToggle, onControls, canSwipe, scale, fits, engine, count, layout])
+  }, [onZoom, zoomAbout, onFitToggle, onControls, canSwipe, scale, fits, engine, count, layout])
   useBookGestures(scrollRef, pagesRef, gestures)
 
   // Mouse wheel and trackpad, in the reading view. A page with more to
@@ -160,19 +203,15 @@ export function PdfPagePanel({
     let run = WHEEL_AT_REST
     let scrolledAt = -Infinity
     let zoom = 1
+    let about: ZoomHold | null = null
     let zoomRest: ReturnType<typeof setTimeout> | undefined
-    const stretch = (ratio: number | null) => {
-      const sheet = pagesRef.current
-      if (!sheet) return
-      sheet.style.transform = ratio === null ? '' : `scale(${ratio})`
-      sheet.style.transformOrigin = ratio === null ? '' : 'center top'
-    }
     const commitZoom = () => {
       zoomRest = undefined
       const ratio = zoom
       zoom = 1
-      stretch(null)
-      if (scale !== null && Math.abs(ratio - 1) > 0.02) onZoom(scale * ratio)
+      if (about && scale !== null && Math.abs(ratio - 1) > 0.02) onZoom(scale * ratio, about)
+      else unstretch()
+      about = null
     }
 
     function onWheel(e: WheelEvent) {
@@ -183,7 +222,11 @@ export function PdfPagePanel({
         // A wheel's notch is a step (pdf.js's 1.1); a pinch is smooth.
         const factor = Math.abs(px) >= 50 ? (px < 0 ? 1.1 : 1 / 1.1) : Math.exp(-px / 100)
         zoom = pinchRatio(1, zoom * factor, scale, minScale, maxScale)
-        stretch(zoom)
+        const sheet = pagesRef.current
+        if (!sheet) return
+        about ??= zoomHold(sheet.getBoundingClientRect(), e.clientX, e.clientY)
+        sheet.style.transform = `scale(${zoom})`
+        sheet.style.transformOrigin = `${about.fx * 100}% ${about.fy * 100}%`
         clearTimeout(zoomRest)
         zoomRest = setTimeout(commitZoom, WHEEL_REST_MS)
         return
@@ -214,10 +257,14 @@ export function PdfPagePanel({
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => {
       el.removeEventListener('wheel', onWheel)
-      clearTimeout(zoomRest)
-      stretch(null)
+      // A zoom still under way is dropped; one already asked for keeps its
+      // stretch until the page is drawn (see `zoomAbout`).
+      if (zoomRest !== undefined) {
+        clearTimeout(zoomRest)
+        unstretch()
+      }
     }
-  }, [gestures, engine, count, layout])
+  }, [gestures, engine, count, layout, unstretch])
 
   // With no scale given (the side panel), pages fill the panel's width.
   const per = pages.length || 1
@@ -242,7 +289,7 @@ export function PdfPagePanel({
           >
             ‹
           </Button>
-          <span>{pageLabel(tokenPage, count, layout)}</span>
+          <span>{pageLabel(start, count, layout)}</span>
           <Button
             aria-label="Next page"
             disabled={start + perSpread(layout) >= count}

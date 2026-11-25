@@ -115,6 +115,11 @@ export class FakeDrive {
     }
     const fileMatch = /^\/(?:upload\/)?drive\/v3\/files\/([^/]+)$/.exec(path)
     if (fileMatch) {
+      const folder = this.folders.find((f) => f.id === fileMatch[1])
+      if (folder && method === 'DELETE') {
+        this.folders.splice(this.folders.indexOf(folder), 1)
+        return new Response(null, { status: 204 })
+      }
       const file = this.files.find((f) => f.id === fileMatch[1])
       if (!file) return json({ error: { code: 404 } }, 404)
       if (method === 'GET' && url.searchParams.get('alt') === 'media') {

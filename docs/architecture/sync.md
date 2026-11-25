@@ -405,7 +405,9 @@ Assumptions made while recording these (correct me if wrong):
 
 1. ~~How drawings anchor in reflowed (non-PDF) text (section 9).~~ Settled: there are no
    drawings, only text notes (decisions.md, 2026-10-28).
-2. Web/PWA token renewal UX, given no refresh token in the browser.
+2. Web/PWA token renewal UX, given no refresh token in the browser. A reload no longer asks
+   (the token is kept for the tab, 2026-11-25); after its hour, or in a new tab, Reconnect is
+   still a press.
 3. Whether book-file sync should be Wi-Fi-only by default on Android.
 4. A code sign-in on the desktop (Google's device flow: show a code, enter it at
    google.com/device), as a sure route when a browser extension blocks the loopback sign-in.
@@ -450,8 +452,9 @@ Where the code differs from the design above, and why.
   `signOut`, and a `state` the UI subscribes to (`signed-out`, `signing-in`, `signed-in`,
   `needs-reconnect`). The web one (`platform/google-auth.ts`) uses Google Identity Services'
   token flow (the scope is `drive.file` now; see "The store is a visible folder"). Google's script is added to the page when the user
-  presses Connect, never before. The token lives in memory only; what is remembered (in
-  localStorage) is that the user connected, so a reopened app shows "Reconnect". The browser
+  presses Connect, never before. The token is kept for the tab (sessionStorage), so a reload
+  inside its hour stays connected; what is remembered beyond that (in localStorage) is only
+  that the user connected, so a reopened app shows "Reconnect". The browser
   flow has no refresh token and a new token needs a click, so `renewToken` on the web always
   gives up and sync waits in `needs-reconnect`. Desktop and Android have `syncAuth: null` until
   phase 5. The client ID is `GOOGLE_CLIENT_ID` in `platform/web.ts` (`VITE_GOOGLE_CLIENT_ID`
@@ -630,8 +633,10 @@ Where the code differs from the design above, and why.
   only what it made itself, and that grant belongs to the Google project, not the client: a
   file made by the Android client is read, overwritten and listed by the desktop client and
   the other way round (measured against real Drive). The folder is found by name on every
-  `list` (oldest first, if two devices each made one in the same moment; the newer one's first
-  push is then stranded, a known gap) and made if missing. A file the user puts in the bin
+  `list` (oldest first, if two devices each made one in the same moment) and made if missing.
+  A device that has just made it looks once more before using it, takes the older one if
+  another device made one meanwhile, and removes its own while it is empty; Drive's listing
+  can lag, so a push into the newer of two can still be stranded, only far less often. A file the user puts in the bin
   counts as gone. Section 12's "the app can't see the rest of the user's Drive" still holds;
   what is lost is that the user can now see, move and delete the files.
 - **A store has an id** (`storeId` in meta.json, random). A device remembers the store it last
@@ -669,7 +674,7 @@ Where the code differs from the design above, and why.
 - **Markdown export** (`notes-markdown.ts`, section 9): the place (page, or word and percent),
   the passage as a quote, the note, and every version of an unsettled conflict. Copy as
   Markdown everywhere; Save as .md where the platform can save a file (`Platform.savesFiles`:
-  the web only for now; desktop would need Tauri's dialog plugin).
+  the web as a download, the desktop through a save dialog; not Android yet).
 
 Not built: book files have no per-book "don't sync this" switch, and no Wi-Fi-only option on
 Android.
@@ -721,6 +726,8 @@ RSVP Reader/
     unsettled conflict is shown with every version and takes no edits from the file.
   - _A second device_ finds the file by its book line and does not make another. A file for
     a book that is not on the device is not touched, and a removed book's notes file is kept.
-  - Known gap: two devices reading the same hand-added section at the same moment each add
-    the note, giving it twice.
+  - A hand-added note's id is hashed from its book, place and text, and its first edit has
+    the same id, so two devices reading the same section at the same moment have added one
+    note, not two. (A note deleted in the app is therefore not brought back by writing the
+    very same section again.)
 - Checked against the fake Drive in the tests only; not yet against real Drive.

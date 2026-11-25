@@ -88,8 +88,17 @@ and are meant to match it word for word. Change them deliberately.
     once per flick however long the flick, and not at the end of a flick that was scrolling.
     A sideways swipe turns it. With Ctrl, which is also how a trackpad pinch arrives, it
     zooms: stretched at once, drawn again when the wheel rests.
-  - **Pages with no words** (blank, or one whole picture) cannot be stopped on, because the
-    page shown is the current word's: `turn` carries on past them, the way it was going.
+  - **A zoom keeps its spot.** A pinch is made about the point between the fingers, a wheel
+    zoom about the pointer (`zoomHold`). The page stays stretched about that point until it
+    has been drawn at its new size; then `PdfPagePanel` takes the stretch off and scrolls so
+    the same part of the page is where it was (`holdShift`). A page smaller than its area is
+    centred and cannot be scrolled, so there the spot can move.
+  - **Pages with no words** (blank, or one whole picture) are shown apart from the reader's
+    place. The page shown is otherwise the current word's, and no word is on such a page, so
+    `goToPage` sets the store's `blankPage` instead of seeking, and `turn` steps from the page
+    on screen (`shownStart`). The place stays where it was: RSVP goes on from there. Any move
+    of the place puts the blank page away. (`tests/fixtures/blank-middle-page.pdf` was made
+    with MuPDF: three pages, the middle one empty.)
 
 The reflowed view (`TextReflowPanel`) renders a window of words, not the whole book:
 `reflow-window.ts` places it around the current word, keeps it while the word stays well inside,

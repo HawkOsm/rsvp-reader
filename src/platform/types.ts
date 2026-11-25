@@ -82,6 +82,10 @@ export interface Platform {
    * over; does nothing where `savesFiles` is false. */
   saveTextFile(name: string, text: string, type: string): Promise<void>
 
+  /** Take the app's window into full screen, or out of it (F11). `null`
+   * where the shell does that itself (a browser) or has no windows. */
+  readonly toggleFullScreen: (() => Promise<void>) | null
+
   /** Sign-in for sync, or `null` where this shell can't sign in yet. */
   readonly syncAuth: SyncAuth | null
 }

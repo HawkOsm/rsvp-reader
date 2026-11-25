@@ -38,16 +38,18 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
 - [ ] Try the notes files against real Drive: edit `Notes/<title>.md` in Drive and see the
       note change in the app. (A file saved with CRLF line endings and a byte-order mark
       parses the same; there is a test.)
-- [ ] Two devices that read the same hand-added note section at once each add it (a
-      duplicate note).
+- [x] Two devices that read the same hand-added note section at once no longer each add it:
+      the note's id is hashed from the section (2026-11-25).
 
 - [ ] Try Android sign-in (by code) on a real phone. The same code has signed in and synced
       against real Drive from a computer, but has not run on a device. Check that the
       google.com/device link opens the phone's browser.
 - [x] Reconnect after updating to the visible folder: done on the owner's desktop, where sync
       against real Drive works (2026-11-25).
-- [ ] If two devices connect for the very first time in the same moment, each can make its own
-      "RSVP Reader" folder; all settle on the older, and the other's first push is stranded.
+- [x] Two devices connecting for the very first time in the same moment: a device that has
+      just made the "RSVP Reader" folder looks again before using it, takes the older one if
+      there is one, and removes its own while it is empty (2026-11-25). Drive's listing can
+      lag, so the gap is narrowed to that lag, not closed.
 - [ ] Maybe later: native one-tap sign-in on Android, if the code screen proves annoying.
 - [ ] Try snapshots and purging (phase 6) against real Drive; so far against fakes only.
       (Book upload and download, and notes between devices, passed against real Drive on
@@ -57,12 +59,13 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
 - [ ] Maybe: a code sign-in on the desktop (Google's device flow), if the copy-link fallback
       isn't enough when a browser extension blocks sign-in (sync.md, still open 4).
 - [ ] Book files: a per-book "don't sync this file" switch; Wi-Fi-only uploads on Android.
-- [ ] Web: Reconnect is needed after every reload (no refresh token in the browser); see
-      sync.md, still open 2.
+- [x] Web: a reload no longer needs Reconnect; the token is kept for the tab (2026-11-25).
+      After its hour, or in a new tab, Reconnect is still a press (sync.md, still open 2).
 
 ## Book mode
 
-- [ ] Real full screen (F11) for book mode: needs a `Platform` method for the desktop app.
+- [x] Full screen with F11 in the desktop app (`Platform.toggleFullScreen`, 2026-11-25); a
+      browser has its own. Compiled and tested against stand-ins, not yet seen in the app.
 - [ ] A grid of small page pictures to pick from (KOReader's page browser, Readest's
       thumbnails) was considered for the jump panel and left out: drawing every page costs.
 - [ ] Try the touch gestures on a real phone: tap zones, swipe, pinch (above all a pinch with
@@ -70,23 +73,26 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
       controls coming and going. So far only with made-up touches in a browser.
 - [ ] Check on Android that the reader's bottom edge is on screen (the root's height now
       leaves out the safe-area insets; unseen on a device).
-- [ ] A pinch should keep the spot between the fingers in place; it zooms about the top
-      middle and the page flickers back to its old size before the new one is drawn.
+- [x] A pinch keeps the spot between the fingers in place, and a Ctrl+wheel zoom the spot
+      under the pointer; the page no longer flickers back to its old size (2026-11-25).
+      The wheel has a browser test; the pinch only made-up touches, like the other gestures.
 - [ ] Pages go soft when zoomed far in on a dense screen: a page is drawn whole, capped at 16
       million pixels. Drawing only the part in view would fix it.
 - [x] Escape and Android's Back close the chapter list or the notes before they leave the
       book (`lib/dismiss.ts`, 2026-11-25).
 - [x] Dragging the progress bar while playing no longer fights the playback: it pauses for
       the drag and goes on after (2026-11-25).
-- [ ] From a review on 2026-11-24, read but not acted on: going back to a taller page can land
-      short of its bottom; the PDF worker is not restarted after an error inside MuPDF itself
-      (unconfirmed).
-- [ ] A page with no words (a full-page picture) is skipped, since the page shown is the
-      current word's. Showing it needs a page position of its own.
+- [ ] From a review on 2026-11-24, read but not acted on: the PDF worker is not restarted
+      after an error inside MuPDF itself (unconfirmed). Its other point, that going back to a
+      taller page can land short of its bottom, did not happen when tried with pages of two
+      sizes (2026-11-25); there is now a browser test for it.
+- [x] A page with no words (a full-page picture) can be turned to: it is shown apart from
+      the reader's place (`blankPage`, 2026-11-25).
 
 ## Notes
 
-- [ ] Save as .md on the desktop (needs Tauri's dialog plugin); it has Copy only.
+- [x] Save as .md on the desktop, through a save dialog (Tauri's dialog plugin, 2026-11-25).
+      Compiled and tested against stand-ins, not yet seen in the app.
 - [ ] Notes on a range of words, not only one word.
 - [x] Remove the `notes` flag (2026-11-25).
 

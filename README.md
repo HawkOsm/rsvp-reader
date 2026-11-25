@@ -105,6 +105,7 @@ directly.
 | `Esc`             | Back to the library        |
 | `Ctrl+L`          | Library                    |
 | `Ctrl+O`          | Add book                   |
+| `F11`             | Full screen                |
 
 In book mode:
 

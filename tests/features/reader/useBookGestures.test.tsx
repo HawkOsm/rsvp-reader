@@ -43,7 +43,9 @@ function setup(gestures: BookGestures | null = base) {
   const area = getByTestId('area')
   // jsdom lays nothing out: the area is 400 wide, from the left edge.
   area.getBoundingClientRect = () => ({ left: 0, width: 400 }) as DOMRect
-  return { area, content: getByTestId('content'), rerender }
+  const content = getByTestId('content')
+  content.getBoundingClientRect = () => ({ left: 0, top: 0, width: 400, height: 600 }) as DOMRect
+  return { area, content, rerender }
 }
 
 beforeEach(() => vi.clearAllMocks())
@@ -82,8 +84,11 @@ describe('useBookGestures', () => {
     touch(area, 'pointermove', 2, 300, 300, 50) // twice as far apart
     expect(content.style.transform).toBe('scale(2)')
     touch(area, 'pointerup', 2, 300, 300, 100)
-    expect(handlers.onZoom).toHaveBeenCalledWith(2)
-    expect(content.style.transform).toBe('')
+    // About the spot midway between the fingers as they came down, and left
+    // stretched for whoever draws the page at its new size.
+    expect(handlers.onZoom).toHaveBeenCalledWith(2, { x: 150, y: 300, fx: 0.375, fy: 0.5 })
+    expect(content.style.transform).toBe('scale(2)')
+    expect(content.style.transformOrigin).toBe('37.5% 50%')
     // Lifting the other finger is not a tap, a swipe or a page turn.
     touch(area, 'pointerup', 1, 100, 300, 120)
     expect(handlers.onTurn).not.toHaveBeenCalled()

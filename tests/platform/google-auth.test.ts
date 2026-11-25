@@ -92,6 +92,43 @@ describe('Google sign-in for sync', () => {
     expect(storage.getItem('rsvp-reader:sync-connected')).toBeNull()
   })
 
+  it('stays signed in over a reload of the same tab, until the token runs out', async () => {
+    let now = 0
+    const storage = memoryStorage()
+    const session = memoryStorage()
+    const { gis } = fakeGis(granted)
+    const options = { clientId: 'id', loadGis: async () => gis, storage, session, now: () => now }
+    await createGoogleAuth(options).signIn()
+    // The token is the tab's, not the browser's: it is gone when the tab is.
+    expect([...storage.items.values()].join()).not.toContain('tok')
+
+    now = 60_000
+    const reloaded = createGoogleAuth(options)
+    expect(reloaded.state()).toBe('signed-in')
+    expect(await reloaded.getToken()).toBe('tok')
+
+    now = 3_550_000 // within a minute of the hour
+    expect(createGoogleAuth(options).state()).toBe('needs-reconnect')
+    expect(session.items.size).toBe(0)
+  })
+
+  it('forgets the tab’s token when it is refused, and on signing out', async () => {
+    const storage = memoryStorage()
+    const session = memoryStorage()
+    const { gis } = fakeGis(granted)
+    const options = { clientId: 'id', loadGis: async () => gis, storage, session }
+    const auth = createGoogleAuth(options)
+    await auth.signIn()
+    await auth.renewToken()
+    expect(session.items.size).toBe(0)
+    expect(createGoogleAuth(options).state()).toBe('needs-reconnect')
+
+    await auth.signIn()
+    await auth.signOut()
+    expect(session.items.size).toBe(0)
+    expect(createGoogleAuth(options).state()).toBe('signed-out')
+  })
+
   it('says why sign-in failed, and goes back to where it was', async () => {
     const blocked = fakeGis((_cb, err) => err({ type: 'popup_failed_to_open' })).gis
     const auth = createGoogleAuth({ clientId: 'id', loadGis: async () => blocked, storage: null })

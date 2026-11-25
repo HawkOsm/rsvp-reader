@@ -48,13 +48,28 @@ const desktopSignIn: PkceNative = {
   },
 }
 
+/** A webview ignores download links, so the file goes where a save dialog
+ * says. The dialog lets the app write to the place chosen. */
+async function saveTextFile(name: string, text: string): Promise<void> {
+  const { save } = await import('@tauri-apps/plugin-dialog')
+  const path = await save({ defaultPath: name })
+  if (!path) return // cancelled
+  const { writeTextFile } = await import('@tauri-apps/plugin-fs')
+  await writeTextFile(path, text)
+}
+
+async function toggleFullScreen(): Promise<void> {
+  const { getCurrentWindow } = await import('@tauri-apps/api/window')
+  const appWindow = getCurrentWindow()
+  await appWindow.setFullscreen(!(await appWindow.isFullscreen()))
+}
+
 export const tauriPlatform: Platform = {
   ...webPlatform,
   kind: 'desktop',
   selfUpdates: false, // a new version is a new installer
-  // A webview ignores download links; a save dialog would need the dialog plugin.
-  savesFiles: false,
-  saveTextFile: async () => {},
+  saveTextFile,
+  toggleFullScreen,
   // Google blocks sign-in inside a webview, so this goes through the system
   // browser (src/platform/pkce-auth.ts).
   syncAuth: createPkceAuth({

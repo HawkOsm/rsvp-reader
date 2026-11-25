@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { isDoubleTap, pinchRatio, swipeTurn, tapZone } from '@/features/reader/book-gestures'
+import {
+  isDoubleTap,
+  pinchRatio,
+  swipeTurn,
+  tapZone,
+  holdShift,
+  zoomHold,
+} from '@/features/reader/book-gestures'
 
 describe('book mode touch gestures', () => {
   it('turns forward on a swipe to the left, back on one to the right', () => {
@@ -44,5 +51,26 @@ describe('book mode touch gestures', () => {
     expect(tapZone(279, 400)).toBe('middle')
     expect(tapZone(281, 400)).toBe('forward')
     expect(tapZone(50, 0)).toBe('middle') // nothing laid out yet
+  })
+})
+
+describe('holding a spot through a zoom', () => {
+  const sheet = { left: 100, top: 50, width: 400, height: 600 }
+
+  it('knows the spot as a share of the page, and holds one beside the page at its edge', () => {
+    expect(zoomHold(sheet, 200, 350)).toEqual({ x: 200, y: 350, fx: 0.25, fy: 0.5 })
+    expect(zoomHold(sheet, 20, 900)).toMatchObject({ fx: 0, fy: 1 })
+    expect(zoomHold({ ...sheet, width: 0 }, 200, 350).fx).toBe(0.5)
+  })
+
+  it('scrolls by as much as the spot moved when the page was drawn bigger', () => {
+    const hold = zoomHold(sheet, 200, 350)
+    // Twice the size, laid out from the same corner: the spot is now at
+    // (300, 650), so the view scrolls 100 across and 300 down.
+    expect(holdShift({ left: 100, top: 50, width: 800, height: 1200 }, hold)).toEqual({
+      left: 100,
+      top: 300,
+    })
+    expect(holdShift(sheet, hold)).toEqual({ left: 0, top: 0 })
   })
 })
