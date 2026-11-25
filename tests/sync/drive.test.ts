@@ -91,6 +91,29 @@ describe('DriveTransport', () => {
     expect(drive.files.find((f) => f.name === 'Novel.epub')?.parent).toBe('books-old')
   })
 
+  it('uses the folder another device made in the same moment, and removes its own empty one', async () => {
+    // The other device's folder appears just after this one looked for one.
+    let looked = false
+    const racing: typeof fetch = async (input, init) => {
+      const response = await drive.fetch(input, init)
+      if (!looked && String(input).includes('mimeType')) {
+        looked = true
+        drive.folders.unshift({ id: 'theirs', name: 'RSVP Reader' })
+      }
+      return response
+    }
+    const store = new DriveTransport({
+      auth: { getToken: async () => 'good', renewToken: async () => null },
+      fetch: racing,
+    })
+    await store.write('a.json', 'a')
+    expect(drive.folders.filter((f) => f.name === 'RSVP Reader').map((f) => f.id)).toEqual([
+      'theirs',
+    ])
+    const appData = drive.folderId('App data', 'theirs')!
+    expect(drive.files.find((f) => f.name === 'a.json')?.parent).toBe(appData)
+  })
+
   it('routes Books/ and Notes/ prefixes to their subfolders and returns prefixed names', async () => {
     const store = transport()
     await store.write('Books/Pride and Prejudice.epub', new Blob(['epub']))

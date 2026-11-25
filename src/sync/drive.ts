@@ -142,12 +142,23 @@ export class DriveTransport implements Transport {
       orderBy: 'createdTime',
       pageSize: '1',
     })
-    const found = await this.request('GET', `${API}/files?${query}`)
-    const { files } = (await found.json()) as { files: { id: string }[] }
-    if (files[0]) return files[0].id
+    const oldest = async () => {
+      const found = await this.request('GET', `${API}/files?${query}`)
+      return ((await found.json()) as { files: { id: string }[] }).files[0]?.id
+    }
+    const found = await oldest()
+    if (found) return found
     const metadata = JSON.stringify({ name: this.folderName, mimeType: FOLDER_TYPE })
     const made = await this.request('POST', `${API}/files?fields=id`, metadata, 'application/json')
-    return ((await made.json()) as { id: string }).id
+    const mine = ((await made.json()) as { id: string }).id
+    // Another device may have made one in that moment. Look again before
+    // anything is put in this one: what goes into the newer of two is never
+    // seen by a device that settled on the older.
+    const settled = (await oldest()) ?? mine
+    if (settled !== mine && (await this.listChildren(mine)).length === 0) {
+      await this.request('DELETE', `${API}/files/${mine}`)
+    }
+    return settled
   }
 
   private async createSubfolder(name: string, parent: string): Promise<string> {

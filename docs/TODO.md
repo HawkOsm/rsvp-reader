@@ -46,8 +46,10 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
       google.com/device link opens the phone's browser.
 - [x] Reconnect after updating to the visible folder: done on the owner's desktop, where sync
       against real Drive works (2026-11-25).
-- [ ] If two devices connect for the very first time in the same moment, each can make its own
-      "RSVP Reader" folder; all settle on the older, and the other's first push is stranded.
+- [x] Two devices connecting for the very first time in the same moment: a device that has
+      just made the "RSVP Reader" folder looks again before using it, takes the older one if
+      there is one, and removes its own while it is empty (2026-11-25). Drive's listing can
+      lag, so the gap is narrowed to that lag, not closed.
 - [ ] Maybe later: native one-tap sign-in on Android, if the code screen proves annoying.
 - [ ] Try snapshots and purging (phase 6) against real Drive; so far against fakes only.
       (Book upload and download, and notes between devices, passed against real Drive on

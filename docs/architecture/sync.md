@@ -633,8 +633,10 @@ Where the code differs from the design above, and why.
   only what it made itself, and that grant belongs to the Google project, not the client: a
   file made by the Android client is read, overwritten and listed by the desktop client and
   the other way round (measured against real Drive). The folder is found by name on every
-  `list` (oldest first, if two devices each made one in the same moment; the newer one's first
-  push is then stranded, a known gap) and made if missing. A file the user puts in the bin
+  `list` (oldest first, if two devices each made one in the same moment) and made if missing.
+  A device that has just made it looks once more before using it, takes the older one if
+  another device made one meanwhile, and removes its own while it is empty; Drive's listing
+  can lag, so a push into the newer of two can still be stranded, only far less often. A file the user puts in the bin
   counts as gone. Section 12's "the app can't see the rest of the user's Drive" still holds;
   what is lost is that the user can now see, move and delete the files.
 - **A store has an id** (`storeId` in meta.json, random). A device remembers the store it last
