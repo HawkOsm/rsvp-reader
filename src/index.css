@@ -13,6 +13,10 @@
   --color-text: #e6e8ec;
   --color-text-dim: #8c93a0;
   --color-accent: #ff5a5f;
+  /* The colour that marks the reader's place and a selection on the page:
+   * the accent, unless the reader chose a focus-letter colour
+   * (`applyMarkColor` in lib/theme.ts sets it). */
+  --reader-mark: var(--color-accent);
   --color-accent-dim: #7a2e31;
   --color-guide: #3a404a;
   --color-shelf-blue: #5b9cf6;
@@ -94,4 +98,9 @@ body {
    * this keeps content clear of the notch/status bar/gesture bar. */
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
     env(safe-area-inset-left);
+}
+
+/* A selection, anywhere in the app, is in the reader's colour. */
+::selection {
+  background: color-mix(in srgb, var(--reader-mark) 35%, transparent);
 }

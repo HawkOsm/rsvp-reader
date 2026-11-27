@@ -29,7 +29,3 @@
   cursor: text;
   transform-origin: 0 0;
 }
-
-.pdfTextLayer ::selection {
-  background: rgba(60, 120, 255, 0.35);
-}
