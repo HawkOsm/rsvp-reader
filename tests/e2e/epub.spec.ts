@@ -85,3 +85,24 @@ test('in book mode over an EPUB, the place follows the scrolling', async ({ page
 
   expect(errors).toEqual([])
 })
+
+test('selecting words of an EPUB in book mode offers a note on them', async ({ page }) => {
+  test.skip(test.info().project.name !== 'desktop', 'drags with a mouse')
+  await page.goto('/')
+  await addBook(page, EPUB)
+  await page.keyboard.press('b')
+  const words = page.locator('#book-scroll [data-word]')
+  await expect(words.first()).toBeVisible({ timeout: 20_000 })
+  const first = (await words.nth(3).boundingBox())!
+  const last = (await words.nth(6).boundingBox())!
+  const wanted = (await words.evaluateAll((all) => all.slice(3, 7).map((w) => w.textContent)))
+    .join('')
+    .trim()
+  await page.mouse.move(first.x + 1, first.y + first.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(last.x + last.width - 3, last.y + last.height / 2, { steps: 8 })
+  await page.mouse.up()
+  await page.getByRole('button', { name: 'Add note' }).click()
+  const quoted = page.getByRole('complementary', { name: 'Notes' }).locator('form span').first()
+  await expect(quoted).toContainText(wanted)
+})

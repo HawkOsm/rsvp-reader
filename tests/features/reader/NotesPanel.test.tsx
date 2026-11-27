@@ -49,6 +49,31 @@ function renderPanel() {
 }
 
 describe('NotesPanel', () => {
+  it('makes the note on the words picked out on the page, quoted exactly', async () => {
+    const user = userEvent.setup()
+    const onPassageDone = vi.fn()
+    const engine = createEngine(words.map((w) => makeToken(w)))
+    render(
+      <EngineProvider value={engine}>
+        <NotesPanel
+          bookId={bookId}
+          title="Paul Clifford"
+          totalWords={words.length}
+          passage={{ start: 3, end: 5 }}
+          onPassageDone={onPassageDone}
+          onClose={onClose}
+        />
+      </EngineProvider>,
+    )
+    expect(screen.getByText(/“dark and stormy\s*”/)).toBeInTheDocument()
+    const box = screen.getByRole('textbox', { name: 'New note' })
+    expect(box).toHaveFocus()
+    await user.type(box, 'The famous opening')
+    await user.click(screen.getByRole('button', { name: 'Add note' }))
+    await waitFor(() => expect(onPassageDone).toHaveBeenCalled())
+    const [note] = await notesOf(db, bookId)
+    expect(note!.anchor).toMatchObject({ wordIndex: 3, quote: 'dark and stormy' })
+  })
   it('adds a note on the word being read, and jumps back to it', async () => {
     const engine = renderPanel()
     act(() => engine.seek(3))

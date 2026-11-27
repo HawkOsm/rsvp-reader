@@ -356,3 +356,37 @@ test('turning back to a taller page of another width lands at its bottom', async
   expect(await left()).toBeLessThanOrEqual(1)
   expect(errors).toEqual([])
 })
+
+// Selecting words on the page offers a note on them, as a right-click menu
+// would: the note quotes exactly what was selected.
+test('selecting words in book mode offers a note on them', async ({ page }) => {
+  desktopOnly()
+  const errors = collectErrors(page)
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/')
+  await addBook(page, 'tests/fixtures/blank-middle-page.pdf')
+  await page.keyboard.press('b')
+  await page.keyboard.press('d')
+  const line = page.locator('.pdfTextLayer span').nth(2)
+  await expect(line).toBeVisible({ timeout: 20_000 })
+  await expect(line).toHaveText('The first page, line 3, has six words.')
+
+  // Drag along most of the third line.
+  const box = (await line.boundingBox())!
+  await page.mouse.move(box.x + 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width - 2, box.y + box.height / 2, { steps: 8 })
+  await page.mouse.up()
+
+  await page.getByRole('button', { name: 'Add note' }).click()
+  const notes = page.getByRole('complementary', { name: 'Notes' })
+  await expect(notes.getByText(/“The first page, line 3, has six words\.\s*”/)).toBeVisible()
+  const draft = notes.getByRole('textbox', { name: 'New note' })
+  await expect(draft).toBeFocused()
+  await draft.fill('Six, counted.')
+  await notes.getByRole('button', { name: 'Add note' }).click()
+  const saved = notes.getByRole('list', { name: 'Notes in this book' })
+  await expect(saved.getByText('Six, counted.')).toBeVisible()
+  await expect(saved.getByText(/The first page, line 3, has six words\./)).toBeVisible()
+  expect(errors).toEqual([])
+})

@@ -88,6 +88,12 @@ and are meant to match it word for word. Change them deliberately.
     once per flick however long the flick, and not at the end of a flick that was scrolling.
     A sideways swipe turns it. With Ctrl, which is also how a trackpad pinch arrives, it
     zooms: stretched at once, drawn again when the wheel rests.
+  - **A note on selected words.** A selection over the book's words brings up an "Add note"
+    button under it (`SelectionNote`), as a right-click menu would offer. `selection-words.ts`
+    finds the words: reflowed text marks each with `data-word`; a PDF page's selectable text
+    is a span a line over a picture, so each `PdfPageView` registers a locator that says
+    which word is at a point. The note's anchor is the first word and its quote the words
+    selected (80 at most). Nothing new is stored: a note still has one word and a quote.
   - **A zoom keeps its spot.** A pinch is made about the point between the fingers, a wheel
     zoom about the pointer (`zoomHold`). The page stays stretched about that point until it
     has been drawn at its new size; then `PdfPagePanel` takes the stretch off and scrolls so

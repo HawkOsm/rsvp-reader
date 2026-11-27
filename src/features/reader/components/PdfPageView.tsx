@@ -10,6 +10,7 @@ import {
   type PdfHandle,
 } from '@/features/reader/api/pdf'
 import { wordAt } from '@/features/reader/book-nav'
+import { registerPage } from '@/features/reader/selection-words'
 import { useEngine } from '@/features/reader/engine-context'
 import { PdfTextLayer } from './PdfTextLayer'
 
@@ -120,31 +121,43 @@ export function PdfPageView({
     if (peek) markRef.current?.scrollIntoView({ block: 'center' })
   }, [peek, markTop])
 
+  /** The word at a point of the screen, if one is within reach. */
+  function wordAtScreen(element: Element, clientX: number, clientY: number): number | null {
+    if (!drawn) return null
+    const rect = element.getBoundingClientRect()
+    const [x, y] = legacyBoxes
+      ? screenToUserPoint(
+          clientX - rect.left,
+          clientY - rect.top,
+          drawn.size.userToPage,
+          drawn.scale,
+        )
+      : screenToTokenPoint(clientX - rect.left, clientY - rect.top, drawn.size.height, drawn.scale)
+    return wordAt(engine.tokens, pageIndex, x, y)
+  }
+  const wordAtScreenRef = useRef(wordAtScreen)
+  wordAtScreenRef.current = wordAtScreen
+
+  // A selection on this page is traced to its words through here.
+  const pageRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const element = pageRef.current
+    if (!element) return
+    return registerPage(element, (x, y) => wordAtScreenRef.current(element, x, y))
+  }, [])
+
   /** Click a word to jump there, in book mode as beside the RSVP word: it is
    * how the reader picks where RSVP goes on. Not when the click ends a text
    * selection. */
   function onClick(event: MouseEvent<HTMLDivElement>) {
-    if (!drawn || !window.getSelection()?.isCollapsed) return
-    const rect = event.currentTarget.getBoundingClientRect()
-    const [x, y] = legacyBoxes
-      ? screenToUserPoint(
-          event.clientX - rect.left,
-          event.clientY - rect.top,
-          drawn.size.userToPage,
-          drawn.scale,
-        )
-      : screenToTokenPoint(
-          event.clientX - rect.left,
-          event.clientY - rect.top,
-          drawn.size.height,
-          drawn.scale,
-        )
-    const hit = wordAt(engine.tokens, pageIndex, x, y)
+    if (!window.getSelection()?.isCollapsed) return
+    const hit = wordAtScreen(event.currentTarget, event.clientX, event.clientY)
     if (hit !== null) engine.seek(hit)
   }
 
   return (
     <div
+      ref={pageRef}
       className="relative shadow-lg"
       style={
         drawn

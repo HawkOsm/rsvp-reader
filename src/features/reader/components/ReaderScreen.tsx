@@ -20,7 +20,9 @@ import { resolvePage } from '@/core/page-spec'
 import type { BookRecord } from '@/features/reader/api/book'
 import { PageOverlay } from './PageOverlay'
 import { PagePanel } from './PagePanel'
+import type { WordRange } from '@/features/reader/selection-words'
 import { NotesPanel } from './NotesPanel'
+import { SelectionNote } from './SelectionNote'
 import { PositionOffer } from './PositionOffer'
 import { ReaderHints } from './ReaderHints'
 import { RsvpCanvas } from './RsvpCanvas'
@@ -115,6 +117,8 @@ function ReaderBody({ book }: { book: BookRecord }) {
   const [contentsOpen, setContentsOpen] = useState(contentsBeside)
   const hasContents = book.chapters.length > 0
   const [notesOpen, setNotesOpen] = useState(false)
+  // Words selected on the page, for the next note to be on.
+  const [notePassage, setNotePassage] = useState<WordRange | null>(null)
   useEffect(() => setContentsOpen(contentsBeside), [contentsBeside])
   const keyboard = useMediaQuery(HAS_KEYBOARD)
 
@@ -169,7 +173,11 @@ function ReaderBody({ book }: { book: BookRecord }) {
     () => (contentsOver ? whileOpen(() => setContentsOpen(false)) : undefined),
     [contentsOver],
   )
-  useEffect(() => (notesOpen ? whileOpen(() => setNotesOpen(false)) : undefined), [notesOpen])
+  const closeNotes = useCallback(() => {
+    setNotesOpen(false)
+    setNotePassage(null)
+  }, [])
+  useEffect(() => (notesOpen ? whileOpen(closeNotes) : undefined), [notesOpen, closeNotes])
   useReaderKeyboardShortcuts(layout, {
     jumps,
     onToggleControls: () => onControls('toggle'),
@@ -249,7 +257,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
         aria-label="Notes"
         aria-expanded={notesOpen}
         title="Notes on this book"
-        onClick={() => setNotesOpen(!notesOpen)}
+        onClick={() => (notesOpen ? closeNotes() : setNotesOpen(true))}
         className={`flex h-9 w-9 items-center justify-center rounded-lg hover:bg-bg-hover ${
           notesOpen ? 'text-text' : 'text-text-dim hover:text-text'
         }`}
@@ -339,6 +347,14 @@ function ReaderBody({ book }: { book: BookRecord }) {
             </div>
           </div>
         )}
+        {mode === 'book' && (
+          <SelectionNote
+            onNote={(words) => {
+              setNotePassage(words)
+              setNotesOpen(true)
+            }}
+          />
+        )}
         {notesOpen && (
           <div className="absolute inset-y-0 right-0 z-40 shadow-xl">
             <NotesPanel
@@ -346,7 +362,9 @@ function ReaderBody({ book }: { book: BookRecord }) {
               title={book.title}
               author={book.author}
               totalWords={book.totalWords}
-              onClose={() => setNotesOpen(false)}
+              passage={notePassage}
+              onPassageDone={() => setNotePassage(null)}
+              onClose={closeNotes}
             />
           </div>
         )}
