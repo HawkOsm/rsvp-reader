@@ -367,7 +367,7 @@ test('selecting words in book mode offers a note on them', async ({ page }) => {
   await addBook(page, 'tests/fixtures/blank-middle-page.pdf')
   await page.keyboard.press('b')
   await page.keyboard.press('d')
-  const line = page.locator('.pdfTextLayer span').nth(2)
+  const line = page.locator('.pdfTextLayer .pdfLine').nth(2)
   await expect(line).toBeVisible({ timeout: 20_000 })
   await expect(line).toHaveText('The first page, line 3, has six words.')
 
@@ -399,7 +399,7 @@ test('selecting a word offers to read on from it', async ({ page }) => {
   await addBook(page, 'tests/fixtures/blank-middle-page.pdf')
   await page.keyboard.press('b')
   await page.keyboard.press('d')
-  const line = page.locator('.pdfTextLayer span').nth(2)
+  const line = page.locator('.pdfTextLayer .pdfLine').nth(2)
   await expect(line).toHaveText('The first page, line 3, has six words.')
   // The first move of the place hides the header, which moves the page:
   // hide it now, so the double click's two presses land on the same word.
@@ -411,4 +411,47 @@ test('selecting a word offers to read on from it', async ({ page }) => {
   await page.getByRole('menuitem', { name: 'Read from here' }).click()
   await page.keyboard.press('b')
   expect(await wordNumber(page)).toBe(17)
+})
+
+// The selectable text is laid out word by word, so what a double click
+// selects is the word under the pointer, and reading goes on from that word.
+test('a double-clicked word is the one selected, anywhere along a justified line', async ({
+  page,
+}) => {
+  desktopOnly()
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/')
+  await addBook(page, PDF)
+  await page.keyboard.press('b')
+  await page.keyboard.press('d')
+  await page.keyboard.press('Enter') // the header out of the way, for good
+  const words = page.locator('.pdfTextLayer .pdfLine > span:not(.pdfGap)')
+  await expect(words.nth(200)).toBeVisible({ timeout: 20_000 })
+  const mark = page.getByTestId('word-mark')
+
+  // Words from the start, the middle and the end of lines, down the page.
+  for (const n of [3, 17, 46, 88, 131, 175, 200]) {
+    const word = words.nth(n)
+    await word.scrollIntoViewIfNeeded()
+    const box = (await word.boundingBox())!
+    const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+    await page.mouse.dblclick(at.x, at.y)
+    await page.getByRole('menuitem', { name: 'Read from here' }).click()
+    // The reader's place, marked on the page, is now under that point.
+    await expect
+      .poll(
+        async () => {
+          const m = await mark.boundingBox()
+          return (
+            m !== null &&
+            at.x >= m.x - 2 &&
+            at.x <= m.x + m.width + 2 &&
+            at.y >= m.y - 4 &&
+            at.y <= m.y + m.height + 4
+          )
+        },
+        { message: `word ${n}` },
+      )
+      .toBe(true)
+  }
 })

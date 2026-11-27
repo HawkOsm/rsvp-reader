@@ -170,6 +170,7 @@ export function PdfPageView({
       {mark && (
         <div
           ref={markRef}
+          data-testid="word-mark"
           className="pointer-events-none absolute"
           style={{
             ...mark,

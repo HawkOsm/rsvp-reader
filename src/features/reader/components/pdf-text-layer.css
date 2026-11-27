@@ -1,12 +1,12 @@
 /* The invisible text laid over a rendered PDF page, so its words can be
- * selected and copied. Each line is one span, positioned and stretched to
- * sit exactly over the line it belongs to. */
+ * selected and copied. Each line is one span, placed over the line it
+ * belongs to; each word in it is as wide as the word on the page. */
 .pdfTextLayer {
   position: absolute;
   inset: 0;
   overflow: hidden;
   line-height: 1;
-  /* The width of each line is measured in this font (PdfTextLayer.tsx), so it
+  /* The width of each word is measured in this font (PdfTextLayer.tsx), so it
    * must be the one used to draw it. */
   font-family: sans-serif;
   /* Only the lines can be selected, not the layer that holds them. WebKit
@@ -16,16 +16,22 @@
   user-select: none;
 }
 
+.pdfTextLayer .pdfLine {
+  position: absolute;
+  white-space: pre;
+  color: transparent;
+  cursor: text;
+}
+
 .pdfTextLayer span,
 .pdfTextLayer br {
   -webkit-user-select: text;
   user-select: text;
 }
 
-.pdfTextLayer span {
-  position: absolute;
-  white-space: pre;
-  color: transparent;
-  cursor: text;
-  transform-origin: 0 0;
+/* The space between two words, as wide as the gap between them. */
+.pdfTextLayer .pdfGap {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
 }
