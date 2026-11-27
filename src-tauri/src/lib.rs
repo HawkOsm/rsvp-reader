@@ -25,7 +25,18 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_opener::init())
-    .plugin(tauri_plugin_window_state::Builder::default().build())
+    .plugin(
+      // The window's size and place are remembered; whether it was maximized
+      // or full screen is not. A tiling window manager reports every window
+      // as maximized, and restoring that takes the window out of its tiling.
+      tauri_plugin_window_state::Builder::default()
+        .with_state_flags(
+          tauri_plugin_window_state::StateFlags::all()
+            - tauri_plugin_window_state::StateFlags::MAXIMIZED
+            - tauri_plugin_window_state::StateFlags::FULLSCREEN,
+        )
+        .build(),
+    )
     .manage(PendingOpenFile(Mutex::new(cli_file_argument())))
     .manage(oauth::Callback::default())
     .invoke_handler(tauri::generate_handler![
