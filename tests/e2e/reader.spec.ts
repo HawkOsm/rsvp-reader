@@ -378,7 +378,7 @@ test('selecting words in book mode offers a note on them', async ({ page }) => {
   await page.mouse.move(box.x + box.width - 2, box.y + box.height / 2, { steps: 8 })
   await page.mouse.up()
 
-  await page.getByRole('button', { name: 'Add note' }).click()
+  await page.getByRole('menuitem', { name: 'Add note' }).click()
   const notes = page.getByRole('complementary', { name: 'Notes' })
   await expect(notes.getByText(/“The first page, line 3, has six words\.\s*”/)).toBeVisible()
   const draft = notes.getByRole('textbox', { name: 'New note' })
@@ -389,4 +389,26 @@ test('selecting words in book mode offers a note on them', async ({ page }) => {
   await expect(saved.getByText('Six, counted.')).toBeVisible()
   await expect(saved.getByText(/The first page, line 3, has six words\./)).toBeVisible()
   expect(errors).toEqual([])
+})
+
+// A finger's tap turns the page, so it can't pick a word by tapping it:
+// selecting a word and choosing "Read from here" is how the place is set.
+test('selecting a word offers to read on from it', async ({ page }) => {
+  desktopOnly()
+  await page.goto('/')
+  await addBook(page, 'tests/fixtures/blank-middle-page.pdf')
+  await page.keyboard.press('b')
+  await page.keyboard.press('d')
+  const line = page.locator('.pdfTextLayer span').nth(2)
+  await expect(line).toHaveText('The first page, line 3, has six words.')
+  // The first move of the place hides the header, which moves the page:
+  // hide it now, so the double click's two presses land on the same word.
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('banner')).toBeHidden()
+  // Each line has eight words: the third starts at word 17.
+  const box = (await line.boundingBox())!
+  await page.mouse.dblclick(box.x + 6, box.y + box.height / 2)
+  await page.getByRole('menuitem', { name: 'Read from here' }).click()
+  await page.keyboard.press('b')
+  expect(await wordNumber(page)).toBe(17)
 })

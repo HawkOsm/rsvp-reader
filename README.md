@@ -29,7 +29,8 @@ the old one and exactly what's unverified.
 - **ORP alignment** computed from real font metrics (canvas
   `measureText`), so the focus letter lands on the same pixel for every word
 - **Book mode** — PDFs render their real pages; text and EPUB files reflow
-  into one scrolling page, current word highlighted; click any word to read on from it
+  into one scrolling page, current word highlighted; select a word to read on from it, or
+  several to make a note on them
 - **Library with resume** — IndexedDB-backed, remembers your place in every
   document and prompts to continue
 - **Local first.** No account, no telemetry. Your files and reading

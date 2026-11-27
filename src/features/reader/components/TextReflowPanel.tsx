@@ -184,20 +184,22 @@ export function TextReflowPanel({
               <span
                 key={word.index}
                 data-word={word.index}
-                // Not when the click ends a text selection.
+                // Beside the RSVP word, a click picks the word to read on
+                // from (not when it ends a text selection). In book mode a
+                // click picks nothing: selecting a word offers that instead.
                 onClick={() => {
+                  if (book) return
                   if (dismissing.current || !window.getSelection()?.isCollapsed) return
-                  if (byFinger.current && onControls) return
                   setScrolledTo(null)
                   engine.seek(word.index)
                 }}
-                className="cursor-pointer py-[0.45em]"
+                className={book ? 'py-[0.45em]' : 'cursor-pointer py-[0.45em]'}
               >
                 <span
                   ref={word.index === index ? currentRef : undefined}
                   className={
                     word.index === index && index !== scrolledTo
-                      ? 'rounded bg-accent px-0.5 text-bg'
+                      ? 'rounded bg-(--reader-mark) px-0.5 text-bg'
                       : undefined
                   }
                 >

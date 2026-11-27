@@ -102,7 +102,9 @@ test('selecting words of an EPUB in book mode offers a note on them', async ({ p
   await page.mouse.down()
   await page.mouse.move(last.x + last.width - 3, last.y + last.height / 2, { steps: 8 })
   await page.mouse.up()
-  await page.getByRole('button', { name: 'Add note' }).click()
+  // Several words are for a note only: reading goes on from one word.
+  await expect(page.getByRole('menuitem', { name: 'Read from here' })).toBeHidden()
+  await page.getByRole('menuitem', { name: 'Add note' }).click()
   const quoted = page.getByRole('complementary', { name: 'Notes' }).locator('form span').first()
   await expect(quoted).toContainText(wanted)
 })

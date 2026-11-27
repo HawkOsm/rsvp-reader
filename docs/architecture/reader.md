@@ -63,7 +63,7 @@ and are meant to match it word for word. Change them deliberately.
     one page at a time whatever layout was chosen (`useBookSpread`), fitted to the width each
     time a book is opened there (`useSmallScreenFit`), and no size slider or two-page button.
   - **Touch** (`book-gestures.ts` for the arithmetic, `useBookGestures` for the listening;
-    fingers only, a mouse selects text and clicks words as before). A tap at the left or right
+    fingers only, a mouse selects text as before). A tap at the left or right
     edge (30% of the width each, as in KOReader and Foliate) turns the page, scrolling a tall
     one first as the arrow keys do; a tap in the middle is for the controls; a sideways swipe
     turns the page while it is no wider than its area (a wider one scrolls sideways instead);
@@ -88,8 +88,13 @@ and are meant to match it word for word. Change them deliberately.
     once per flick however long the flick, and not at the end of a flick that was scrolling.
     A sideways swipe turns it. With Ctrl, which is also how a trackpad pinch arrives, it
     zooms: stretched at once, drawn again when the wheel rests.
-  - **A note on selected words.** A selection over the book's words brings up an "Add note"
-    button under it (`SelectionNote`), as a right-click menu would offer. `selection-words.ts`
+  - **A menu for selected words.** A selection over the book's words brings up a small menu
+    under it (`SelectionNote`), as a right-click would: "Add note" makes a note on
+    the words, and when one word is selected "Read from here" moves the reader's place to
+    it. That is the only way to pick a word in book mode: a click or a tap on a word picks
+    nothing there (beside the RSVP word, in the page panel, a click still does). The mark on the current
+    word, and a selection anywhere in the app, are drawn in `--reader-mark`: the reader's
+    focus-letter colour if one was chosen, else the theme's accent (`applyMarkColor`). `selection-words.ts`
     finds the words: reflowed text marks each with `data-word`; a PDF page's selectable text
     is a span a line over a picture, so each `PdfPageView` registers a locator that says
     which word is at a point. The note's anchor is the first word and its quote the words

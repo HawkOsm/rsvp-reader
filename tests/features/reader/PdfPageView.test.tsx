@@ -287,13 +287,14 @@ describe('PdfPageView click to jump', () => {
     expect(engine.index).toBe(1)
   })
 
-  it('jumps in book mode too, not just beside the RSVP word', async () => {
+  it('does not jump in book mode: there, selecting a word offers it', async () => {
     const { doc } = fakeDoc()
     const { container, engine } = await ready({ doc, peek: false })
+    // On the first word, where the reader is not.
     fireEvent.click(container.querySelector('.shadow-lg') as HTMLElement, {
       clientX: 90,
       clientY: 85,
     })
-    expect(engine.index).toBe(0)
+    expect(engine.index).toBe(1)
   })
 })
