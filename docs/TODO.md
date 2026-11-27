@@ -92,6 +92,9 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
 
 - [x] Save as .md on the desktop, through a save dialog (Tauri's dialog plugin, 2026-11-25).
       Compiled and tested against stand-ins, not yet seen in the app.
+- [x] "Read from here" in the same menu, when one word is selected, sets the word RSVP goes
+      on from. A click on a word no longer does in book mode. The current word's mark, and
+      a selection anywhere in the app, take the reader's focus-letter colour (2026-11-27).
 - [x] A note on the words selected: in book mode a selection brings up "Add note", and the
       note quotes exactly those words (2026-11-27). Checked in Chromium with a PDF and an
       EPUB; not yet on a phone, where the system's own copy bar also appears.

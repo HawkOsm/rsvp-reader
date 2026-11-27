@@ -95,3 +95,12 @@ export function applyTheme(mode: ThemeMode): void {
   if (mode === 'system') root.removeAttribute('data-theme')
   else root.setAttribute('data-theme', mode)
 }
+
+/** Sets the colour that marks the reader's place and a selection, anywhere
+ * in the app (`--reader-mark` in index.css): the reader's own focus-letter
+ * colour, or with `null` the theme's accent. */
+export function applyMarkColor(color: string | null): void {
+  const root = document.documentElement
+  if (color === null) root.style.removeProperty('--reader-mark')
+  else root.style.setProperty('--reader-mark', color)
+}

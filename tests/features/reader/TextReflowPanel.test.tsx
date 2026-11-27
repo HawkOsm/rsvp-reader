@@ -97,7 +97,7 @@ describe('TextReflowPanel', () => {
     expect(queryByText('w10')).not.toBeNull()
   })
 
-  it('in the reading view, a finger tap is for the controls and a scroll hides them; a mouse picks the word', () => {
+  it('in the reading view, a finger tap is for the controls and a scroll hides them; a click picks no word', () => {
     const e = engine()
     const onControls = vi.fn()
     const { getByText } = render(
@@ -123,7 +123,7 @@ describe('TextReflowPanel', () => {
     onControls.mockClear()
     press('mouse')
     fireEvent.click(word)
-    expect(e.index).toBe(2)
+    expect(e.index).toBe(0)
     expect(onControls).not.toHaveBeenCalled()
   })
 })

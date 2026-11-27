@@ -349,6 +349,7 @@ function ReaderBody({ book }: { book: BookRecord }) {
         )}
         {mode === 'book' && (
           <SelectionNote
+            onRead={(words) => engine.seek(words.start)}
             onNote={(words) => {
               setNotePassage(words)
               setNotesOpen(true)

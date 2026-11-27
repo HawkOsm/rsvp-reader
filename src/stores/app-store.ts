@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { DEFAULT_WPM } from '@/core/pacing'
 import { loadSetting, saveSetting } from './api/settings'
 import { clampScale, type PageSpread, type FitScales } from '@/lib/book-layout'
-import { applyTheme, type ThemeMode } from '@/lib/theme'
+import { applyMarkColor, applyTheme, type ThemeMode } from '@/lib/theme'
 
 export type ReadingMode = 'rsvp' | 'book'
 
@@ -116,6 +116,7 @@ export const useAppStore = create<AppState>((set, get) => {
       const values = await Promise.all(keys.map((k) => loadSetting(k, DEFAULT_SETTINGS[k])))
       const loaded = Object.fromEntries(keys.map((k, i) => [k, values[i]])) as unknown as Settings
       applyTheme(loaded.theme)
+      applyMarkColor(loaded.orpColor)
       set({
         ...loaded,
         settingsLoaded: true,
@@ -130,7 +131,10 @@ export const useAppStore = create<AppState>((set, get) => {
     setDefaultWpm: setter('defaultWpm'),
     setFontFamily: setter('fontFamily'),
     setFontSize: setter('fontSize'),
-    setOrpColor: setter('orpColor'),
+    setOrpColor: (orpColor) => {
+      applyMarkColor(orpColor)
+      setter('orpColor')(orpColor)
+    },
     setPanelOpen: setter('panelOpen'),
     setShowHints: setter('showHints'),
     setLibraryView: setter('libraryView'),

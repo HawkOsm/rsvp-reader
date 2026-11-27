@@ -146,11 +146,11 @@ export function PdfPageView({
     return registerPage(element, (x, y) => wordAtScreenRef.current(element, x, y))
   }, [])
 
-  /** Click a word to jump there, in book mode as beside the RSVP word: it is
-   * how the reader picks where RSVP goes on. Not when the click ends a text
-   * selection. */
+  /** Beside the RSVP word, click a word to jump there (not when the click
+   * ends a text selection). In book mode a click picks nothing: selecting a
+   * word offers "Read from here" instead. */
   function onClick(event: MouseEvent<HTMLDivElement>) {
-    if (!window.getSelection()?.isCollapsed) return
+    if (!peek || !window.getSelection()?.isCollapsed) return
     const hit = wordAtScreen(event.currentTarget, event.clientX, event.clientY)
     if (hit !== null) engine.seek(hit)
   }
@@ -171,7 +171,10 @@ export function PdfPageView({
         <div
           ref={markRef}
           className="pointer-events-none absolute"
-          style={{ ...mark, background: 'rgba(255, 90, 95, 0.35)' }}
+          style={{
+            ...mark,
+            background: 'color-mix(in srgb, var(--reader-mark) 35%, transparent)',
+          }}
         />
       )}
       {drawn && <PdfTextLayer lines={drawn.lines} scale={drawn.scale} />}

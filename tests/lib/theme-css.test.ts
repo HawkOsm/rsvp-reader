@@ -41,3 +41,13 @@ describe('the palette in index.css matches theme.ts', () => {
     expect(block(':root:not([data-theme])')).toEqual(asCss(resolvePalette('light')))
   })
 })
+
+describe('the colour of the reader’s mark', () => {
+  it('is the reader’s own focus-letter colour when one is chosen, else left to the theme', async () => {
+    const { applyMarkColor } = await import('@/lib/theme')
+    applyMarkColor('#22aa66')
+    expect(document.documentElement.style.getPropertyValue('--reader-mark')).toBe('#22aa66')
+    applyMarkColor(null)
+    expect(document.documentElement.style.getPropertyValue('--reader-mark')).toBe('')
+  })
+})
