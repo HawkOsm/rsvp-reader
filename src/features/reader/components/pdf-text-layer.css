@@ -9,6 +9,17 @@
   /* The width of each line is measured in this font (PdfTextLayer.tsx), so it
    * must be the one used to draw it. */
   font-family: sans-serif;
+  /* Only the lines can be selected, not the layer that holds them. WebKit
+   * (the desktop app, Safari) otherwise paints the selection across the gaps
+   * between the lines too, the whole width of the page. */
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.pdfTextLayer span,
+.pdfTextLayer br {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .pdfTextLayer span {
