@@ -105,5 +105,10 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
 - [ ] WebKit: one "Could not open PDF" (`n.Document.openDocument`) on first launch, while covers
       were being made. Maybe two `import('mupdf')` at once on WebKit; unconfirmed, since the e2e
       tests only run Chromium. Both covers were made anyway. Worth sharing one import.
+- [x] Selecting text on a PDF page in the desktop app painted a band across the page beside
+      the selected lines (WebKit fills the gaps between them); only the lines are selectable
+      now. Seen fixed in WebKitGTK (2026-11-27).
+- [x] The desktop app no longer comes back maximized or full screen, which on a tiling window
+      manager (Hyprland) took it out of its tiling (2026-11-27). Compiled, not yet seen.
 - [ ] The desktop app sometimes quits at once when started under Wayland (it stays open under
       X11, `GDK_BACKEND=x11`). Not investigated yet.
