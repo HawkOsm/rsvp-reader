@@ -1,6 +1,6 @@
 # To do
 
-What is left, as of v0.3.2 (2026-11-25; first published as v0.5, then renumbered). Sync and notes are built and on for everyone since 2026-11-25; sync does nothing until Drive is
+What is left, as of v0.3.3 (2026-11-27). Sync and notes are built and on for everyone since 2026-11-25; sync does nothing until Drive is
 connected in Settings. Design and history: [docs/architecture/sync.md](architecture/sync.md) and
 [decisions.md](architecture/decisions.md).
 
