@@ -12,6 +12,7 @@ import {
 import { bookmarkExcerpt } from '@/features/reader/bookmark'
 import { useEngine, useEngineIndex } from '@/features/reader/engine-context'
 import { notePlace, notesFileName, notesMarkdown } from '@/features/reader/notes-markdown'
+import { quoteOf, type WordRange } from '@/features/reader/selection-words'
 import { logError } from '@/lib/error-log'
 import { getPlatform } from '@/platform'
 import { useSyncStore } from '@/stores/sync-store'
@@ -27,12 +28,25 @@ export interface NotesPanelProps {
   title: string
   author?: string
   totalWords: number
+  /** Words picked out on the page to make the next note on, instead of the
+   * word being read. */
+  passage?: WordRange | null
+  /** The note on `passage` was made, or the reader let it go. */
+  onPassageDone?: () => void
   onClose: () => void
 }
 
 /** A book's notes, beside the reading area: add one on the word being read,
  * jump to one, edit, delete, settle a conflict, export them all. */
-export function NotesPanel({ bookId, title, author, totalWords, onClose }: NotesPanelProps) {
+export function NotesPanel({
+  bookId,
+  title,
+  author,
+  totalWords,
+  passage = null,
+  onPassageDone,
+  onClose,
+}: NotesPanelProps) {
   const engine = useEngine()
   const index = useEngineIndex()
   // Read again when sync brings changes in, perhaps to these notes.
@@ -64,8 +78,10 @@ export function NotesPanel({ bookId, title, author, totalWords, onClose }: Notes
     return done
   }
 
-  const page = engine.tokens[index]?.page ?? -1
-  const here = bookmarkExcerpt(engine.tokens, index, 12)
+  // The next note is on the words picked out, or else from the word being read.
+  const at = passage?.start ?? index
+  const page = engine.tokens[at]?.page ?? -1
+  const here = passage ? quoteOf(engine.tokens, passage) : bookmarkExcerpt(engine.tokens, at, 12)
 
   return (
     <aside
@@ -92,14 +108,29 @@ export function NotesPanel({ bookId, title, author, totalWords, onClose }: Notes
           e.preventDefault()
           const body = draft.trim()
           if (!body) return
-          const anchor = { wordIndex: index, quote: here, ...(page >= 0 && { page }) }
+          const anchor = { wordIndex: at, quote: here, ...(page >= 0 && { page }) }
           void change(() => addNote(bookId, anchor, body)).then((done) => {
-            if (done) setDraft('')
+            if (!done) return
+            setDraft('')
+            onPassageDone?.()
           })
         }}
       >
-        <span className="line-clamp-2 text-[13px] text-text-dim italic">“{here}…”</span>
+        <span
+          className={`text-[13px] text-text-dim italic ${passage ? 'line-clamp-6' : 'line-clamp-2'}`}
+        >
+          “{here}
+          {passage ? '' : '…'}”
+        </span>
+        {passage && (
+          <button type="button" className={`${LINK} self-start`} onClick={onPassageDone}>
+            Use the word being read instead
+          </button>
+        )}
         <textarea
+          // Asked for from the page: ready to type.
+          key={passage ? `${passage.start}-${passage.end}` : 'here'}
+          autoFocus={passage !== null}
           aria-label="New note"
           rows={3}
           value={draft}

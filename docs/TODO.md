@@ -41,9 +41,8 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
 - [x] Two devices that read the same hand-added note section at once no longer each add it:
       the note's id is hashed from the section (2026-11-25).
 
-- [ ] Try Android sign-in (by code) on a real phone. The same code has signed in and synced
-      against real Drive from a computer, but has not run on a device. Check that the
-      google.com/device link opens the phone's browser.
+- [x] Android sign-in (by code) on a real phone: the owner signed in several times and it
+      works (2026-11-27).
 - [x] Reconnect after updating to the visible folder: done on the owner's desktop, where sync
       against real Drive works (2026-11-25).
 - [x] Two devices connecting for the very first time in the same moment: a device that has
@@ -93,7 +92,9 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
 
 - [x] Save as .md on the desktop, through a save dialog (Tauri's dialog plugin, 2026-11-25).
       Compiled and tested against stand-ins, not yet seen in the app.
-- [ ] Notes on a range of words, not only one word.
+- [x] A note on the words selected: in book mode a selection brings up "Add note", and the
+      note quotes exactly those words (2026-11-27). Checked in Chromium with a PDF and an
+      EPUB; not yet on a phone, where the system's own copy bar also appears.
 - [x] Remove the `notes` flag (2026-11-25).
 
 ## Desktop
