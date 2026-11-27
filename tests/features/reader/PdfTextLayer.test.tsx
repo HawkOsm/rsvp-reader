@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import type { PageLine } from '@/pdf/document'
 import { PdfTextLayer } from '@/features/reader/components/PdfTextLayer'
 
-// jsdom has no canvas; the layer then skips stretching lines to measured widths.
+// jsdom has no canvas; the layer then skips fitting words to measured widths.
 beforeAll(() => {
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
 })
@@ -28,7 +28,7 @@ describe('PdfTextLayer', () => {
         scale={1}
       />,
     )
-    const spans = [...container.querySelectorAll('span')]
+    const spans = [...container.querySelectorAll('.pdfLine')]
     expect(spans.map((s) => s.textContent)).toEqual(['The first', 'second'])
   })
 
@@ -49,7 +49,7 @@ describe('PdfTextLayer', () => {
 
   it('puts each line where it is on the page, at the page scale', () => {
     const { container } = render(<PdfTextLayer lines={[horizontal(100, 'word')]} scale={2} />)
-    const span = container.querySelector('span') as HTMLElement
+    const span = container.querySelector('.pdfLine') as HTMLElement
     expect(span.style.left).toBe('144px') // 72pt at 2x
     expect(span.style.top).toBe('200px')
     expect(span.style.fontSize).toBe('24px') // as tall as the line
@@ -58,7 +58,7 @@ describe('PdfTextLayer', () => {
   it('uses the left-most and right-most word, whatever order the line comes in', () => {
     const rtl = line(word('second', 300, 100, 350, 112), word('first', 72, 100, 122, 112))
     const { container } = render(<PdfTextLayer lines={[rtl]} scale={1} />)
-    expect((container.querySelector('span') as HTMLElement).style.left).toBe('72px')
+    expect((container.querySelector('.pdfLine') as HTMLElement).style.left).toBe('72px')
   })
 
   it('leaves out a line that runs down the page rather than draw it as a mess', () => {
@@ -67,7 +67,9 @@ describe('PdfTextLayer', () => {
     const { container } = render(
       <PdfTextLayer lines={[sideways, horizontal(100, 'upright')]} scale={1} />,
     )
-    expect([...container.querySelectorAll('span')].map((s) => s.textContent)).toEqual(['upright'])
+    expect([...container.querySelectorAll('.pdfLine')].map((s) => s.textContent)).toEqual([
+      'upright',
+    ])
     expect(container.querySelectorAll('br')).toHaveLength(0)
   })
 
@@ -75,18 +77,26 @@ describe('PdfTextLayer', () => {
     const { container } = render(
       <PdfTextLayer lines={[line(word('I', 72, 100, 76, 112))]} scale={1} />,
     )
-    expect(container.querySelector('span')?.textContent).toBe('I')
+    expect(container.querySelector('.pdfLine')?.textContent).toBe('I')
   })
 
   it('keeps a short line of narrow letters, which is narrower than it is tall', () => {
     const { container } = render(
       <PdfTextLayer lines={[line(word('ill', 72, 100, 82, 112))]} scale={1} />,
     )
-    expect(container.querySelector('span')?.textContent).toBe('ill')
+    expect(container.querySelector('.pdfLine')?.textContent).toBe('ill')
   })
 
   it('ignores a line with no words', () => {
     const { container } = render(<PdfTextLayer lines={[line(), horizontal(100, 'x')]} scale={1} />)
-    expect(container.querySelectorAll('span')).toHaveLength(1)
+    expect(container.querySelectorAll('.pdfLine')).toHaveLength(1)
+  })
+
+  it('makes the space after a word as wide as the gap to the next one', () => {
+    // 50 wide each, 10 apart, at twice the size.
+    const { container } = render(<PdfTextLayer lines={[horizontal(100, 'a', 'b')]} scale={2} />)
+    const gaps = [...container.querySelectorAll<HTMLElement>('.pdfGap')]
+    expect(gaps.map((g) => g.style.width)).toEqual(['20px'])
+    expect(gaps[0]!.textContent).toBe(' ')
   })
 })

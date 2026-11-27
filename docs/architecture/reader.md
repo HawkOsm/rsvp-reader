@@ -96,8 +96,10 @@ and are meant to match it word for word. Change them deliberately.
     word, and a selection anywhere in the app, are drawn in `--reader-mark`: the reader's
     focus-letter colour if one was chosen, else the theme's accent (`applyMarkColor`). `selection-words.ts`
     finds the words: reflowed text marks each with `data-word`; a PDF page's selectable text
-    is a span a line over a picture, so each `PdfPageView` registers a locator that says
-    which word is at a point. The note's anchor is the first word and its quote the words
+    lies over a picture, so each `PdfPageView` registers a locator that says which word is
+    at a point. That text (`PdfTextLayer`) is a span a line and in it a span a word, each
+    letter-spaced to the width the word has on the page, with the space after it as wide
+    as the gap to the next: a selection then covers exactly the words it shows. The note's anchor is the first word and its quote the words
     selected (80 at most). Nothing new is stored: a note still has one word and a quote.
   - **A zoom keeps its spot.** A pinch is made about the point between the fingers, a wheel
     zoom about the pointer (`zoomHold`). The page stays stretched about that point until it

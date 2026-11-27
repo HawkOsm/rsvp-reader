@@ -92,6 +92,10 @@ connected in Settings. Design and history: [docs/architecture/sync.md](architect
 
 - [x] Save as .md on the desktop, through a save dialog (Tauri's dialog plugin, 2026-11-25).
       Compiled and tested against stand-ins, not yet seen in the app.
+- [x] A selection on a PDF page covers exactly its words: the selectable text is laid out
+      word by word (it was a stretched span a line, so on justified text a selected word's
+      highlight ran into its neighbours and counted as several). Seen in WebKitGTK and
+      Chromium (2026-11-27).
 - [x] "Read from here" in the same menu, when one word is selected, sets the word RSVP goes
       on from. A click on a word no longer does in book mode. The current word's mark, and
       a selection anywhere in the app, take the reader's focus-letter colour (2026-11-27).
